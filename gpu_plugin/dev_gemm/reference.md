@@ -1,0 +1,2 @@
+https://registry.khronos.org/OpenCL/extensions/intel/cl_intel_subgroup_matrix_multiply_accumulate.html
+https://github.com/intel/intel-graphics-compiler/blob/6ecd10bc2d721e79d8efec39c62b740bded8aa95/documentation/visa/instructions/DPAS.md
