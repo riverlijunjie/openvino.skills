@@ -1,0 +1,11 @@
+src/common/util/include/openvino/util/parallel_io.hpp
+src/common/util/src/os/lin/parallel_io.cpp
+src/common/util/src/os/win/parallel_io.cpp
+src/common/util/include/openvino/util/parallel_read_streambuf.hpp
+src/common/util/src/parallel_read_streambuf.cpp
+src/plugins/intel_gpu/src/graph/common_utils/parallel_mem_streambuf.hpp
+src/plugins/intel_gpu/src/graph/common_utils/parallel_mem_streambuf.cpp
+src/plugins/intel_gpu/src/graph/data.cpp
+src/plugins/intel_gpu/src/plugin/plugin.cpp
+src/plugins/intel_gpu/tests/unit/test_utils/parallel_mem_streambuf_test.cpp
+src/inference/tests/unit/parallel_read_streambuf_test.cpp

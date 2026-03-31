@@ -6,6 +6,13 @@ reflects the **final implemented state** on branch `river/mmap_parallel_io_opt`.
 
 ---
 
+Key step:
+
+1. Read related md files and source files to understand the context and implementation details of the optimization.
+2. Always summarize the key design invariants and implementation details in a clear and concise manner, put them input Summary.md.
+3. Code style is consistent with the style of file in the same directory, such as doxy comments. Please all code files listed in source_code_list.md
+
+
 ## 1. Unified Parallel I/O Architecture
 
 ### 1.1. Two Code Paths, One Performance Strategy
@@ -75,21 +82,14 @@ calls.  **Neither class is header-only** — both have a corresponding `.cpp` in
 
 ## 2. CMakeLists.txt Changes
 
-`src/common/util` is a static library (`openvino_util`).  Two additions were
-required to compile the new `.cpp` files:
+`src/common/util` is a static library (`openvino_util`).  The parallel streambuf
+implementations use only standard C++ headers (`<thread>`, `<vector>`,
+`<atomic>`) and platform APIs (`pread`, `ReadFile`).  **No changes to
+`CMakeLists.txt` are required** beyond what already existed — the new `.cpp`
+files are picked up automatically by the existing `file(GLOB_RECURSE LIBRARY_SRC src/*.cpp)`.
 
-```cmake
-# (1) Expose openvino/core/parallel.hpp which lives under core/include
-target_include_directories(${TARGET_NAME} PRIVATE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../core/include>)
-
-# (2) Define OV_THREAD=OV_THREAD_TBB and link TBB privately,
-#     eliminating the -Wundef warning from parallel.hpp
-ov_set_threading_interface_for(${TARGET_NAME})
-```
-
-The PRIVATE qualifier is essential — it avoids creating a reverse dependency
-from `openvino_util` on `openvino_core` in the public link interface.
+Do **not** add `ov_set_threading_interface_for` or a PRIVATE `core/include` path
+to `openvino_util` — `openvino/core/parallel.hpp` is not used here.
 
 ---
 
@@ -135,14 +135,31 @@ applied:
 - Last thread: `size - cur_offset` — captures every byte including the tail
   fragment that falls beyond `(nthr-1) × chunk_size`.
 
-### 3.4. Thread Dispatch: `parallel_nt_static`
+### 3.4. Thread Dispatch: `std::thread`
 
-`ov::parallel_nt_static` (not `ov::parallel_for`) is used so:
-- Threads are reused from the existing TBB pool (no per-call create/join).
-- Lambda receives `(ithr, nthr)` for deterministic partitioning.
+`std::vector<std::thread>` workers are spawned for each chunk, then all
+joined before returning:
+
+```cpp
+std::vector<std::thread> workers;
+workers.reserve(num_threads);
+for (size_t ithr = 0; ithr < num_threads; ++ithr) {
+    workers.emplace_back([&, ithr]() {
+        // ... per-thread fd open + pread loop ...
+    });
+}
+for (auto& t : workers) {
+    t.join();
+}
+```
+
+Using raw `std::thread` avoids any dependency on `ov::parallel` / TBB from
+`openvino_util`.  The thread count is bounded by
+`std::thread::hardware_concurrency()` and the 1-thread-per-MB heuristic, so
+spawn-overhead is negligible relative to the I/O time for the target ≥4 MB reads.
 
 An `std::atomic<bool> success{true}` is updated by any failing thread; checked
-after the parallel region.
+after all workers are joined.
 
 ### 3.5. underflow() Buffer
 
@@ -326,9 +343,11 @@ All 33 `*Parallel*` tests pass on the current branch.
 
 ## 8. Key Design Invariants for Future Work
 
-1. **`openvino_util` must not create a public dependency on `openvino_core`.**
-   Use `PRIVATE` includes only.  The threading macro adds only a compile
-   definition + private link against TBB.
+1. **`openvino_util` must not depend on `openvino_core`.**
+   The parallel streambuf classes use only `<thread>`, `<vector>`, `<atomic>`,
+   and platform I/O APIs.  Do not introduce `#include "openvino/core/parallel.hpp"`
+   or `ov_set_threading_interface_for` — these would create an unintended
+   upward dependency from `util` to `core`.
 
 2. **Never share a single fd across `pread` threads** — Linux per-file-description
    readahead state (`file_ra_state`, `f_ra`) is corrupted by concurrent pread
