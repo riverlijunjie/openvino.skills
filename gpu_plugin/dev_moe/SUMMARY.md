@@ -234,15 +234,15 @@ INT4 GEMV on XE2 GPU:
 
 ## 8. Test Coverage
 
-51 MOE GPU unit tests covering:
+75 MOE GPU unit tests covering:
 
 | Test Suite | Count | Coverage |
 |-----------|-------|----------|
-| `moe_3gemm_compressed_gpu_random` | 14 | u4/u8 × seq=1/16 × softmax/sigmoid_bias × group=128/per-channel |
-| `moe_3gemm_compressed_gpu_shared_random` | 4 | u4/u8 × seq=1/16 with shared expert |
+| `moe_3gemm_compressed_gpu_random` | 16 | u4/u8 × seq=1/16 × softmax/sigmoid_bias × group=128/256/512 |
+| `moe_3gemm_compressed_gpu_shared_random` | 8 | u4/u8 × seq=1/16, group=128/256/512 with shared expert |
 | `moe_3gemm_compressed_gpu_u4` | 2 | Deterministic u4 tests |
-| `moe_3gemm_compressed_gpu_symmetric_random` | 8 | i4/i8 × seq=1/16 × softmax/sigmoid_bias |
-| `moe_3gemm_compressed_gpu_shared_symmetric_random` | 4 | i4/i8 × seq=1/16 with shared expert |
+| `moe_3gemm_compressed_gpu_symmetric_random` | 16 | i4/i8 × seq=1/16 × softmax/sigmoid_bias × group=128/256/512 |
+| `moe_3gemm_compressed_gpu_shared_symmetric_random` | 8 | i4/i8 × seq=1/16, group=128/256/512 with shared expert |
 | `moe_gemm_test` | 10 | micro_gemm prefill path |
 | Transformation tests | 9+ | Pattern matching, graph rewrite correctness |
 
@@ -260,3 +260,75 @@ cd build-x86_64-release && make ov_gpu_unit_tests -j$(nproc)
 2. **Shared expert prefill uses separate oneDNN matmuls**: Not integrated into micro_gemm dispatch; runs sequentially after sparse expert micro_gemms.
 3. **Fixed INTERMEDIATE_SIZE assumption**: Shared expert assumed to have same INTERMEDIATE_SIZE as sparse experts. Models with different-sized shared experts would need code changes.
 4. **OpenCL kernel redefinition constraint**: All inline functions must be macros (not `inline` functions) because the `.cl` file is compiled multiple times (once per sub-kernel) into a single OpenCL program — `inline` functions cause "redefinition" errors.
+
+---
+
+## 10. Group Size Support Analysis
+
+### Current Implementation
+
+The GEMV kernel uses `FAKE_GROUP_SIZE=128` as the inner loop stride. Each iteration processes 128 weight elements:
+- **XE2 (SUBGROUP_SIZE=32, u4)**: 32 lanes × `read_uc2` → 4 elements/lane (2 low + 2 high nibbles)
+- **XE2 (SUBGROUP_SIZE=32, u8)**: 32 lanes × `read_uc4` → 4 elements/lane
+- **XE (SUBGROUP_SIZE=16, u4)**: 16 lanes × `read_uc4` → 8 elements/lane
+
+Per iteration: read 1 scale + 1 zp, compute 128-element dot product, then `sum * scale - xg_sum * zp`.
+
+### group_size ≥ 128 (Supported)
+
+When `GROUP_SIZE` is a multiple of 128, multiple fake groups map to the same scale group. The formula `(gk * FAKE_GROUP_SIZE / GROUP_SIZE) * N` correctly computes the scale index:
+
+| GROUP_SIZE | Fake groups per scale | scale_offset pattern |
+|-----------|----------------------|---------------------|
+| 128 | 1 | 0, 1, 2, 3, ... (each fake group has its own scale) |
+| 256 | 2 | 0, 0, 1, 1, 2, 2, ... (pairs share one scale) |
+| 512 | 4 | 0, 0, 0, 0, 1, 1, 1, 1, ... |
+| per-channel | K/128 | 0, 0, 0, ..., 0 (single scale for entire K) |
+
+**No performance impact** — identical inner loop, just repeated scale reads (cached in registers).
+
+### group_size = 64 (Feasible, Not Yet Implemented)
+
+One fake group (128 elements) contains 2 scale groups (each 64 elements). Options:
+
+**Approach: Reduce FAKE_GROUP_SIZE to 64** via JIT `#define FAKE_GROUP_SIZE min(GROUP_SIZE, 128)`:
+- XE2 u4: 32 lanes × `read_uc1` → 2 elements/lane. Loop iterations double, ALU per iteration halves.
+- **Performance impact: Minimal** — kernel is memory-bound, total data read unchanged, `read_uc1` still efficient.
+- Requires new block_read branch (`uchar1` instead of `uchar2` for XE2 u4).
+- SLM xg_sum array size doubles: `HIDDEN_SIZE/64` instead of `HIDDEN_SIZE/128`.
+
+### group_size = 32 (XE2 u4 Not Feasible)
+
+One fake group (128 elements) contains 4 scale groups (each 32 elements). Reducing FAKE_GROUP_SIZE to 32:
+- XE2 u4: 32 lanes × 1 element/lane = 32 → each lane processes only **half a byte** (one nibble).
+- `intel_sub_group_block_read` minimum granularity is 1 byte per lane → **cannot read half a byte**.
+- XE2 u8: 32 lanes × 1 byte = 32 → `read_uc1` works, but only 1 element/lane, very low ALU utilization.
+- XE (SUBGROUP_SIZE=16) u4: 16 lanes × 1 byte → 2 elements/lane, `read_uc1` works.
+
+| Config | FAKE=32 feasible? | Efficiency |
+|--------|-------------------|-----------|
+| XE2 + u4 | **No** — sub-byte granularity | N/A |
+| XE2 + u8 | Yes — `read_uc1` | Low (1 elem/lane) |
+| XE + u4 | Yes — `read_uc1` | Acceptable (2 elem/lane) |
+| XE + u8 | Yes — `read_uc2` | Good (2 elem/lane) |
+
+**Recommendation**: group_size=32 on XE2+u4 should fall back to oneDNN/micro_gemm instead of custom GEMV.
+
+### Implementation Plan for group_size=64
+
+1. Make `FAKE_GROUP_SIZE` a JIT constant: `#define FAKE_GROUP_SIZE min(GROUP_SIZE, 128)`
+2. Add `#if FAKE_GROUP_SIZE == 64` branches for block_read in u4 kernels (`read_uc1` instead of `read_uc2`)
+3. Adjust xg_sum SLM size: `HIDDEN_SIZE / FAKE_GROUP_SIZE`
+4. Update compile-time guard: `GROUP_SIZE % FAKE_GROUP_SIZE != 0`
+5. No changes needed for group_size ≥ 128 — existing code continues to work
+
+### Summary Table
+
+| group_size | Status | FAKE_GROUP_SIZE | Performance vs g128 |
+|-----------|--------|-----------------|---------------------|
+| 128 | ✅ Supported | 128 | Baseline |
+| 256, 512, ... | ✅ Supported | 128 | No impact |
+| per-channel | ✅ Supported | 128 | No impact |
+| 64 | ⬜ Planned | 64 | ~Same (memory-bound) |
+| 32 (XE2+u4) | ❌ Not feasible | N/A | Fall back to oneDNN |
+| 32 (XE+u4, XE2+u8) | ⬜ Possible | 32 | Lower efficiency |

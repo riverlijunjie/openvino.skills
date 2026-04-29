@@ -1,0 +1,96 @@
+@echo off
+REM Generic OpenVINO roofline driver (Windows).
+REM MODEL-AGNOSTIC. Sources run_config.bat which defines ops + paths.
+REM See run_all_ptl.bat.example for a fully populated reference (Qwen3-8B).
+
+setlocal EnableDelayedExpansion
+
+if not defined RUN_CONFIG set RUN_CONFIG=%~dp0run_config.bat
+if not exist "%RUN_CONFIG%" (
+  echo error: %RUN_CONFIG% not found. Copy run_config.bat.example and customize.
+  exit /b 1
+)
+call "%RUN_CONFIG%"
+call "%OPENVINO_SETUPVARS%"
+
+if not exist "%RESULTS_DIR%" mkdir "%RESULTS_DIR%"
+set CLI_DevicePerformanceTiming=1
+set CLI_DevicePerformanceTimingSkipUnmap=1
+
+if not defined BUFS set BUFS=8
+if not defined PA_BUFS set PA_BUFS=4
+if not defined FLUSH_MB set FLUSH_MB=64
+
+REM run_config.bat is expected to populate these numbered variables:
+REM   FC_COUNT, FC_1, FC_2, ...    entries: "M K N TAG prec iters group_size warmup"
+REM   PA_COUNT, PA_1, PA_2, ...    entries: "mode M kv iters warmup TAG kv_dtype"
+REM   SM_COUNT, SM_1, SM_2, ...    entries: "TAG iters warmup op shape_args..."
+
+echo ===== FC =====
+for /L %%i in (1,1,%FC_COUNT%) do (
+  call :run_fc !FC_%%i!
+)
+
+echo ===== PA =====
+for /L %%i in (1,1,%PA_COUNT%) do (
+  call :run_pa !PA_%%i!
+)
+
+echo ===== SMALL OPS =====
+for /L %%i in (1,1,%SM_COUNT%) do (
+  call :run_sm !SM_%%i!
+)
+
+echo ===== MoE =====
+REM MOE_%i entries: B S H I NE TK TAG ITERS WARMUP [SHARED_I=0]
+REM Use SHARED_I>0 for shared-expert MoE models. moe_bench fails the run if the
+REM GPU plugin did not collapse the subgraph into moe_3gemm_fused_compressed.
+if not defined MOE_BUFS set MOE_BUFS=4
+if defined MOE_COUNT (
+  for /L %%i in (1,1,%MOE_COUNT%) do (
+    call :run_moe !MOE_%%i!
+  )
+)
+
+echo ===== ALL DONE =====
+dir /b "%RESULTS_DIR%" | find /c /v ""
+endlocal
+exit /b 0
+
+:run_fc
+REM args: M K N TAG PREC ITERS GROUP WARMUP
+echo --- FC %4 M=%1 K=%2 N=%3 g=%7 prec=%5 iters=%6 bufs=%BUFS% flush=%FLUSH_MB%MB ---
+"%CLILOADER%" "%BENCH_DIR%\fc_bench.exe" %1 %2 %3 %7 %6 %8 %BUFS% %5 %FLUSH_MB% > "%RESULTS_DIR%\fc_%4.log" 2>&1
+goto :eof
+
+:run_pa
+REM args: MODE M KV ITERS WARMUP TAG KV_DTYPE
+echo --- PA %1 %6 M=%2 kv=%3 kv_dtype=%7 iters=%4 ---
+"%CLILOADER%" "%BENCH_DIR%\pa_bench.exe" %1 %2 %3 %4 %5 %PA_BUFS% %7 > "%RESULTS_DIR%\pa_%6.log" 2>&1
+goto :eof
+
+:run_sm
+REM args: TAG ITERS WARMUP OP SHAPE_ARGS...
+set _tag=%1 & set _iters=%2 & set _warm=%3 & set _op=%4
+shift & shift & shift & shift
+set _shape=%1
+:sm_collect
+shift
+if "%1"=="" goto sm_run
+set _shape=%_shape% %1
+goto sm_collect
+:sm_run
+echo --- SmallOp %_tag% op=%_op% args=%_shape% iters=%_iters% ---
+"%CLILOADER%" "%BENCH_DIR%\small_ops_bench.exe" %_op% %_shape% --iters %_iters% --warmup %_warm% --bufs %BUFS% > "%RESULTS_DIR%\sm_%_tag%.log" 2>&1
+goto :eof
+
+:run_moe
+REM args: B S H I NE TK TAG ITERS WARMUP [SHARED_I=0]
+set _b=%1 & set _s=%2 & set _h=%3 & set _i=%4 & set _ne=%5 & set _tk=%6
+set _tag=%7 & set _iters=%8 & set _warm=%9
+shift & shift & shift & shift & shift & shift & shift & shift & shift
+set _shared=%1
+if "%_shared%"=="" set _shared=0
+echo --- MoE %_tag% B=%_b% S=%_s% H=%_h% I=%_i% NE=%_ne% TK=%_tk% shared_I=%_shared% iters=%_iters% ---
+"%CLILOADER%" "%BENCH_DIR%\moe_bench.exe" %_b% %_s% %_h% %_i% %_ne% %_tk% 128 %_iters% %_warm% %MOE_BUFS% %FLUSH_MB% %_shared% > "%RESULTS_DIR%\moe_%_tag%.log" 2>&1
+goto :eof

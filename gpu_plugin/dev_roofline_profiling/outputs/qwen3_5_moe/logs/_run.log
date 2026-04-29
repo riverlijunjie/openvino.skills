@@ -1,0 +1,100 @@
+== moe_decode_M1 == ./moe_bench 1 1 2048 512 256 8 128 200 20 4 64 512
+== moe_prefill_S1024 == ./moe_bench 1 1024 2048 512 256 8 128 30 5 2 64 512
+== moe_prefill_S2048 == ./moe_bench 1 2048 2048 512 256 8 128 20 3 2 64 512
+== moe_prefill_S4096 == ./moe_bench 1 4096 2048 512 256 8 128 15 3 2 64 512
+== moe_prefill_S8192 == ./moe_bench 1 8192 2048 512 256 8 128 10 2 2 64 512
+== fc_qkv_decode_M1 == ./fc_bench 1 2048 5120 128 8000 500 8 u4 64
+== fc_o_decode_M1 == ./fc_bench 1 4096 2048 128 8000 500 8 u4 64
+== lm_head_decode_M1 == ./fc_bench 1 2048 248320 128 600 60 4 u8 64
+== fc_qkv_prefill_S1024 == ./fc_bench 1024 2048 5120 128 50 10 8 u4 64
+== fc_o_prefill_S1024 == ./fc_bench 1024 4096 2048 128 50 10 8 u4 64
+== fc_qkv_prefill_S2048 == ./fc_bench 2048 2048 5120 128 50 10 8 u4 64
+== fc_o_prefill_S2048 == ./fc_bench 2048 4096 2048 128 50 10 8 u4 64
+== fc_qkv_prefill_S4096 == ./fc_bench 4096 2048 5120 128 50 10 8 u4 64
+== fc_o_prefill_S4096 == ./fc_bench 4096 4096 2048 128 50 10 8 u4 64
+== fc_qkv_prefill_S8192 == ./fc_bench 8192 2048 5120 128 50 10 8 u4 64
+== fc_o_prefill_S8192 == ./fc_bench 8192 4096 2048 128 50 10 8 u4 64
+== fc_linattn_proj_decode_M1 == ./fc_bench 1 2048 12288 128 2000 200 4 u4 64
+== fc_linattn_proj_prefill_S1024 == ./fc_bench 1024 2048 12288 128 30 5 4 u4 64
+== fc_linattn_proj_prefill_S2048 == ./fc_bench 2048 2048 12288 128 30 5 4 u4 64
+== fc_linattn_proj_prefill_S4096 == ./fc_bench 4096 2048 12288 128 30 5 4 u4 64
+== fc_linattn_proj_prefill_S8192 == ./fc_bench 8192 2048 12288 128 30 5 4 u4 64
+== pa_decode_kv1024 == [PA_NH=16 PA_NKV=2 PA_HD=256] ./pa_bench decode 1 1024 20000 500 4 i8
+== pa_decode_kv2048 == [PA_NH=16 PA_NKV=2 PA_HD=256] ./pa_bench decode 1 2048 20000 500 4 i8
+== pa_decode_kv4096 == [PA_NH=16 PA_NKV=2 PA_HD=256] ./pa_bench decode 1 4096 20000 500 4 i8
+== pa_decode_kv8192 == [PA_NH=16 PA_NKV=2 PA_HD=256] ./pa_bench decode 1 8192 20000 500 4 i8
+== pa_prefill_S1024 == [PA_NH=16 PA_NKV=2 PA_HD=256] ./pa_bench prefill 1024 0 50 10 4 i8
+== pa_prefill_S2048 == [PA_NH=16 PA_NKV=2 PA_HD=256] ./pa_bench prefill 2048 0 50 10 4 i8
+== pa_prefill_S4096 == [PA_NH=16 PA_NKV=2 PA_HD=256] ./pa_bench prefill 4096 0 50 10 4 i8
+== pa_prefill_S8192 == [PA_NH=16 PA_NKV=2 PA_HD=256] ./pa_bench prefill 8192 0 50 10 4 i8
+== gdn_decode_T1 == ./gdn_bench 1 1 32 32 128 5000 200 4
+== gdn_prefill_S1024 == ./gdn_bench 1 1024 32 32 128 30 5 2
+== gdn_prefill_S2048 == ./gdn_bench 1 2048 32 32 128 30 5 2
+== gdn_prefill_S4096 == ./gdn_bench 1 4096 32 32 128 30 5 2
+== gdn_prefill_S8192 == ./gdn_bench 1 8192 32 32 128 30 5 2
+== so_rmsnorm_h2048_decode == ./small_ops_bench rmsnorm 1 2048 --iters 50000 --warmup 500 --bufs 8
+== so_rmsnorm3d_qnorm_decode == ./small_ops_bench rmsnorm3d 1 16 256 --iters 50000 --warmup 500 --bufs 8
+== so_rmsnorm3d_knorm_decode == ./small_ops_bench rmsnorm3d 1 2 256 --iters 50000 --warmup 500 --bufs 8
+== so_rope_q_decode == ./small_ops_bench rope 1 16 256 --iters 50000 --warmup 500 --bufs 8
+== so_rope_k_decode == ./small_ops_bench rope 1 2 256 --iters 50000 --warmup 500 --bufs 8
+== so_add_decode == ./small_ops_bench add 1 2048 --iters 50000 --warmup 500 --bufs 8
+== so_rmsnorm_h2048_prefill_S1024 == ./small_ops_bench rmsnorm 1024 2048 --iters 500 --warmup 50 --bufs 4
+== so_rope_q_prefill_S1024 == ./small_ops_bench rope 1024 16 256 --iters 500 --warmup 50 --bufs 4
+== so_rmsnorm_h2048_prefill_S2048 == ./small_ops_bench rmsnorm 2048 2048 --iters 500 --warmup 50 --bufs 4
+== so_rope_q_prefill_S2048 == ./small_ops_bench rope 2048 16 256 --iters 500 --warmup 50 --bufs 4
+== so_rmsnorm_h2048_prefill_S4096 == ./small_ops_bench rmsnorm 4096 2048 --iters 500 --warmup 50 --bufs 4
+== so_rope_q_prefill_S4096 == ./small_ops_bench rope 4096 16 256 --iters 500 --warmup 50 --bufs 4
+== so_rmsnorm_h2048_prefill_S8192 == ./small_ops_bench rmsnorm 8192 2048 --iters 500 --warmup 50 --bufs 4
+== so_rope_q_prefill_S8192 == ./small_ops_bench rope 8192 16 256 --iters 500 --warmup 50 --bufs 4
+===
+All logs in /mnt/river/model_loading/roofline_test_utils/logs/bmg/qwen3_5_moe
+fc_linattn_proj_decode_M1.log
+fc_linattn_proj_prefill_S1024.log
+fc_linattn_proj_prefill_S2048.log
+fc_linattn_proj_prefill_S4096.log
+fc_linattn_proj_prefill_S8192.log
+fc_o_decode_M1.log
+fc_o_prefill_S1024.log
+fc_o_prefill_S2048.log
+fc_o_prefill_S4096.log
+fc_o_prefill_S8192.log
+fc_qkv_decode_M1.log
+fc_qkv_prefill_S1024.log
+fc_qkv_prefill_S2048.log
+fc_qkv_prefill_S4096.log
+fc_qkv_prefill_S8192.log
+gdn_decode_T1.log
+gdn_prefill_S1024.log
+gdn_prefill_S2048.log
+gdn_prefill_S4096.log
+gdn_prefill_S8192.log
+_index.txt
+lm_head_decode_M1.log
+moe_decode_M1.log
+moe_prefill_S1024.log
+moe_prefill_S2048.log
+moe_prefill_S4096.log
+moe_prefill_S8192.log
+pa_decode_kv1024.log
+pa_decode_kv2048.log
+pa_decode_kv4096.log
+pa_decode_kv8192.log
+pa_prefill_S1024.log
+pa_prefill_S2048.log
+pa_prefill_S4096.log
+pa_prefill_S8192.log
+_run.log
+so_add_decode.log
+so_rmsnorm3d_knorm_decode.log
+so_rmsnorm3d_qnorm_decode.log
+so_rmsnorm_h2048_decode.log
+so_rmsnorm_h2048_prefill_S1024.log
+so_rmsnorm_h2048_prefill_S2048.log
+so_rmsnorm_h2048_prefill_S4096.log
+so_rmsnorm_h2048_prefill_S8192.log
+so_rope_k_decode.log
+so_rope_q_decode.log
+so_rope_q_prefill_S1024.log
+so_rope_q_prefill_S2048.log
+so_rope_q_prefill_S4096.log
+so_rope_q_prefill_S8192.log

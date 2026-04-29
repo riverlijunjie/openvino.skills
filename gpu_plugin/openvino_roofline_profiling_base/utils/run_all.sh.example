@@ -1,0 +1,117 @@
+#!/bin/bash
+# Run all FC, PA, and small-op benchmarks with cliloader on BMG (Linux).
+# Shapes match the real Qwen3-8B verbose dump.
+#
+# Per-category iteration counts are tuned so that each decode op's total
+# kernel execution time is >= ~1 s (where possible given bench overhead),
+# which is required to get stable avg-per-iter numbers for microsecond-scale
+# decode kernels. Prefill ops already have multi-ms kernels so 50 iters is
+# already well above the 1-s kernel-time threshold.
+set -e
+
+source /mnt/river/model_loading/openvino/install_release/setupvars.sh
+CLILOADER=/mnt/river/model_loading/clintercept-3.0.6-Linux/bin/cliloader
+BENCH_DIR=/mnt/river/model_loading/roofline_test_utils/build
+RESULTS_DIR=/mnt/river/model_loading/roofline_test_utils/logs/bmg
+mkdir -p "$RESULTS_DIR"
+
+export CLI_DevicePerformanceTiming=1
+export CLI_DevicePerformanceTimingSkipUnmap=1
+
+# -------- iteration budgets ----------
+FC_DEC_ITERS=8000       # body FC decode (~0.1–0.2 ms/iter) → ~0.8–1.6 s
+FC_DEC_LM_ITERS=1000    # LM_Head decode (~1.4–6 ms/iter) → ~1.4–6 s
+FC_PRE_ITERS=50         # prefill FC already multi-ms/iter
+PA_DEC_ITERS=20000      # PA decode compute ~0.02 ms/iter → ~0.4–1+ s
+PA_PRE_ITERS=50         # prefill PA already multi-ms/iter
+SM_DEC_ITERS=50000      # small ops decode ~µs/iter → ~0.1–1 s
+SM_PRE_ITERS=500        # small ops prefill
+
+WARMUP_FRAC=5           # warmup = iters / WARMUP_FRAC, clamped to [10, 500]
+clamp_warmup() {
+  local w=$(( $1 / WARMUP_FRAC ))
+  (( w < 10 )) && w=10
+  (( w > 500 )) && w=500
+  echo "$w"
+}
+
+BUFS=8              # rotates only input/output tensors (avoids activation L3 reuse)
+FLUSH_MB=64         # Size of L2/L3 cache-flush kernel run between every infer.
+                    # Must exceed BMG L2 (18 MB) and PTL CPU LLC (~30 MB) so that
+                    # FC weights are always evicted and each iter re-reads VRAM.
+                    # 64 MB Relu = 128 MB device traffic, costs ~0.3 ms/iter on BMG.
+
+echo "===== FC DECODE (QKV fused; Gate/Up SEPARATE per verbose log) ====="
+for cfg in \
+  "1 4096 6144   decode_QKV     u4 $FC_DEC_ITERS"    \
+  "1 4096 4096   decode_O       u4 $FC_DEC_ITERS"    \
+  "1 4096 12288  decode_Gate    u4 $FC_DEC_ITERS"    \
+  "1 4096 12288  decode_Up      u4 $FC_DEC_ITERS"    \
+  "1 12288 4096  decode_Down    u4 $FC_DEC_ITERS"    \
+  "1 4096 151936 decode_LMHead  u8 $FC_DEC_LM_ITERS"; do
+  read M K N TAG PREC ITERS <<< "$cfg"
+  WARMUP=$(clamp_warmup "$ITERS")
+  echo "--- FC $TAG M=$M K=$K N=$N prec=$PREC iters=$ITERS warmup=$WARMUP bufs=$BUFS flush=${FLUSH_MB}MB ---"
+  $CLILOADER $BENCH_DIR/fc_bench $M $K $N 128 $ITERS $WARMUP $BUFS $PREC $FLUSH_MB 2>&1 | tee "$RESULTS_DIR/fc_${TAG}.log"
+done
+
+echo "===== FC PREFILL (body FCs only; LM_Head is decode-only per SKILL) ====="
+ITERS=$FC_PRE_ITERS; WARMUP=$(clamp_warmup "$ITERS")
+for S in 1024 2048 4096 8192; do
+  for cfg in \
+    "$S 4096 6144   prefill_QKV_S${S}    u4" \
+    "$S 4096 4096   prefill_O_S${S}      u4" \
+    "$S 4096 12288  prefill_Gate_S${S}   u4" \
+    "$S 4096 12288  prefill_Up_S${S}     u4" \
+    "$S 12288 4096  prefill_Down_S${S}   u4"; do
+    read M K N TAG PREC <<< "$cfg"
+    echo "--- FC $TAG M=$M K=$K N=$N prec=$PREC iters=$ITERS flush=${FLUSH_MB}MB ---"
+    $CLILOADER $BENCH_DIR/fc_bench $M $K $N 128 $ITERS $WARMUP $BUFS $PREC $FLUSH_MB 2>&1 | tee "$RESULTS_DIR/fc_${TAG}.log"
+  done
+done
+
+BUFS=4
+echo "===== PA DECODE (i8 KV cache — matches real model) ====="
+ITERS=$PA_DEC_ITERS; WARMUP=$(clamp_warmup "$ITERS")
+for KV in 1024 2048 4096 8192; do
+  echo "--- PA decode S_kv=$KV i8 iters=$ITERS ---"
+  $CLILOADER $BENCH_DIR/pa_bench decode 1 $KV $ITERS $WARMUP $BUFS i8 2>&1 | tee "$RESULTS_DIR/pa_decode_kv${KV}_i8.log"
+done
+
+echo "===== PA PREFILL (i8 KV cache) ====="
+ITERS=$PA_PRE_ITERS; WARMUP=$(clamp_warmup "$ITERS")
+for S in 1024 2048 4096 8192; do
+  echo "--- PA prefill S=$S i8 iters=$ITERS ---"
+  $CLILOADER $BENCH_DIR/pa_bench prefill $S 0 $ITERS $WARMUP $BUFS i8 2>&1 | tee "$RESULTS_DIR/pa_prefill_S${S}_i8.log"
+done
+
+BUFS=8
+
+run_sm () {
+    local TAG=$1; shift
+    local ITERS=$1; shift
+    local WARMUP=$(clamp_warmup "$ITERS")
+    echo "--- SmallOp $TAG iters=$ITERS: $* ---"
+    $CLILOADER $BENCH_DIR/small_ops_bench "$@" --iters $ITERS --warmup $WARMUP --bufs $BUFS 2>&1 | tee "$RESULTS_DIR/sm_${TAG}.log"
+}
+
+echo "===== SMALL OPS DECODE (M=1) ====="
+run_sm decode_RMSNorm_hidden  $SM_DEC_ITERS rmsnorm   1 4096
+run_sm decode_QNorm           $SM_DEC_ITERS rmsnorm3d 1 32 128
+run_sm decode_KNorm           $SM_DEC_ITERS rmsnorm3d 1 8 128
+run_sm decode_RoPE_Q          $SM_DEC_ITERS rope      1 32 128
+run_sm decode_RoPE_K          $SM_DEC_ITERS rope      1 8 128
+run_sm decode_Add_residual    $SM_DEC_ITERS add       1 4096
+
+echo "===== SMALL OPS PREFILL ====="
+for M in 1024 2048 4096 8192; do
+  run_sm prefill_RMSNorm_hidden_S${M}   $SM_PRE_ITERS rmsnorm   $M 4096
+  run_sm prefill_QNorm_S${M}            $SM_PRE_ITERS rmsnorm3d $M 32 128
+  run_sm prefill_KNorm_S${M}            $SM_PRE_ITERS rmsnorm3d $M 8 128
+  run_sm prefill_RoPE_Q_S${M}           $SM_PRE_ITERS rope      $M 32 128
+  run_sm prefill_RoPE_K_S${M}           $SM_PRE_ITERS rope      $M 8 128
+  run_sm prefill_Add_residual_S${M}     $SM_PRE_ITERS add       $M 4096
+done
+
+echo "===== ALL DONE ====="
+ls "$RESULTS_DIR/" | wc -l

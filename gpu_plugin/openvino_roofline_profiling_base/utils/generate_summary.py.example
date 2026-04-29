@@ -1,0 +1,289 @@
+#!/usr/bin/env python3
+"""Generate SUMMARY.md from performance_metrics.json.
+
+Source of truth: performance_metrics.json (produced by generate_metrics.py).
+Re-run to refresh SUMMARY.md after any re-measurement.
+"""
+import json
+from pathlib import Path
+
+UTILS = Path(__file__).resolve().parent
+ROOT = UTILS.parent
+M = json.loads((UTILS / "performance_metrics.json").read_text())
+HW = M["hardware"]
+CFG = M["config"]
+TOKEN_SIZES = [1024, 2048, 4096, 8192]
+
+out = []
+w = out.append
+
+w("# Qwen3-8B Roofline Analysis — SKILL.md v2\n")
+w(f"**Model**: {M['model']}  \n")
+w(f"**Methodology**: {M['skill_methodology']}  \n")
+w("**Data source**: `utils/performance_metrics.json` (regenerate via `generate_metrics.py`).\n")
+
+# 1. HW
+w("\n## 1. Hardware Peaks (SKILL.md formulas)\n")
+w("XMX FP16 TFLOPS = xe_cores × 8 × 256 × freq_GHz;  INT8 TOPS = 2 × FP16;  SIMD FP16 = xe_cores × 8 × 32 × freq.\n")
+w("\n| Platform | Xe Cores | Freq (MHz) | BW (GB/s) | FP16 XMX (TFLOPS) | INT8 XMX (TOPS) | SIMD FP16 (TFLOPS) |")
+w("|---|---|---|---|---|---|---|")
+for p, h in HW.items():
+    w(f"| {p} | {h['xe_cores']} | {h['freq_mhz']} | {h['bw_gbs']} | "
+      f"{h['fp16_xmx_tflops']:.3f} | {h['int8_xmx_tops']:.3f} | {h['simd_fp16_tflops']:.3f} |")
+
+# 2. Config
+w("\n## 2. Model Configuration\n")
+w("| Field | Value |")
+w("|---|---|")
+for k, v in CFG.items():
+    w(f"| `{k}` | {v} |")
+
+# 3. Methodology
+w("\n## 3. Benchmark Methodology\n")
+w("- **Tool**: `fc_bench` (custom) for FC layers with weight compression (INT4 g=128 for body, INT8 g=128 for LM_Head); `benchmark_app` for PA/small ops.")
+w("- **Activation**: FP16 at decode; INT8 (via `dynamic_quantize_gpu_opt`) at prefill.")
+w("- **Swish & Multiply are NOT profiled separately** — per SKILL.md, they fuse into FC/activation kernels and are counted inside FC.")
+w("- **LM_Head** uses INT8 g=128 weight quantization (not INT4, per SKILL.md).")
+w("- **PA is split into 2 kernels** per SKILL.md: `pa_kv_cache_update_*` (writes new K,V into paged cache) and `paged_attention_*`/`sdpa_*` (attention compute).")
+w("- **`dynamic_quantize_gpu_opt`** runs once per FC prefill call to quantize activations to INT8; it is profiled as its own op.")
+w("- **Timings**: OpenCL `CLI_DevicePerformanceTiming` average over many iterations.")
+w("- **Iteration budgets (per op class)**: tuned so *each decode op's total kernel time ≥ 1 s* for stable averages on µs-scale kernels. FC decode body = 8 000 iters; FC decode LM_Head = 1 000; PA decode = 20 000; small-op decode = 50 000. Prefill ops already have multi-ms kernels so 50 iters (FC/PA) and 500 iters (small) are sufficient.")
+w("- Roofline bound = memory when arithmetic intensity < BW·peak⁻¹·compute_peak; else compute.")
+
+# 4-5. Per-op metrics by platform/phase
+for phase in ("decode", "prefill_1024", "prefill_2048", "prefill_4096", "prefill_8192"):
+    w(f"\n## 4.{phase}. Per-Op Metrics — {phase}\n")
+    for p in ("BMG", "PTL"):
+        rows = M["metrics"][p].get(phase, [])
+        if not rows:
+            continue
+        w(f"\n### {p} {phase}\n")
+        w("| Op | Bound | Avg (ms) | Calls/inf | Total (ms) | Ach GB/s | Ach TOPS | Eff% |")
+        w("|---|---|---|---|---|---|---|---|")
+        for r in rows:
+            gbs = r.get("achieved_gbs", 0) or 0
+            tops = r.get("achieved_tops", r.get("achieved_tflops", 0)) or 0
+            w(f"| {r['op']} | {r.get('bound','-')} | {r['avg_latency_ms']:.4f} | "
+              f"{r['total_calls_per_inference']} | {r['total_latency_ms']:.3f} | "
+              f"{gbs:.1f} | {tops:.2f} | {r.get('efficiency_pct',0):.1f}% |")
+
+# 6. Model totals
+w("\n## 5. Model-Level Totals (kernel-only)\n")
+for p in ("BMG", "PTL"):
+    w(f"\n### {p} Decode (fc/pa/small are *per-layer*; lm_head is once; model = 36×layer + lm_head)\n")
+    w("| kv | fc (ms/layer) | pa_kv_upd (ms) | pa_compute (ms) | small (ms/layer) | lm_head (ms) | layer (ms) | model (ms) | tok/s |")
+    w("|---|---|---|---|---|---|---|---|---|")
+    for kv in TOKEN_SIZES:
+        r = M["model_totals"][p].get(f"decode_kv{kv}", {})
+        if not r:
+            continue
+        w(f"| {kv} | {r['fc_ms']:.3f} | {r.get('pa_kv_update_ms',0):.5f} | {r.get('pa_compute_ms',0):.5f} | {r['small_ms']:.4f} | "
+          f"{r['lm_head_ms']:.3f} | {r['layer_ms']:.3f} | {r['model_ms']:.2f} | {r['tokens_per_sec']:.1f} |")
+
+    w(f"\n### {p} Prefill (values are *per-layer* except lm_head/model/tok-s; lm_head reused from decode M=1 per SKILL; model_ms = 36 × layer_ms + lm_head_ms)\n")
+    w("| S | fc gemm (ms) | dyn_quant (ms) | pa_kv_upd (ms) | pa_compute (ms) | small (ms) | layer (ms) | lm_head (ms) | model (ms) | tok/s |")
+    w("|---|---|---|---|---|---|---|---|---|---|")
+    for S in TOKEN_SIZES:
+        r = M["model_totals"][p].get(f"prefill_S{S}", {})
+        if not r:
+            continue
+        w(f"| {S} | {r['fc_ms']:.3f} | {r['dyn_quant_ms']:.3f} | {r.get('pa_kv_update_ms',0):.3f} | {r.get('pa_compute_ms',0):.3f} | "
+          f"{r['small_ms']:.3f} | {r['layer_ms']:.3f} | {r.get('lm_head_ms',0):.3f} | {r['model_ms']:.1f} | {r['tokens_per_sec']:.0f} |")
+
+# 5b. Per-op execution-time share within the whole inference
+NUM_LAYERS = CFG.get("num_layers", 36)
+SM_CALLS_PER_LAYER = {
+    "rmsnorm_hidden": 2,      # pre-attn + pre-mlp rmsnorm
+    "add_residual": 2,         # post-attn + post-mlp add
+    "qnorm": 1, "knorm": 1,
+    "rope_q": 1, "rope_k": 1,
+}
+
+def breakdown(plat, phase_key, model_totals_key, kv_filter=None):
+    """Return list of (op_name, total_ms, pct) for a given platform/phase.
+
+    For decode phases, PA rows cover multiple kv lengths; `kv_filter` restricts
+    pa_compute_/pa_kv_cache_update_ rows to the matching kv length.
+    """
+    rows = M["metrics"][plat].get(phase_key, [])
+    totals = M["model_totals"][plat].get(model_totals_key, {})
+    model_ms = totals.get("model_ms", 0)
+    if model_ms == 0:
+        return None, 0
+    items = []
+    # FCs (body) — per layer × NUM_LAYERS
+    for r in rows:
+        op = r["op"]
+        if op.startswith("fc_") and op != "fc_LMHead":
+            t = r["avg_latency_ms"] * NUM_LAYERS
+            items.append((op + "  (×36 layers)", t))
+        elif op == "fc_LMHead":
+            items.append(("fc_LMHead  (×1)", r["avg_latency_ms"]))
+        elif "dynamic_quantize" in op:
+            items.append(("dynamic_quantize_gpu_opt  (×36)", r["avg_latency_ms"] * NUM_LAYERS))
+        elif op.startswith("pa_kv_cache_update"):
+            if kv_filter is not None and r.get("kv_len") != kv_filter:
+                continue
+            items.append(("pa_kv_cache_update  (×36)", r["avg_latency_ms"] * NUM_LAYERS))
+        elif op.startswith("pa_compute"):
+            if kv_filter is not None and r.get("kv_len") != kv_filter:
+                continue
+            label = "pa_compute  (×36)" if kv_filter is not None else op + "  (×36)"
+            items.append((label, r["avg_latency_ms"] * NUM_LAYERS))
+        elif op in SM_CALLS_PER_LAYER:
+            mult = SM_CALLS_PER_LAYER[op]
+            items.append((f"{op}  (×{NUM_LAYERS*mult})", r["avg_latency_ms"] * NUM_LAYERS * mult))
+    items.sort(key=lambda x: -x[1])
+    return items, model_ms
+
+w("\n## 5b. Per-Op Execution-Time Share (contribution to whole-inference kernel time)\n")
+w("Each row is the op's *total time in one full inference* (= avg × total_calls_per_inference, "
+  "with 2× applied for per-layer-twice small ops). `% of model` is share of the whole decode/prefill "
+  "kernel time. Ops contributing < 0.1% are folded into a single 'other tiny ops' row.\n")
+
+for p in ("BMG", "PTL"):
+    # Decode breakdown — one table per kv length
+    for kv in TOKEN_SIZES:
+        items, model_ms = breakdown(p, "decode", f"decode_kv{kv}", kv_filter=kv)
+        if not items:
+            continue
+        w(f"\n### {p} Decode kv={kv} (model_ms = {model_ms:.3f})\n")
+        w("| # | Op | Total (ms/inference) | % of model |")
+        w("|---|---|---|---|")
+        tiny_sum = 0.0
+        shown = 0
+        for name, t in items:
+            pct = t / model_ms * 100
+            if pct < 0.1:
+                tiny_sum += t
+                continue
+            shown += 1
+            w(f"| {shown} | {name} | {t:.4f} | {pct:.2f}% |")
+        if tiny_sum > 0:
+            w(f"| — | other tiny ops (< 0.1% each) | {tiny_sum:.4f} | {tiny_sum/model_ms*100:.2f}% |")
+    # Prefill breakdowns: one table per S
+    for S in TOKEN_SIZES:
+        items, model_ms = breakdown(p, f"prefill_{S}", f"prefill_S{S}")
+        if not items:
+            continue
+        w(f"\n### {p} Prefill S={S} (model_ms = {model_ms:.1f})\n")
+        w("| # | Op | Total (ms/inference) | % of model |")
+        w("|---|---|---|---|")
+        tiny_sum = 0.0
+        shown = 0
+        for name, t in items:
+            pct = t / model_ms * 100
+            if pct < 0.1:
+                tiny_sum += t
+                continue
+            shown += 1
+            w(f"| {shown} | {name} | {t:.3f} | {pct:.2f}% |")
+        if tiny_sum > 0:
+            w(f"| — | other tiny ops (< 0.1% each) | {tiny_sum:.3f} | {tiny_sum/model_ms*100:.2f}% |")
+
+# 7. Cross-platform
+w("\n## 6. Cross-Platform Comparison\n")
+w("\n### Decode — model latency & ratio (PTL / BMG)\n")
+w("| kv | BMG (ms) | PTL (ms) | PTL/BMG | Winner |")
+w("|---|---|---|---|---|")
+for kv in TOKEN_SIZES:
+    b = M["model_totals"]["BMG"].get(f"decode_kv{kv}", {}).get("model_ms", 0)
+    p = M["model_totals"]["PTL"].get(f"decode_kv{kv}", {}).get("model_ms", 0)
+    if b and p:
+        r = p / b
+        w(f"| {kv} | {b:.2f} | {p:.2f} | {r:.2f}× | {'BMG' if r>1 else 'PTL'} |")
+
+w("\n### Prefill — model latency & ratio (PTL / BMG)\n")
+w("| S | BMG (ms) | PTL (ms) | PTL/BMG | Winner |")
+w("|---|---|---|---|---|")
+for S in TOKEN_SIZES:
+    b = M["model_totals"]["BMG"].get(f"prefill_S{S}", {}).get("model_ms", 0)
+    p = M["model_totals"]["PTL"].get(f"prefill_S{S}", {}).get("model_ms", 0)
+    if b and p:
+        r = p / b
+        w(f"| {S} | {b:.1f} | {p:.1f} | {r:.2f}× | {'BMG' if r>1 else 'PTL'} |")
+
+# 8. Findings
+w("\n## 7. Key Findings\n")
+# Pull data points at S=8192
+bmg_pfx = M["model_totals"]["BMG"].get("prefill_S8192", {})
+ptl_pfx = M["model_totals"]["PTL"].get("prefill_S8192", {})
+bmg_dec = M["model_totals"]["BMG"].get("decode_kv8192", {})
+ptl_dec = M["model_totals"]["PTL"].get("decode_kv8192", {})
+bmg_dq_tot = bmg_pfx.get('dyn_quant_ms',0) * CFG['num_layers']
+ptl_dq_tot = ptl_pfx.get('dyn_quant_ms',0) * CFG['num_layers']
+w(f"1. **BMG wins prefill at every sequence length.** At S=8192 BMG takes "
+  f"{bmg_pfx.get('model_ms',0):.0f} ms vs PTL {ptl_pfx.get('model_ms',0):.0f} ms "
+  f"(ratio {ptl_pfx.get('model_ms',0)/bmg_pfx.get('model_ms',1):.2f}×). "
+  "BMG's 2× INT8 XMX peak and 4× VRAM bandwidth together dominate the long-context prefill.")
+w(f"2. **BMG dominates decode too**, as expected for a memory-bound workload. "
+  f"At kv=8192 BMG is {ptl_dec.get('model_ms',0)/bmg_dec.get('model_ms',1):.2f}× faster than PTL "
+  f"({bmg_dec.get('model_ms',0):.2f} ms vs {ptl_dec.get('model_ms',0):.2f} ms).")
+w(f"3. **`dynamic_quantize_gpu_opt` is modest cost** after the bench fix. At S=8192 per layer BMG spends "
+  f"{bmg_pfx.get('dyn_quant_ms',0):.2f} ms / PTL {ptl_pfx.get('dyn_quant_ms',0):.2f} ms — "
+  f"{bmg_dq_tot/bmg_pfx.get('model_ms',1)*100:.0f}% of BMG prefill, "
+  f"{ptl_dq_tot/ptl_pfx.get('model_ms',1)*100:.0f}% of PTL prefill. Not a top optimization target.")
+w("4. **LM_Head (INT8 g=128) is the dominant per-token cost at decode**: "
+  f"{bmg_dec.get('lm_head_ms',0):.2f} ms on BMG ({bmg_dec.get('lm_head_ms',0)/bmg_dec.get('model_ms',1)*100:.0f}% of token), "
+  f"{ptl_dec.get('lm_head_ms',0):.2f} ms on PTL ({ptl_dec.get('lm_head_ms',0)/ptl_dec.get('model_ms',1)*100:.0f}% of token).")
+w("5. **FC decode efficiency is near-ideal** on both platforms (~90-100% of VRAM peak BW), confirming FC decode is strictly memory-bound.")
+
+# 7a. Bench harness fix history
+w("\n## 7a. Bench Harness Fix — USM_DEVICE Input Tensors\n")
+w("Earlier revisions of this report showed BMG prefill small ops and `dynamic_quantize_gpu_opt` achieving only ~17-28 GB/s (3-6% of 456 GB/s peak). Root cause: `fc_bench` and `small_ops_bench` wrote activations from CPU into `req.get_input_tensor()`, which on a dGPU allocates `usm_host` (system memory). Every `infer()` then pulled activation bytes over **PCIe Gen4 x16 (~28 GB/s ceiling)**, not VRAM.\n")
+w("### Fix applied\n")
+w("In both benches, input tensors are now allocated through `RemoteContext::create_tensor(type, shape, {})` → plugin-internal USM_DEVICE allocation (VRAM). Data is left uninitialized (we only measure kernel timing, not correctness).\n")
+w("```cpp")
+w("auto remote_ctx = core.get_default_context(\"GPU\");")
+w("ov::Tensor dev_tensor = remote_ctx.create_tensor(")
+w("    input_port.get_element_type(), input_port.get_shape(), {});")
+w("req.set_input_tensor(dev_tensor);")
+w("```")
+w("### Impact at S=8192 on BMG (before → after the fix)\n")
+w("| Metric | Before (PCIe-bound) | After (VRAM) | Speedup |")
+w("|---|---|---|---|")
+w("| dyn_quant sum / layer | 39.9 ms | 2.1 ms | **19×** |")
+w("| small ops / layer | 47.4 ms | 2.4 ms | **20×** |")
+w("| Prefill model @ S=8192 | 4498 ms | 1497 ms | **3.0×** |")
+w("| Prefill tok/s @ S=8192 | 1821 | 5473 | **3.0×** |")
+w("| rmsnorm_hidden BW | 27.9 GB/s | 437.4 GB/s | 15.7× |")
+w("| add_residual BW | 17.7 GB/s | 617.8 GB/s | 34.9× |")
+w("\n**PTL (iGPU) is unaffected by USM_DEVICE** — system memory *is* GPU memory, so the harness quirk had no impact there.\n")
+
+# 7b. L2 cache pollution fix
+w("\n## 7b. Bench Harness Fix — L2 Cache Pollution on FC Decode\n")
+w("**Symptom.** Initial BMG FC decode measurements reported `achieved_gbs / bw_peak > 100%`: fc_QKV=155%, fc_O=145%, fc_Gate/Up=107%, fc_Down=77%, fc_LMHead=99%. Efficiency over peak VRAM bandwidth is physically impossible without cache reuse.\n")
+w("**Diagnosis.** `fc_bench` builds one `CompiledModel` with one weight `Constant` and rotates `num_bufs` input/output tensors. This defeats *activation* L3 reuse but **weights stay at one address**, so after the first iteration weights are fully cached. BMG B580 has ~18 MB L2. Qwen3-8B body-FC weight footprints are:\n")
+w("| FC | Weight bytes (u4 g=128 + scales) | Fits BMG L2 (18 MB)? |")
+w("|---|---|---|")
+w("| fc_QKV | 13.0 MB | yes (fully) |")
+w("| fc_O   | 8.4 MB  | yes (fully) |")
+w("| fc_Gate/Up | 25.2 MB | partial |")
+w("| fc_Down    | 25.2 MB | partial |")
+w("| fc_LMHead  | 622 MB  | no |\n")
+w("Every subsequent iteration measured L2 bandwidth, not VRAM bandwidth. Artifact was worst where weights fully fit L2 (QKV, O), consistent with Xe2 L2 aggregate BW > peak VRAM BW.\n")
+w("**Rejected approach (weight rotation).** An earlier fix compiled `num_bufs` independent `CompiledModel`s with distinct random weights per slot so iteration i couldn't hit iter i-1's cached weights. It worked on BMG but *distorted PTL*: compiling 8 separate FC models stresses the GPU memory pool allocator and caused VRAM/shared-RAM row-buffer thrashing, pushing PTL decode efficiency from a plausible 92–96% down to 66–70%. Changing one platform's measurement in the act of fixing another's is unacceptable.\n")
+w("**Fix (cache-flush kernel).** `fc_bench` now enqueues a tiny auxiliary `CompiledModel` (`Parameter(f16,[64·1024·1024/2]) → Relu → Result`) between every FC infer. Running it touches 128 MB of VRAM (64 MB read + 64 MB write), which is:\n")
+w("- 3.6× BMG L2 (18 MB)\n- 2× any likely PTL GPU L2 / CPU LLC (~30 MB)\n")
+w("so every measured FC iteration starts with a cold cache for its weights. The flush primitive compiles into an `activation_opt_*` kernel that `parse_logs_v2.py` explicitly excludes (no FC, PA, or small-op bench produces kernels starting with `activation`), so the flush's ~0.18 ms/iter cost does not contaminate the FC average. The flush adds compile time overhead but not measurement bias.\n")
+w("**Key property of the flush fix.** It restores DRAM-bound behavior on BMG *without touching PTL behavior at all*: PTL's body-FC decode efficiencies remain at 90–94% before and after the fix because PTL GPU's on-die cache is tiny and system-RAM bandwidth is shared — the flush kernel was already implicitly happening as the CPU evicted GPU-touched lines, so there is no measurable shift on PTL.\n")
+w("**After-fix numbers (BMG decode):** fc_QKV=82%, fc_O=82%, fc_Gate/Up=92%, fc_Down=67%, fc_LMHead=99% — all physically plausible.\n")
+w("**After-fix numbers (PTL decode):** fc_QKV=93%, fc_O=90%, fc_Gate/Up=94%, fc_Down=94%, fc_LMHead=96% — unchanged from baseline, confirming no measurement distortion.\n")
+w("**CLI.** Pass the flush size in MB as the 9th positional arg to `fc_bench`: `fc_bench M K N g iters warm bufs prec flush_mb`. Default 64 MB; `run_all.sh`/`run_all_ptl.bat` use 64. Set `flush_mb=0` to disable and reproduce the original cache-polluted measurement for debugging.\n")
+w("**Guideline for any future bench that measures a memory-bound kernel:** rotating the *small* tensors (activations) leaves the *large* tensors (weights/constants) silently cache-resident. If the working set of a single iteration's largest tensor is smaller than the on-die cache, either rotate it explicitly or insert a cache-flush kernel between iterations.\n")
+
+w("### Caveats on efficiency values still > 100%\n")
+w("Some *small ops* (rope, add_residual) may still report eff% > 100% vs theoretical peak BW. These are memory-tiny ops measuring in microseconds — the naïve byte-count model (element count × dtype size) over-estimates real traffic because OV kernels use in-register fusion and vector loads that shrink effective bytes touching DRAM. Treat values >90% as 'BW-saturated'. The same trick cannot be applied to FC because FC working-set is dominated by the large weight constant.\n")
+
+# 8. Recommendations
+w("\n## 8. Recommendations\n")
+w("1. **LM_Head dominates decode on both platforms** (~10-12% of per-token time). Candidate optimizations: INT4 LM_Head compression, speculative decode, or batched LM_Head across multiple decode steps. This is the single biggest decode lever.")
+w(f"2. **BMG prefill is well-balanced** (FC gemm {bmg_pfx.get('fc_ms',0):.1f} + pa_compute {bmg_pfx.get('pa_compute_ms',0):.1f} + small {bmg_pfx.get('small_ms',0):.1f} + dyn_quant {bmg_pfx.get('dyn_quant_ms',0):.1f} ms/layer). No single op is a glaring bottleneck; further gains require micro-tuning or algorithmic changes (flash-prefill variants, KV streaming).")
+w(f"3. **PTL prefill pa_compute is {ptl_pfx.get('pa_compute_ms',0):.1f} ms/layer @ S=8192 = {ptl_pfx.get('pa_compute_ms',0)/ptl_pfx.get('layer_ms',1)*100:.0f}% of the layer** — the biggest target for iGPU. Investigate whether sdpa_micro or PA variant can better use PTL's INT8 XMX.")
+w("4. **Any future bench additions must use RemoteContext/USM_DEVICE for input tensors.** Falling back to `get_input_tensor()` with CPU writes silently re-introduces PCIe-bound measurements on dGPU.")
+w("5. **Regenerate data**: `python3 utils/generate_metrics.py && python3 utils/generate_summary.py`.\n")
+
+
+out_path = ROOT / "SUMMARY.md"
+out_path.write_text("\n".join(out) + "\n")
+print(f"Wrote {out_path} ({len(out)} lines)")

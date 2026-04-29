@@ -1,0 +1,189 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: /home/gta/river/download/clintercept-3.0.6-Linux/bin/../lib/libOpenCL.so
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(supported)
+    clock(steady_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept config file: clintercept.conf
+Trying to load dispatch from: ./real_libOpenCL.so
+Couldn't load library: ./real_libOpenCL.so
+Trying to load dispatch from: /usr/lib/x86_64-linux-gnu/libOpenCL.so.1
+... success!
+Control DumpDir is set to non-default value: /home/gta/river/logs
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Control DevicePerformanceTimeKernelInfoTracking is set to non-default value: true
+Control DevicePerformanceTimeGWSTracking is set to non-default value: true
+Control DevicePerformanceTimeLWSTracking is set to non-default value: true
+Control DevicePerformanceTimeTransferTracking is set to non-default value: true
+Control ChromePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+Multiple distributions found for package optimum. Picked distribution: optimum-onnx
+/home/gta/river/openvino.genai/venv/lib/python3.12/site-packages/diffusers/models/transformers/transformer_kandinsky.py:168: UserWarning: CUDA is not available or torch_xla is imported. Disabling autocast.
+  @torch.autocast(device_type="cuda", dtype=torch.float32)
+/home/gta/river/openvino.genai/venv/lib/python3.12/site-packages/diffusers/models/transformers/transformer_kandinsky.py:272: UserWarning: CUDA is not available or torch_xla is imported. Disabling autocast.
+  @torch.autocast(device_type="cuda", dtype=torch.float32)
+Total Enqueues: 2668
+
+
+Device Performance Timing Results for Intel(R) Arc(TM) Pro B60 Graphics (160CUs, 2400MHz):
+
+Total Time (ns): 74177230751
+
+                                                                                                                              Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+                                          activation_ref_9005437848408309620_0_0__sa SIMD32 REG128 GWS[ 1 x 128 x 2048 ] LWS[ 1 x 128 x 8 ],      1,          7395,    0.00%,          7395,          7395,          7395
+                                          activation_ref_9006710795882786622_0_0__sa SIMD32 REG128 GWS[ 1 x 128 x 2048 ] LWS[ 1 x 128 x 8 ],      1,          7500,    0.00%,          7500,          7500,          7500
+                                                                                                   clEnqueueMemFillINTEL( D; 131072 bytes ),     48,        146540,    0.00%,          3052,          2916,          3229
+                                                                                                   clEnqueueMemFillINTEL( D; 163840 bytes ),     48,        152789,    0.00%,          3183,          3020,          8854
+                                                                                                     clEnqueueMemFillINTEL( D; 2048 bytes ),     48,        145914,    0.00%,          3039,          2708,         12500
+                                                                                                     clEnqueueMemFillINTEL( D; 4096 bytes ),     48,        136328,    0.00%,          2840,          2708,          2916
+                                                                                                    clEnqueueMemFillINTEL( D; 65536 bytes ),     48,        141945,    0.00%,          2957,          2916,          3125
+                                                                                                    clEnqueueMemFillINTEL( D; 81920 bytes ),     48,        149447,    0.00%,          3113,          2916,          8854
+                                                                                                       clEnqueueMemFillINTEL( H; 12 bytes ),      2,          9583,    0.00%,          4791,          2708,          6875
+                                                                                                        clEnqueueMemFillINTEL( H; 4 bytes ),      2,          5416,    0.00%,          2708,          2708,          2708
+                                                                                                 clEnqueueMemcpyINTEL( DtoH; 607744 bytes ),      1,        168697,    0.00%,        168697,        168697,        168697
+                                                                                              clEnqueueMemcpyINTEL( HtoD; 100663296 bytes ),    144,    4082730143,    5.50%,      28352292,      28336250,      28372552
+                                                                                                 clEnqueueMemcpyINTEL( HtoD; 131072 bytes ),     48,       1890496,    0.00%,         39385,         38854,         43229
+                                                                                                 clEnqueueMemcpyINTEL( HtoD; 151936 bytes ),      1,         47552,    0.00%,         47552,         47552,         47552
+                                                                                                      clEnqueueMemcpyINTEL( HtoD; 2 bytes ),      1,          4010,    0.00%,          4010,          4010,          4010
+                                                                                                    clEnqueueMemcpyINTEL( HtoD; 256 bytes ),     96,        239010,    0.00%,          2489,          2083,         14270
+                                                                                                 clEnqueueMemcpyINTEL( HtoD; 303872 bytes ),      3,        269477,    0.00%,         89825,         89270,         90885
+                                                                                              clEnqueueMemcpyINTEL( HtoD; 311164928 bytes ),      2,     175239843,    0.24%,      87619921,      87615208,      87624635
+                                                                                                clEnqueueMemcpyINTEL( HtoD; 3145728 bytes ),    144,     127863480,    0.17%,        887940,        884531,        898750
+                                                                                                   clEnqueueMemcpyINTEL( HtoD; 4096 bytes ),     97,        344432,    0.00%,          3550,          3177,          4375
+                                                                                                clEnqueueMemcpyINTEL( HtoD; 4194304 bytes ),     48,      56787269,    0.08%,       1183068,       1182500,       1186718
+                                                                                                clEnqueueMemcpyINTEL( HtoD; 5242880 bytes ),     48,      70973414,    0.10%,       1478612,       1476718,       1491041
+                                                                                                 clEnqueueMemcpyINTEL( HtoD; 786432 bytes ),    144,      32187427,    0.04%,        223523,        222343,        236770
+                                                                                                  clEnqueueMemcpyINTEL( HtoM; 65536 bytes ),     48,       1048212,    0.00%,         21837,         20937,         33020
+                                                                                                      clEnqueueMemcpyINTEL( MtoD; 4 bytes ),     48,        111067,    0.00%,          2313,          2135,          2916
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 376 bytes ),      3,          6405,    0.00%,          2135,          2135,          2135
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 388 bytes ),      6,         12186,    0.00%,          2031,          1979,          2083
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 392 bytes ),      6,         12394,    0.00%,          2065,          1979,          2135
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 400 bytes ),      3,          6145,    0.00%,          2048,          1979,          2135
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 404 bytes ),      3,          6145,    0.00%,          2048,          2031,          2083
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 408 bytes ),      9,         18123,    0.00%,          2013,          1927,          2083
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 412 bytes ),      3,          6093,    0.00%,          2031,          1979,          2083
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 416 bytes ),     21,         45982,    0.00%,          2189,          1979,          3489
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 420 bytes ),     12,         24632,    0.00%,          2052,          1927,          2187
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 424 bytes ),     12,         24164,    0.00%,          2013,          1927,          2083
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 432 bytes ),      6,         23644,    0.00%,          3940,          1979,         13177
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 436 bytes ),      3,          6093,    0.00%,          2031,          1979,          2083
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 440 bytes ),      9,         18643,    0.00%,          2071,          1979,          2187
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 448 bytes ),      6,         12602,    0.00%,          2100,          2031,          2187
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 452 bytes ),     12,         25256,    0.00%,          2104,          2031,          2187
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 456 bytes ),      6,         12966,    0.00%,          2161,          2083,          2291
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 460 bytes ),      6,         12446,    0.00%,          2074,          2031,          2135
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 464 bytes ),      3,          6353,    0.00%,          2117,          2083,          2135
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 468 bytes ),      6,         13018,    0.00%,          2169,          2083,          2291
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 472 bytes ),      6,         13905,    0.00%,          2317,          2031,          2604
+                                                                                                    clEnqueueMemcpyINTEL( MtoH; 496 bytes ),      3,          6353,    0.00%,          2117,          2083,          2135
+                                                                                                  clEnqueueMemcpyINTEL( MtoH; 65536 bytes ),     48,       1016281,    0.00%,         21172,         20729,         25572
+                            concatenation_gpu_simple_ref_14108641967553885369_0_0__sa SIMD32 REG128 GWS[ 64 x 1 x 2048 ] LWS[ 64 x 1 x 16 ],      1,          4166,    0.00%,          4166,          4166,          4166
+                            concatenation_gpu_simple_ref_14108641967553885369_1_0__sa SIMD32 REG128 GWS[ 64 x 1 x 2048 ] LWS[ 64 x 1 x 16 ],      1,          3645,    0.00%,          3645,          3645,          3645
+                        dynamic_quantize_gpu_opt_17347076574524775430_0_0__sa SIMD16 REG128 SLM=32 GWS[ 16 x 16 x 2048 ] LWS[ 16 x 16 x 1 ],     48,       1660604,    0.00%,         34595,         33437,         42604
+                         dynamic_quantize_gpu_opt_2048496070947815150_0_0__sa SIMD16 REG128 SLM=64 GWS[ 16 x 32 x 2048 ] LWS[ 16 x 32 x 1 ],     48,       4186023,    0.01%,         87208,         85208,        136562
+                         dynamic_quantize_gpu_opt_9445417345185332206_0_0__sa SIMD16 REG128 SLM=32 GWS[ 16 x 16 x 2048 ] LWS[ 16 x 16 x 1 ],     48,       1335290,    0.00%,         27818,         26770,         50520
+                                           gather_ref_14103661563494194165_0_0__sa SIMD32 REG128 GWS[ 1 x 2048 x 2048 ] LWS[ 1 x 1024 x 1 ],      1,         91250,    0.00%,         91250,         91250,         91250
+                                                 gather_ref_445684152235557662_0_0__sa SIMD32 REG128 GWS[ 1 x 2048 x 1 ] LWS[ 1 x 256 x 1 ],      1,          2812,    0.00%,          2812,          2812,          2812
+                                                                  gemm_kernel SIMD16 REG128 SLM=8192 GWS[ 37984 x 4 x 4 ] LWS[ 16 x 4 x 4 ],      1,        745000,    0.00%,        745000,        745000,        745000
+                                                                           gemm_kernel SIMD16 REG256 GWS[ 128 x 32 x 1 ] LWS[ 128 x 2 x 1 ],     48,        893104,    0.00%,         18606,         17708,         41145
+                                                                          gemm_kernel SIMD16 REG256 GWS[ 32768 x 2 x 1 ] LWS[ 256 x 2 x 1 ],     48,      14295916,    0.02%,        297831,        289166,        544270
+                                                                          gemm_kernel SIMD16 REG256 GWS[ 81920 x 2 x 1 ] LWS[ 256 x 2 x 1 ],     48,      15154145,    0.02%,        315711,        306041,        553333
+                                           gemm_tiled_opt_17576456702157444791_3_0__sa SIMD16 REG128 GWS[ 16 x 4 x 2048 ] LWS[ 16 x 1 x 1 ],      1,        200729,    0.00%,        200729,        200729,        200729
+                                  generic_eltwise_ref_16892871183776191320_0_0__sa SIMD32 REG128 GWS[ 2048 x 1 x 2048 ] LWS[ 1024 x 1 x 1 ],     48,       6231959,    0.01%,        129832,        128854,        131041
+                         moe_3gemm_swiglu_fuse_softmax_topk_13515544881398674054__sa SIMD32 REG128 SLM=320 GWS[ 2048 x 128 ] LWS[ 1 x 128 ],     48,      25659251,    0.03%,        534567,        527916,        539583
+                             moe_gather_ref_prefill_gather_13515544881398674054__sa SIMD32 REG128 GWS[ 4194304 x 1 x 1 ] LWS[ 256 x 1 x 1 ],     48,   28522014358,   38.45%,     594208632,     494510208,     601695416
+                               moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 100 ] LWS[ 128 x 4 x 1 ],      1,     455901458,    0.61%,     455901458,     455901458,     455901458
+                               moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 101 ] LWS[ 128 x 4 x 1 ],      1,     455325208,    0.61%,     455325208,     455325208,     455325208
+                               moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 102 ] LWS[ 128 x 4 x 1 ],      3,    1358089582,    1.83%,     452696527,     451855312,     453987812
+                               moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 103 ] LWS[ 128 x 4 x 1 ],      1,     452162812,    0.61%,     452162812,     452162812,     452162812
+                               moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 104 ] LWS[ 128 x 4 x 1 ],      7,    3178815936,    4.29%,     454116562,     453304479,     455693333
+                               moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 105 ] LWS[ 128 x 4 x 1 ],      4,    1812570103,    2.44%,     453142525,     452346250,     453982083
+                               moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 106 ] LWS[ 128 x 4 x 1 ],      4,    1816440519,    2.45%,     454110129,     453295833,     455423541
+                               moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 108 ] LWS[ 128 x 4 x 1 ],      2,     908865832,    1.23%,     454432916,     454258020,     454607812
+                               moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 109 ] LWS[ 128 x 4 x 1 ],      1,     453244375,    0.61%,     453244375,     453244375,     453244375
+                               moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 110 ] LWS[ 128 x 4 x 1 ],      3,    1359610103,    1.83%,     453203367,     452628125,     454002187
+                               moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 112 ] LWS[ 128 x 4 x 1 ],      2,     907130936,    1.22%,     453565468,     453066666,     454064270
+                               moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 113 ] LWS[ 128 x 4 x 1 ],      4,    1814185519,    2.45%,     453546379,     452305937,     454499583
+                               moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 114 ] LWS[ 128 x 4 x 1 ],      2,     905512603,    1.22%,     452756301,     452363437,     453149166
+                               moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 115 ] LWS[ 128 x 4 x 1 ],      2,     907434166,    1.22%,     453717083,     453071041,     454363125
+                               moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 116 ] LWS[ 128 x 4 x 1 ],      1,     454608958,    0.61%,     454608958,     454608958,     454608958
+                               moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 117 ] LWS[ 128 x 4 x 1 ],      2,     907172083,    1.22%,     453586041,     452655208,     454516875
+                               moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 118 ] LWS[ 128 x 4 x 1 ],      2,     906219791,    1.22%,     453109895,     452955104,     453264687
+                               moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 124 ] LWS[ 128 x 4 x 1 ],      1,     453343020,    0.61%,     453343020,     453343020,     453343020
+                                moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 94 ] LWS[ 128 x 4 x 1 ],      1,     454410312,    0.61%,     454410312,     454410312,     454410312
+                                moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 97 ] LWS[ 128 x 4 x 1 ],      2,     906794270,    1.22%,     453397135,     452858645,     453935625
+                                moe_gemm__prefill_mlp_down_13515544881398674054__sa SIMD16 REG256 GWS[ 1024 x 344 x 98 ] LWS[ 128 x 4 x 1 ],      2,     909047395,    1.23%,     454523697,     452986875,     456060520
+                                moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 100 ] LWS[ 128 x 4 x 1 ],      1,     190408437,    0.26%,     190408437,     190408437,     190408437
+                                moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 101 ] LWS[ 128 x 4 x 1 ],      1,     189576458,    0.26%,     189576458,     189576458,     189576458
+                                moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 102 ] LWS[ 128 x 4 x 1 ],      3,     572647499,    0.77%,     190882499,     188905000,     193102916
+                                moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 103 ] LWS[ 128 x 4 x 1 ],      1,     190089375,    0.26%,     190089375,     190089375,     190089375
+                                moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 104 ] LWS[ 128 x 4 x 1 ],      7,    1344694789,    1.81%,     192099255,     189608020,     194418125
+                                moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 105 ] LWS[ 128 x 4 x 1 ],      4,     765758644,    1.03%,     191439661,     190328125,     192962916
+                                moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 106 ] LWS[ 128 x 4 x 1 ],      4,     770893540,    1.04%,     192723385,     190570104,     194999687
+                                moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 108 ] LWS[ 128 x 4 x 1 ],      2,     387773124,    0.52%,     193886562,     191701562,     196071562
+                                moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 109 ] LWS[ 128 x 4 x 1 ],      1,     191309791,    0.26%,     191309791,     191309791,     191309791
+                                moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 110 ] LWS[ 128 x 4 x 1 ],      3,     573494374,    0.77%,     191164791,     188629583,     193659062
+                                moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 112 ] LWS[ 128 x 4 x 1 ],      2,     383048750,    0.52%,     191524375,     190965625,     192083125
+                                moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 113 ] LWS[ 128 x 4 x 1 ],      4,     767031873,    1.03%,     191757968,     190285104,     193543437
+                                moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 114 ] LWS[ 128 x 4 x 1 ],      2,     384926770,    0.52%,     192463385,     190798750,     194128020
+                                moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 115 ] LWS[ 128 x 4 x 1 ],      2,     382666666,    0.52%,     191333333,     190512291,     192154375
+                                moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 116 ] LWS[ 128 x 4 x 1 ],      1,     191673854,    0.26%,     191673854,     191673854,     191673854
+                                moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 117 ] LWS[ 128 x 4 x 1 ],      2,     384691874,    0.52%,     192345937,     191980729,     192711145
+                                moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 118 ] LWS[ 128 x 4 x 1 ],      2,     376617500,    0.51%,     188308750,     187986875,     188630625
+                                moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 124 ] LWS[ 128 x 4 x 1 ],      1,     191867500,    0.26%,     191867500,     191867500,     191867500
+                                 moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 94 ] LWS[ 128 x 4 x 1 ],      1,     193644687,    0.26%,     193644687,     193644687,     193644687
+                                 moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 97 ] LWS[ 128 x 4 x 1 ],      2,     390525624,    0.53%,     195262812,     193436145,     197089479
+                                 moe_gemm__prefill_mlp_gate_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 98 ] LWS[ 128 x 4 x 1 ],      2,     383960832,    0.52%,     191980416,     190878437,     193082395
+                                  moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 100 ] LWS[ 128 x 4 x 1 ],      1,     186391562,    0.25%,     186391562,     186391562,     186391562
+                                  moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 101 ] LWS[ 128 x 4 x 1 ],      1,     183797708,    0.25%,     183797708,     183797708,     183797708
+                                  moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 102 ] LWS[ 128 x 4 x 1 ],      3,     555284374,    0.75%,     185094791,     183691354,     187261562
+                                  moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 103 ] LWS[ 128 x 4 x 1 ],      1,     184616354,    0.25%,     184616354,     184616354,     184616354
+                                  moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 104 ] LWS[ 128 x 4 x 1 ],      7,    1291673434,    1.74%,     184524776,     181903333,     185776666
+                                  moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 105 ] LWS[ 128 x 4 x 1 ],      4,     740153124,    1.00%,     185038281,     183515625,     187629479
+                                  moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 106 ] LWS[ 128 x 4 x 1 ],      4,     744594582,    1.00%,     186148645,     183575208,     187938437
+                                  moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 108 ] LWS[ 128 x 4 x 1 ],      2,     371603749,    0.50%,     185801874,     185304583,     186299166
+                                  moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 109 ] LWS[ 128 x 4 x 1 ],      1,     181209375,    0.24%,     181209375,     181209375,     181209375
+                                  moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 110 ] LWS[ 128 x 4 x 1 ],      3,     553834999,    0.75%,     184611666,     183140208,     185595833
+                                  moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 112 ] LWS[ 128 x 4 x 1 ],      2,     365546666,    0.49%,     182773333,     181883125,     183663541
+                                  moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 113 ] LWS[ 128 x 4 x 1 ],      4,     734293957,    0.99%,     183573489,     181312708,     186988437
+                                  moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 114 ] LWS[ 128 x 4 x 1 ],      2,     368810103,    0.50%,     184405051,     183964687,     184845416
+                                  moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 115 ] LWS[ 128 x 4 x 1 ],      2,     366631250,    0.49%,     183315625,     182978125,     183653125
+                                  moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 116 ] LWS[ 128 x 4 x 1 ],      1,     187647812,    0.25%,     187647812,     187647812,     187647812
+                                  moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 117 ] LWS[ 128 x 4 x 1 ],      2,     368774374,    0.50%,     184387187,     182938020,     185836354
+                                  moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 118 ] LWS[ 128 x 4 x 1 ],      2,     363808333,    0.49%,     181904166,     181720833,     182087500
+                                  moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 124 ] LWS[ 128 x 4 x 1 ],      1,     183004375,    0.25%,     183004375,     183004375,     183004375
+                                   moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 94 ] LWS[ 128 x 4 x 1 ],      1,     187808750,    0.25%,     187808750,     187808750,     187808750
+                                   moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 97 ] LWS[ 128 x 4 x 1 ],      2,     375059582,    0.51%,     187529791,     186529687,     188529895
+                                   moe_gemm__prefill_mlp_up_13515544881398674054__sa SIMD16 REG256 GWS[ 384 x 344 x 98 ] LWS[ 128 x 4 x 1 ],      2,     374467395,    0.50%,     187233697,     186242083,     188225312
+moe_scatter_reduction_opt_moe_scatter_reduction_ref_13515544881398674054__sa SIMD32 REG128 SLM=64 GWS[ 1048576 x 1 x 1 ] LWS[ 512 x 1 x 1 ],     48,    1059362689,    1.43%,      22070056,      21875104,      22439375
+                                        pa_kv_cache_update_ref__8929204362839567576__sa SIMD16 REG128 GWS[ 128 x 4 x 16 ] LWS[ 1 x 1 x 16 ],     48,       2131857,    0.00%,         44413,         37083,         51979
+                                                  reorder_data_10614050720659561892_0_0__sa SIMD32 REG128 GWS[ 1 x 1 x 1 ] LWS[ 1 x 1 x 1 ],      1,          8229,    0.00%,          8229,          8229,          8229
+                                            reorder_data_10614050720659561892_0_0__sa SIMD32 REG128 GWS[ 1 x 1 x 2048 ] LWS[ 1 x 1 x 1024 ],      2,         15937,    0.00%,          7968,          7812,          8125
+                                                reorder_data_11654290020862705781_0_0 SIMD32 REG128 GWS[ 1 x 16 x 5120 ] LWS[ 1 x 16 x 64 ],     48,       1783001,    0.00%,         37145,         33229,         41562
+                                           reorder_data_14236348815898947354_0_0__sa SIMD32 REG128 GWS[ 128 x 1 x 2048 ] LWS[ 128 x 1 x 8 ],      2,         12811,    0.00%,          6405,          6145,          6666
+                                                 reorder_data_16168865864945595600_0_0 SIMD32 REG128 GWS[ 1 x 16 x 128 ] LWS[ 1 x 16 x 64 ],     48,        334462,    0.00%,          6967,          5104,         16875
+                                                reorder_data_17736082881475667312_0_0 SIMD32 REG128 GWS[ 1 x 32 x 2048 ] LWS[ 1 x 32 x 32 ],     48,       1367371,    0.00%,         28486,         25729,         36562
+                                            reorder_data_17911187009066451150_0_0__sa SIMD32 REG128 GWS[ 1 x 1 x 2048 ] LWS[ 1 x 1 x 1024 ],      1,          1770,    0.00%,          1770,          1770,          1770
+                                                 reorder_data_18043054691402907481_0_0 SIMD32 REG128 GWS[ 1 x 16 x 128 ] LWS[ 1 x 16 x 64 ],     48,        632170,    0.00%,         13170,         11770,         24062
+                                                 reorder_data_7893583748090352587_0_0 SIMD32 REG128 GWS[ 1 x 32 x 2048 ] LWS[ 1 x 32 x 32 ],     48,       2309772,    0.00%,         48120,         47500,         56458
+                                                 reorder_data_8414622672109710421_0_0 SIMD32 REG128 GWS[ 1 x 16 x 5120 ] LWS[ 1 x 16 x 64 ],     48,       2900086,    0.00%,         60418,         58645,         68854
+                               rms_gpu_bfyx_opt_12417307624701896342_0_0__sa SIMD16 REG128 SLM=4096 GWS[ 16 x 65536 x 1 ] LWS[ 16 x 1 x 1 ],     48,       9598838,    0.01%,        199975,        191041,        356875
+                                rms_gpu_bfyx_opt_13336156948682649628_0_0__sa SIMD16 REG128 SLM=4096 GWS[ 16 x 8192 x 1 ] LWS[ 16 x 1 x 1 ],     48,       1619878,    0.00%,         33747,         28854,         57187
+                               rms_gpu_bfyx_opt_4853674376631846633_0_0__sa SIMD16 REG128 SLM=4096 GWS[ 256 x 2048 x 1 ] LWS[ 256 x 1 x 1 ],     97,       5563398,    0.01%,         57354,         55729,        108958
+                                            rope_opt__6663570204520330416__sa SIMD32 REG128 SPILL=192 GWS[ 2048 x 4 x 4 ] LWS[ 64 x 4 x 4 ],     48,       1555085,    0.00%,         32397,         28541,         34166
+                                           rope_opt__6984315715959749383__sa SIMD32 REG128 SPILL=192 GWS[ 2048 x 32 x 4 ] LWS[ 8 x 32 x 4 ],     48,       6655505,    0.01%,        138656,        136770,        150833
+                              sdpa_micro__prefill_8929204362839567576__sa SIMD16 REG256 SLM=107008 GWS[ 256 x 1024 x 1 ] LWS[ 16 x 32 x 1 ],     48,      83563625,    0.11%,       1740908,       1569270,       2991041
+CLIntercept is shutting down...
+... shutdown complete.

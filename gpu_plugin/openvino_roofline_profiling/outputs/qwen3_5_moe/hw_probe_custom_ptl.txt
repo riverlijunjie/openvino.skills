@@ -1,0 +1,28 @@
+gpu_info.c
+mem_bw.c
+=== gpu_info ===
+Platform: Intel(R) OpenCL Graphics
+  Device name                      : Intel(R) Arc(TM) B390 GPU
+  Device version                   : OpenCL 3.0 NEO 
+  Driver version                   : 32.0.101.8531
+  Compute units (Xe×EU)           : 96
+  Max clock (MHz)                  : 2400
+  Max work-group size              : 1024
+  Local mem (SLM)                  : 131072  (0.12 MiB)
+  Global mem                       : 17721298944  (16900.35 MiB)
+  Global mem cache (L3)            : 16777216  (16.00 MiB)
+  Cache line (B)                   : 256
+  Max mem alloc                    : 17721298944  (16900.35 MiB)
+  Subgroup sizes (Intel)           : 16 32
+=== mem_bw 1 GiB ===
+Device          : Intel(R) Arc(TM) B390 GPU
+Buffer per iter : 1024 MiB (×3 buffers, rotated to defeat L2 reuse)
+Iterations      : 20
+Copy  BW (R+W)  : 98.34 GB/s
+Read  BW        : 94.31 GB/s
+=== mem_bw 2 GiB ===
+Device          : Intel(R) Arc(TM) B390 GPU
+Buffer per iter : 2048 MiB (×3 buffers, rotated to defeat L2 reuse)
+Iterations      : 10
+Copy  BW (R+W)  : 99.01 GB/s
+Read  BW        : 94.00 GB/s

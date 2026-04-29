@@ -1,0 +1,84 @@
+@echo off
+REM ============================================================
+REM  A/B Test Configuration Template
+REM
+REM  Copy this file to ab_test_config.bat and customize for your test.
+REM  This file is sourced by ab_test.bat before running.
+REM ============================================================
+
+REM ---- Paths ----
+set OV_DIR=C:\Users\Local_Admin\river\openvino
+set BUILD_DIR=%OV_DIR%\build
+set INSTALL_DIR=%OV_DIR%\release_install
+set AB_DIR=%OV_DIR%\ab_test
+set LOG_DIR=%AB_DIR%\logs
+
+REM Python and benchmark tool
+set PY=C:\Users\Local_Admin\river\py310\Scripts\python.exe
+set BENCH_WORK_DIR=C:\Users\Local_Admin\river\openvino.genai\tools\llm_bench
+
+REM Model and prompt paths
+set MODEL_DIR=D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT
+set PROMPT_DIR=C:\Users\Local_Admin\river\frameworks.ai.openvino.llm.prompts\1024\qwen3-30b-a3b.jsonl
+
+REM Benchmark command (executed in BENCH_WORK_DIR)
+set BENCH_CMD=%PY% benchmark.py -d GPU -m %MODEL_DIR% -pf %PROMPT_DIR% -n 0 -ic 32 -b 1 -lc ov_config.json -mc 1
+
+REM Copy DLLs to this dir after install (leave empty to skip)
+set DLL_DEPLOY_DIR=C:\Users\Local_Admin\river\py310\Lib\site-packages\openvino\libs\
+
+REM ---- Variant labels ----
+set LABEL_A=baseline
+set LABEL_B=optimized
+
+REM ---- Environment ----
+set PYTHONPATH=%INSTALL_DIR%\python;%OV_DIR%\tools\ovc
+set OPENVINO_LIB_PATHS=%INSTALL_DIR%\runtime\bin\intel64\Release\;%OV_DIR%\temp\tbb\bin;%OV_DIR%\temp\Windows_AMD64\tbb\bin
+set PATH=%OV_DIR%\tools\ovc;%OV_DIR%\bin\intel64\Release;%PATH%
+set no_proxy=localhost,127.0.0.0/8,::1
+set NEO_CACHE_PERSISTENT=1
+
+REM ---- Run settings ----
+set RUNS_PER_SCENARIO=3
+set BUILD_PARALLEL=16
+
+REM Log line filter - lines matching this string are printed to stdout after each run
+set LOG_FILTER=Pipeline initialization
+
+REM ---- Source file mappings ----
+REM Define pairs of: source for variant a, source for variant b, and target path.
+REM FILE_<n>_SRC_a  = source file for variant A
+REM FILE_<n>_SRC_b  = source file for variant B
+REM FILE_<n>_DST    = target path in the source tree
+REM
+set FILE_COUNT=4
+
+set FILE_1_SRC_a=%AB_DIR%\baseline\ir\frontend.cpp
+set FILE_1_SRC_b=%AB_DIR%\optimized\ir\frontend.cpp
+set FILE_1_DST=%OV_DIR%\src\frontends\ir\src\frontend.cpp
+
+set FILE_2_SRC_a=%AB_DIR%\baseline\inference\cache_manager.hpp
+set FILE_2_SRC_b=%AB_DIR%\optimized\inference\cache_manager.hpp
+set FILE_2_DST=%OV_DIR%\src\inference\src\cache_manager.hpp
+
+set FILE_3_SRC_a=%AB_DIR%\baseline\inference\single_file_storage.cpp
+set FILE_3_SRC_b=%AB_DIR%\optimized\inference\single_file_storage.cpp
+set FILE_3_DST=%OV_DIR%\src\inference\src\single_file_storage.cpp
+
+set FILE_4_SRC_a=%AB_DIR%\baseline\gpu\plugin.cpp
+set FILE_4_SRC_b=%AB_DIR%\optimized\gpu\plugin.cpp
+set FILE_4_DST=%OV_DIR%\src\plugins\intel_gpu\src\plugin\plugin.cpp
+
+REM ---- Scenarios ----
+REM Each scenario has a name and an optional setup command.
+REM The setup command runs before each batch of runs (e.g. to write a config file).
+REM Set SCENARIO_COUNT=0 to run BENCH_CMD directly without scenarios.
+REM
+set SCENARIO_COUNT=2
+set CACHE_DIR=C:\Users\Local_Admin\river\openvino.genai\tools\llm_bench\cache_dir
+
+set SCENARIO_1_NAME=nommap
+set SCENARIO_1_SETUP=echo {"CACHE_DIR": "%CACHE_DIR:\=\\%", "ENABLE_MMAP": false} > ov_config.json
+
+set SCENARIO_2_NAME=mmap
+set SCENARIO_2_SETUP=echo {"CACHE_DIR": "%CACHE_DIR:\=\\%", "ENABLE_MMAP": true} > ov_config.json

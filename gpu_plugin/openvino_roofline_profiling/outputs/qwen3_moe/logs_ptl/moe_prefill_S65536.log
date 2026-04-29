@@ -1,0 +1,60 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: C:\Users\Local_Admin\Downloads\clintercept-3.0.6-win64\Release\opencl.dll
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(NOT supported)
+    clock(steady_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept registry key: SOFTWARE\INTEL\IGFX\CLINTERCEPT
+Trying to load dispatch from: real_opencl.dll
+Couldn't get exported function pointer to: clGetGLContextInfoKHR
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+Total Enqueues: 0
+
+MoE bench: B=1 S=65536 H=2048 I=768 NE=128 TK=8 g=128 iters=2 warm=1 bufs=1 flush=64MB shared_I=0 [no shared expert]
+[FUSION OK] Runtime node: MOE3GemmFusedCompressed_1253 layer_type=moe_3gemm_fused_compressed
+[INPUT SEED] filled 1 USM_DEVICE input buffer(s) with random f32 in [-1,1] (B*S*H=134217728 elems each)
+warmup 1 iters...
+measuring 2 iters...
+total host wallclock = 485.81 ms (242.905 ms/iter host-side)
+=> rely on cliloader DevicePerformanceTiming for fused MoE kernel avg
+Total Enqueues: 85
+
+
+Device Performance Timing Results for Intel(R) Arc(TM) B390 GPU (96CUs, 2400MHz):
+
+Total Time (ns): 804830173
+
+                                                          Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+                                  activation_opt_477147924471330069_0_0,      3,       4367499,    0.54%,       1455833,       1266562,       1813437
+                                             clEnqueueMemFillINTEL( D ),      8,      32159684,    4.00%,       4019960,          8333,      11500104
+                                             clEnqueueMemFillINTEL( H ),     15,      20053223,    2.49%,       1336881,          3333,       8084583
+                                           clEnqueueMemcpyINTEL( HtoM ),      3,        177812,    0.02%,         59270,         48750,         80260
+                                           clEnqueueMemcpyINTEL( MtoD ),      3,          9113,    0.00%,          3037,          2135,          4635
+                                           clEnqueueMemcpyINTEL( MtoH ),     15,        222650,    0.03%,         14843,          1718,         84895
+                                                   clEnqueueWriteBuffer,      1,      29358125,    3.65%,      29358125,      29358125,      29358125
+                       dynamic_quantize_gpu_opt_8880026933764323878_0_0,      3,      12893645,    1.60%,       4297881,       4042916,       4748229
+                                                            gemm_kernel,      3,       4782498,    0.59%,       1594166,       1521770,       1716666
+                                                     grouped_micro_gemm,      9,     344029267,   42.75%,      38225474,      35630000,      41953229
+               moe_3gemm_swiglu_fuse_prefill_swiglu_7811472307970923167,      3,      71562603,    8.89%,      23854201,      23798125,      23936145
+                 moe_3gemm_swiglu_fuse_softmax_topk_7811472307970923167,      3,       5212186,    0.65%,       1737395,       1702708,       1806562
+                      moe_gather_ref_prefill_gather_7811472307970923167,      3,     140021666,   17.40%,      46673888,      43201354,      51883229
+moe_scatter_reduction_opt_moe_scatter_reduction_ref_7811472307970923167,      3,      86811977,   10.79%,      28937325,      28829791,      28992916
+                                  reorder_data_10036098096901348289_0_0,      1,          8854,    0.00%,          8854,          8854,          8854
+                                  reorder_data_13349752763340830714_0_0,      3,      25772706,    3.20%,       8590902,       8427916,       8886145
+                           reorder_data_fast_b1_4273990379880074942_0_0,      3,      27386665,    3.40%,       9128888,       8331562,      10554166
+CLIntercept is shutting down...
+... shutdown complete.

@@ -1,0 +1,108 @@
+Li, River
+For now, I'm working on another 2 tasks at the same time, so little time on this topic 🙁
+I understand it but the changes for now cannot be merged as they can easily stop working.
+If we go with it as temporary solution we need very soon someone who can solve it
+ 
+Question is how e.g. it works using mmap. maybe for mmap when we proved tensor we can just use parallel build on that tensor like on buffer
+ 
+if the case is not on mmap we can still feed tensor in fast way using this parallel mode
+ 
+ 
+ 
+The PR doesn't touch mmap case so far
+ 
+So you measurement are when mmap is disabled?
+ 
+If cache_dir is enabled, we open the cache.blob and read data directly 
+ 
+no, no,
+The questoin is is mmap enabled when call compile_model
+ 
+The key point is to parallel read cache.blob, it will not use mmap buffer handle. 
+ 
+Li, River
+The key point is to parallel read cache.blob, it will not use mmap buffer handle.
+This is not answer
+ 
+Question is mmap enabled when called compile_model
+ 
+ 
+ 
+Iyes
+ 
+mmap is enabled by default, right?
+ 
+So why you canno read tensor in parallel like buffer?
+ 
+in mmap case the ov::Tensor is created and it is passed to import model
+then you could try read in gpu in parallel like a bug buffer
+ 
+did you try this approach
+ 
+I didn't try, because I profiling the loading latency and found the bottleneck comes from load_weight, deserialize weight data from stream to memory
+ 
+so I only try to improve its latency
+ 
+Yes but plugin get compiled blob like Tensor or stream
+ 
+maybe when more native approach for tensor version is used is like big buffer then read speed will be also better.
+ 
+in fact now with passing path there is bypass on using mmap feature and is like using "custom stream" to copy data.
+ 
+ 
+yes, I skip the stream and open cache.blob to parallel read its data directly
+ 
+yes
+ 
+Li, River
+yes, I skip the stream and open cache.blob to parallel read its data directly
+but plugin can use Tensor directly without using stream
+ 
+Li, River
+yes
+This is another break that someone use mmap and it doesnt work
+ 
+Raasz, Pawel
+but plugin can use Tensor directly without using stream
+I don't think use tensor can saturate SSD bandwidth, because single thread cannot do it.
+ 
+Li, River
+I don't think use tensor can saturate SSD bandwidth, because single thread cannot do it.
+you can read in parallel from tensor
+ 
+it can work like regular buffer.
+ 
+Why single thread cannot saturate SSD bandwith?
+ 
+maybe, but in the function we get ifstream instead of tensor, so I didn't think of tensor at that time.
+ 
+It is OS kernel behavior
+ 
+Li, River
+maybe, but in the function we get ifstream instead of tensor, so I didn't think of tensor at that time.
+this is what maybe should be updated in plugin right now tensor again is wrapped into stream which can slow down
+ 
+ok, got it
+ 
+if mmap enabled the file is opened as mmap and passed as tensor you can data pointer and size and then try read in prallel
+ 
+Raasz, Pawel
+it can work like regular buffer.     Why single thread cannot saturate SSD bandwith?
+"Modern SSDs (especially NVMe) achieve high throughput by serving many concurrent IOs. A single-threaded, sequential read/write issues requests one at a time (low queue depth), underutilizing device parallelism in NVMe namespaces and flash channels."
+
+
+if mmap enabled the file is opened as mmap and passed as tensor you can data pointer and size and then try read in prallel
+ 
+Raasz, Pawel
+it can work like regular buffer.     Why single thread cannot saturate SSD bandwith?
+"Modern SSDs (especially NVMe) achieve high throughput by serving many concurrent IOs. A single-threaded, sequential read/write issues requests one at a time (low queue depth), underutilizing device parallelism in NVMe namespaces and flash channels."
+ 
+Raasz, Pawel
+if mmap enabled the file is opened as mmap and passed as tensor you can data pointer and size and then try read in prallel
+Understand now
+ 
+when mmap is disabled the blob file is opened as stream (standard stream) here we could think about class which on stream read use parallel read and override some stream function to boost the speed
+ 
+so on core level we could create such obect and pass as stream and under the hood it could use parallel mechanism read fast especially for fast chunks (then it works for all plugins)
+ 
+ 

@@ -1,0 +1,463 @@
+#!/usr/bin/env python3
+"""Generate performance_metrics.json with per-op metrics for both platforms.
+
+Columns per SKILL.md step 8:
+    - average latency (ms)
+    - total calls per inference
+    - total latency per inference (ms)
+    - achieved FLOPS / GFLOPS
+    - achieved memory bandwidth (GB/s)
+    - efficiency % (BW% if memory-bound, XMX% if compute-bound)
+
+Hardware peaks follow SKILL.md formulas:
+    BMG: FP16 = 20*8*256*2850e6 = 116.736 TFLOPS; INT8 = 2x = 233.472 TOPS
+    PTL: FP16 = 12*8*256*2400e6 =  58.982 TFLOPS; INT8 = 2x = 117.964 TOPS
+
+Separates `dynamic_quantize_gpu_opt` from `fully_connected_gpu_*` in FC prefill logs.
+Does NOT include swish/multiply (should be fused per SKILL.md tip).
+"""
+import json
+from pathlib import Path
+
+UTILS = Path(__file__).resolve().parent
+BMG = json.loads((UTILS / "logs/bmg_parsed.json").read_text())
+PTL = json.loads((UTILS / "logs/ptl_parsed.json").read_text())
+
+# ---- Hardware per SKILL.md ----
+HW = {
+    "BMG": {
+        "name": "Intel Arc B580 (Xe2 dGPU, 20 Xe-cores, 2850 MHz)",
+        "xe_cores": 20, "eus_per_core": 8, "freq_mhz": 2850,
+        "bw_gbs": 456,
+        "fp16_xmx_tflops": 20 * 8 * 256 * 2850e-6,          # 116.736
+        "int8_xmx_tops":   20 * 8 * 256 * 2850e-6 * 2,      # 233.472
+        "simd_fp16_tflops": 20 * 8 * 32 * 2850e-6,          # 14.592 (non-XMX SIMD16 FMA)
+    },
+    "PTL": {
+        "name": "Intel PTL iGPU (Xe3, 12 Xe-cores, 2400 MHz)",
+        "xe_cores": 12, "eus_per_core": 8, "freq_mhz": 2400,
+        "bw_gbs": 110,
+        "fp16_xmx_tflops": 12 * 8 * 256 * 2400e-6,          # 58.982
+        "int8_xmx_tops":   12 * 8 * 256 * 2400e-6 * 2,      # 117.964
+        "simd_fp16_tflops": 12 * 8 * 32 * 2400e-6,          # 7.3728
+    },
+}
+
+NUM_LAYERS = 36
+NH, NKV, HD = 32, 8, 128
+HIDDEN, MLP = 4096, 12288
+TOKEN_SIZES = [1024, 2048, 4096, 8192]
+
+
+# ---- Byte / FLOP formulas ----
+# SKILL.md cost model: exp=30, sin/cos=10, sqrt=rsqrt=10 FLOPs each.
+
+def fc_weight_bytes(K, N, gs=128, precision="u4"):
+    n_groups = K // gs
+    wbytes = N * K // 2 if precision == "u4" else N * K
+    scale = N * n_groups * 2     # f16 scale
+    zp = N * n_groups            # u8 zp
+    return wbytes + scale + zp
+
+def fc_bytes(M, K, N, gs=128, precision="u4"):
+    return fc_weight_bytes(K, N, gs, precision) + M * K * 2 + M * N * 2
+
+def fc_flops(M, K, N): return 2 * M * K * N
+
+def rmsnorm_bytes(M, H): return M * H * 2 + M * H * 2 + H * 2  # in + out + gamma
+def rmsnorm_flops(M, H): return M * (H + H + H + 10 + H)  # sq+sum+rsqrt(10)+mul
+
+def rope_bytes(M, NH_, HD_): return 2 * (M * NH_ * HD_ * 2) + 2 * (M * HD_ * 2)
+def rope_flops(M, NH_, HD_): return 6 * M * NH_ * HD_
+
+def add_bytes(M, H): return 3 * M * H * 2
+def add_flops(M, H): return M * H
+
+# PA decode bytes: K + V cache read (i8) + Q/out (f16) - for pa_compute only
+def pa_compute_decode_bytes(kv_len):
+    return 2 * NKV * kv_len * HD * 1 + 2 * NH * HD * 2
+
+def pa_compute_decode_flops(kv_len): return 4 * NH * HD * kv_len
+
+# kv_cache_update bytes: read new K,V (f16) + write quantized K,V (i8) - per token
+def pa_kv_update_bytes(M):
+    return M * NKV * HD * 2 * 2 + M * NKV * HD * 1 * 2   # read f16 KV + write i8 KV
+
+def pa_compute_prefill_flops(M): return 4 * NH * HD * M * M
+def pa_compute_prefill_bytes(M):
+    # Q,K,V reads + out write; simplified
+    return 2 * M * NH * HD * 2 + 2 * M * NKV * HD * 2 + M * NH * HD * 2
+
+
+# ---- Helpers to pull kernel times (ns) from parsed JSON ----
+def log_total_ns(platform_dict, log_name):
+    if log_name not in platform_dict:
+        return None
+    return platform_dict[log_name]["total_kernel_ns"]
+
+def log_kernel_ns(platform_dict, log_name, kernel_prefix_list):
+    """Sum per-iter ns of all kernels whose name starts with any prefix."""
+    if log_name not in platform_dict:
+        return 0
+    total = 0
+    for kname, k_ns, _calls in platform_dict[log_name]["per_kernel"]:
+        if any(kname.startswith(p) for p in kernel_prefix_list):
+            total += k_ns
+    return total
+
+
+FC_KERNEL_PREFIXES = ["fully_connected_gpu", "gemm_kernel"]
+DYN_QUANT_PREFIXES = ["dynamic_quantize_gpu_opt"]
+PA_KV_UPDATE_PREFIXES = ["pa_kv_cache_update", "kv_cache_update"]
+PA_COMPUTE_PREFIXES = ["paged_attention", "sdpa_micro", "sdpa_opt"]
+
+
+# ---- Model op table ----
+# calls_per_layer: for decode M=1 assumed; for prefill it's same calls but scaled by M
+OPS = [
+    # name              gpu_kernel_hint           calls/layer   bound_decode bound_prefill
+    ("input_rmsnorm",   "rms_gpu_bfyx_opt",       1,            "memory", "memory"),
+    ("fc_qkv",          "fully_connected_gpu",    1,            "memory", "compute"),
+    ("q_norm",          "rms_gpu (3D)",           1,            "memory", "memory"),
+    ("k_norm",          "rms_gpu (3D)",           1,            "memory", "memory"),
+    ("rope_q",          "rope_opt",               1,            "memory", "memory"),
+    ("rope_k",          "rope_opt",               1,            "memory", "memory"),
+    ("pa_kv_update",    "kv_cache_update",        1,            "memory", "memory"),
+    ("pa_compute",      "paged_attention / sdpa_micro", 1,      "memory", "compute"),
+    ("fc_o",            "fully_connected_gpu",    1,            "memory", "compute"),
+    ("add_residual_1",  "eltwise_simple_vload8",  1,            "memory", "memory"),
+    ("post_rmsnorm",    "rms_gpu_bfyx_opt",       1,            "memory", "memory"),
+    ("fc_gate",         "fully_connected_gpu",    1,            "memory", "compute"),
+    ("fc_up",           "fully_connected_gpu",    1,            "memory", "compute"),
+    ("fc_down",         "fully_connected_gpu",    1,            "memory", "compute"),
+    ("add_residual_2",  "eltwise_simple_vload8",  1,            "memory", "memory"),
+]
+# Note: swish+multiply are fused into FC_Down output path and NOT profiled separately.
+# dynamic_quantize_gpu_opt is profiled as a separate per-FC op (runs inside each FC prefill).
+
+
+# ---- Per-platform metrics ----
+def compute_phase(platform, phase):
+    """phase in ('decode', 'prefill_1024', 'prefill_2048', 'prefill_4096', 'prefill_8192')"""
+    plat = BMG if platform == "BMG" else PTL
+    hw = HW[platform]
+    bw_peak = hw["bw_gbs"]
+    int8_peak = hw["int8_xmx_tops"]
+    fp16_peak = hw["fp16_xmx_tflops"]
+
+    is_prefill = phase.startswith("prefill")
+    M = int(phase.split("_")[1]) if is_prefill else 1
+
+    # FC kernel times split into FC-only and dynamic_quantize
+    def fc_metrics(tag, K, N, precision="u4"):
+        log_name = f"fc_{'prefill_'+tag+'_S'+str(M) if is_prefill else 'decode_'+tag}"
+        fc_ns = log_kernel_ns(plat, log_name, FC_KERNEL_PREFIXES)
+        dq_ns = log_kernel_ns(plat, log_name, DYN_QUANT_PREFIXES)
+        total_bytes = fc_bytes(M, K, N, precision=precision)
+        flops = fc_flops(M, K, N)
+        fc_ms = fc_ns / 1e6
+        dq_ms = dq_ns / 1e6
+        if fc_ms == 0:
+            return None
+        achieved_gbs = total_bytes / fc_ns
+        achieved_tops = flops / fc_ns / 1000  # TOPS (ns->s->T)
+        if is_prefill:
+            # INT8 XMX path (dynamic quantization)
+            eff = achieved_tops / int8_peak * 100
+            bound = "compute"
+        else:
+            # FP16 XMX for decode; but memory-bound when M=1
+            eff = achieved_gbs / bw_peak * 100
+            bound = "memory"
+        return {
+            "op": f"fc_{tag}", "precision": precision,
+            "K": K, "N": N, "M": M, "bound": bound,
+            "avg_latency_ms": round(fc_ms, 4),
+            "calls_per_layer": 1,
+            "total_calls_per_inference": NUM_LAYERS,
+            "total_latency_ms": round(fc_ms * NUM_LAYERS, 4),
+            "bytes": int(total_bytes), "flops": int(flops),
+            "achieved_gbs": round(achieved_gbs, 2),
+            "achieved_tops": round(achieved_tops, 3),
+            "efficiency_pct": round(eff, 2),
+            "dyn_quant_ms": round(dq_ms, 4) if dq_ms else 0.0,
+        }
+
+    def small_op_metrics(tag, bytes_fn, flops_fn, *args):
+        log_name = f"sm_{'prefill_'+tag+'_S'+str(M) if is_prefill else 'decode_'+tag}"
+        ns = log_total_ns(plat, log_name)
+        if ns is None:
+            return None
+        b = bytes_fn(M, *args)
+        f = flops_fn(M, *args)
+        gbs = b / ns
+        ms = ns / 1e6
+        return {
+            "op": tag.lower(), "M": M, "bound": "memory",
+            "avg_latency_ms": round(ms, 5),
+            "calls_per_layer": 1,
+            "total_calls_per_inference": NUM_LAYERS,
+            "total_latency_ms": round(ms * NUM_LAYERS, 4),
+            "bytes": int(b), "flops": int(f),
+            "achieved_gbs": round(gbs, 2),
+            "efficiency_pct": round(gbs / bw_peak * 100, 2),
+        }
+
+    def pa_metrics():
+        """Split PA into (kv_cache_update, pa_compute) per SKILL.md."""
+        if is_prefill:
+            log_name = f"pa_prefill_S{M}_i8"
+            kv_ns = log_kernel_ns(plat, log_name, PA_KV_UPDATE_PREFIXES)
+            pc_ns = log_kernel_ns(plat, log_name, PA_COMPUTE_PREFIXES)
+            if kv_ns == 0 and pc_ns == 0:
+                return []
+            rows_out = []
+            if kv_ns > 0:
+                b = pa_kv_update_bytes(M)
+                ms = kv_ns / 1e6
+                gbs = b / kv_ns
+                rows_out.append({
+                    "op": "pa_kv_cache_update_prefill", "M": M, "bound": "memory",
+                    "avg_latency_ms": round(ms, 4), "calls_per_layer": 1,
+                    "total_calls_per_inference": NUM_LAYERS,
+                    "total_latency_ms": round(ms * NUM_LAYERS, 4),
+                    "bytes": int(b), "achieved_gbs": round(gbs, 2),
+                    "efficiency_pct": round(gbs / bw_peak * 100, 2),
+                })
+            if pc_ns > 0:
+                flops = pa_compute_prefill_flops(M)
+                ms = pc_ns / 1e6
+                tops = flops / pc_ns / 1000
+                rows_out.append({
+                    "op": "pa_compute_prefill", "M": M, "bound": "compute",
+                    "avg_latency_ms": round(ms, 4), "calls_per_layer": 1,
+                    "total_calls_per_inference": NUM_LAYERS,
+                    "total_latency_ms": round(ms * NUM_LAYERS, 4),
+                    "flops": int(flops),
+                    "achieved_tops": round(tops, 3),
+                    "efficiency_pct": round(tops / fp16_peak * 100, 2),
+                })
+            return rows_out
+        # Decode with different kv lengths
+        out = []
+        for kv in TOKEN_SIZES:
+            log_name = f"pa_decode_kv{kv}_i8"
+            kv_ns = log_kernel_ns(plat, log_name, PA_KV_UPDATE_PREFIXES)
+            pc_ns = log_kernel_ns(plat, log_name, PA_COMPUTE_PREFIXES)
+            if kv_ns == 0 and pc_ns == 0:
+                continue
+            if kv_ns > 0:
+                b = pa_kv_update_bytes(1)
+                ms = kv_ns / 1e6
+                gbs = b / kv_ns
+                out.append({
+                    "op": f"pa_kv_cache_update_kv{kv}", "kv_len": kv, "bound": "memory",
+                    "avg_latency_ms": round(ms, 5), "calls_per_layer": 1,
+                    "total_calls_per_inference": NUM_LAYERS,
+                    "total_latency_ms": round(ms * NUM_LAYERS, 4),
+                    "bytes": int(b), "achieved_gbs": round(gbs, 2),
+                    "efficiency_pct": round(gbs / bw_peak * 100, 2),
+                })
+            if pc_ns > 0:
+                b = pa_compute_decode_bytes(kv)
+                flops = pa_compute_decode_flops(kv)
+                ms = pc_ns / 1e6
+                gbs = b / pc_ns
+                out.append({
+                    "op": f"pa_compute_kv{kv}", "kv_len": kv, "bound": "memory",
+                    "avg_latency_ms": round(ms, 5), "calls_per_layer": 1,
+                    "total_calls_per_inference": NUM_LAYERS,
+                    "total_latency_ms": round(ms * NUM_LAYERS, 4),
+                    "bytes": int(b), "flops": int(flops),
+                    "achieved_gbs": round(gbs, 2),
+                    "efficiency_pct": round(gbs / bw_peak * 100, 2),
+                })
+        return out
+
+    rows = []
+    # FCs
+    rows.append(fc_metrics("QKV",  4096, 6144))
+    rows.append(fc_metrics("O",    4096, 4096))
+    rows.append(fc_metrics("Gate", 4096, 12288))
+    rows.append(fc_metrics("Up",   4096, 12288))
+    rows.append(fc_metrics("Down", 12288, 4096))
+    # LM_Head: only tested for single token (M=1) per SKILL.md;
+    # the same measurement is reused for both prefill and decode (logits are emitted
+    # only for the last token in both phases in real inference).
+    if not is_prefill:
+        lm = fc_metrics("LMHead", 4096, 151936, precision="u8")
+        if lm:
+            lm["total_calls_per_inference"] = 1
+            lm["total_latency_ms"] = lm["avg_latency_ms"]
+            rows.append(lm)
+
+    # Dynamic quantize: sum across all 5 FCs (per-layer) from prefill logs
+    if is_prefill:
+        dq_total = 0.0
+        for tag in ["QKV", "O", "Gate", "Up", "Down"]:
+            log_name = f"fc_prefill_{tag}_S{M}"
+            dq_total += log_kernel_ns(plat, log_name, DYN_QUANT_PREFIXES)
+        if dq_total > 0:
+            ms = dq_total / 1e6
+            rows.append({
+                "op": "dynamic_quantize_gpu_opt (sum of 5 FCs/layer)",
+                "M": M, "bound": "memory",
+                "avg_latency_ms": round(ms, 4),
+                "calls_per_layer": 5,
+                "total_calls_per_inference": NUM_LAYERS * 5,
+                "total_latency_ms": round(ms * NUM_LAYERS, 4),
+                "note": "Runs per FC call to quantize activation to INT8 for XMX path",
+            })
+
+    # Small ops
+    rows.append(small_op_metrics("RMSNorm_hidden", rmsnorm_bytes, rmsnorm_flops, HIDDEN))
+    rows.append(small_op_metrics("QNorm", lambda M_,*a: rmsnorm_bytes(M_, NH*HD) + HD*2,
+                                 lambda M_,*a: rmsnorm_flops(M_, NH*HD)))
+    rows.append(small_op_metrics("KNorm", lambda M_,*a: rmsnorm_bytes(M_, NKV*HD) + HD*2,
+                                 lambda M_,*a: rmsnorm_flops(M_, NKV*HD)))
+    rows.append(small_op_metrics("RoPE_Q", rope_bytes, rope_flops, NH, HD))
+    rows.append(small_op_metrics("RoPE_K", rope_bytes, rope_flops, NKV, HD))
+    rows.append(small_op_metrics("Add_residual", add_bytes, add_flops, HIDDEN))
+    # PA
+    rows.extend(pa_metrics())
+
+    return [r for r in rows if r is not None]
+
+
+def per_layer_summary(platform, phase):
+    """Sum per-layer latency across all kernels."""
+    rows = compute_phase(platform, phase)
+    # For decode: sum per-layer = sum of avg_latency_ms, but 2x for rmsnorm/add (appear twice per layer)
+    is_prefill = phase.startswith("prefill")
+    total = 0.0
+    pa_ms = 0.0
+    fc_ms = 0.0
+    dq_ms = 0.0
+    small_ms = 0.0
+    double_ops = {"input_rmsnorm", "post_rmsnorm", "add_residual", "add_residual_1", "add_residual_2"}
+    # For rmsnorm+add, the bench has a single entry; multiply by 2 for the "per layer" count.
+    for r in rows:
+        name = r["op"]
+        ms = r.get("avg_latency_ms", 0)
+        if name.startswith("fc_") and name != "fc_LMHead":
+            fc_ms += ms
+        elif "dynamic_quantize" in name:
+            dq_ms += ms
+        elif name.startswith("pa_"):
+            if is_prefill and name == "pa_prefill":
+                pa_ms += ms
+            elif (not is_prefill) and name == f"pa_decode_kv{phase_kv(phase)}":
+                pa_ms += ms
+        elif name in ("rmsnorm_hidden", "add_residual"):
+            small_ms += 2 * ms
+        elif name in ("qnorm", "knorm", "rope_q", "rope_k"):
+            small_ms += ms
+    total = fc_ms + dq_ms + pa_ms + small_ms
+    return {"fc_ms": round(fc_ms, 4), "dyn_quant_ms": round(dq_ms, 4),
+            "pa_ms": round(pa_ms, 4), "small_ms": round(small_ms, 4),
+            "layer_ms": round(total, 4)}
+
+def phase_kv(phase):
+    return 1024  # default; per_layer_summary uses it only for lookup
+
+
+def main():
+    out = {
+        "model": "Qwen3-8B",
+        "skill_methodology": "SKILL.md v2 (swish/multiply fused; LM_Head INT8; per SKILL.md HW formulas)",
+        "config": {
+            "hidden_size": HIDDEN, "num_layers": NUM_LAYERS,
+            "num_attention_heads": NH, "num_key_value_heads": NKV, "head_dim": HD,
+            "intermediate_size": MLP, "vocab_size": 151936,
+            "matmul_weight_quant": "INT4_group128",
+            "lm_head_quant": "INT8_group128",
+            "kv_cache_quant": "INT8", "kv_block_size": 16,
+            "decode_xmx": "FP16", "prefill_xmx": "INT8 (dynamic_quantize)",
+        },
+        "hardware": HW,
+        "metrics": {},
+    }
+    for plat in ("BMG", "PTL"):
+        out["metrics"][plat] = {}
+        for phase in ["decode"] + [f"prefill_{s}" for s in TOKEN_SIZES]:
+            rows = compute_phase(plat, phase)
+            out["metrics"][plat][phase] = rows
+
+    # Model-level totals
+    out["model_totals"] = {}
+    for plat in ("BMG", "PTL"):
+        out["model_totals"][plat] = {}
+        # Decode (per-layer x 36 + lm_head)
+        metrics_dec = out["metrics"][plat]["decode"]
+        fc_rows = [r for r in metrics_dec if r["op"].startswith("fc_") and r["op"] != "fc_LMHead"]
+        lm = next((r for r in metrics_dec if r["op"] == "fc_LMHead"), None)
+        sm_rows = [r for r in metrics_dec if not r["op"].startswith(("fc_", "pa_", "dynamic"))]
+        # PA split per kv: sum kv_update + compute
+        pa_parts = {kv: {"kv_update_ms": 0.0, "compute_ms": 0.0} for kv in TOKEN_SIZES}
+        for r in metrics_dec:
+            op = r.get("op", "")
+            if op.startswith("pa_kv_cache_update_kv"):
+                pa_parts[r["kv_len"]]["kv_update_ms"] = r["avg_latency_ms"]
+            elif op.startswith("pa_compute_kv"):
+                pa_parts[r["kv_len"]]["compute_ms"] = r["avg_latency_ms"]
+        fc_layer_ms = sum(r["avg_latency_ms"] for r in fc_rows)
+        sm_layer_ms = 0
+        for r in sm_rows:
+            mult = 2 if r["op"] in ("rmsnorm_hidden", "add_residual") else 1
+            sm_layer_ms += mult * r["avg_latency_ms"]
+        for kv in TOKEN_SIZES:
+            p = pa_parts[kv]
+            pa_total = p["kv_update_ms"] + p["compute_ms"]
+            if pa_total == 0:
+                continue
+            layer_ms = fc_layer_ms + sm_layer_ms + pa_total
+            model_ms = layer_ms * NUM_LAYERS + (lm["avg_latency_ms"] if lm else 0)
+            out["model_totals"][plat][f"decode_kv{kv}"] = {
+                "layer_ms": round(layer_ms, 4),
+                "fc_ms": round(fc_layer_ms, 4),
+                "pa_kv_update_ms": round(p["kv_update_ms"], 5),
+                "pa_compute_ms": round(p["compute_ms"], 5),
+                "pa_ms": round(pa_total, 5),
+                "small_ms": round(sm_layer_ms, 4),
+                "lm_head_ms": round(lm["avg_latency_ms"], 4) if lm else 0,
+                "model_ms": round(model_ms, 3),
+                "tokens_per_sec": round(1000 / model_ms, 1),
+            }
+        # Prefill
+        # LM_Head is decode-only (M=1) per SKILL; reuse decode measurement in prefill totals
+        lm_prefill_ms = lm["avg_latency_ms"] if lm else 0.0
+        for S in TOKEN_SIZES:
+            rows = out["metrics"][plat][f"prefill_{S}"]
+            fc_sum = sum(r["avg_latency_ms"] for r in rows if r["op"].startswith("fc_"))
+            dq_sum = sum(r["avg_latency_ms"] for r in rows if "dynamic_quantize" in r["op"])
+            pa_kv_sum = sum(r["avg_latency_ms"] for r in rows if r["op"] == "pa_kv_cache_update_prefill")
+            pa_c_sum = sum(r["avg_latency_ms"] for r in rows if r["op"] == "pa_compute_prefill")
+            pa_sum = pa_kv_sum + pa_c_sum
+            sm_sum = 0
+            for r in rows:
+                if r["op"].startswith(("fc_", "pa_", "dynamic")): continue
+                mult = 2 if r["op"] in ("rmsnorm_hidden", "add_residual") else 1
+                sm_sum += mult * r["avg_latency_ms"]
+            layer_ms = fc_sum + dq_sum + pa_sum + sm_sum
+            model_ms = layer_ms * NUM_LAYERS + lm_prefill_ms
+            out["model_totals"][plat][f"prefill_S{S}"] = {
+                "layer_ms": round(layer_ms, 4),
+                "fc_ms": round(fc_sum, 4),
+                "dyn_quant_ms": round(dq_sum, 4),
+                "pa_kv_update_ms": round(pa_kv_sum, 4),
+                "pa_compute_ms": round(pa_c_sum, 4),
+                "pa_ms": round(pa_sum, 4),
+                "small_ms": round(sm_sum, 4),
+                "lm_head_ms": round(lm_prefill_ms, 4),
+                "_lm_head_note": "Reused decode LM_Head (M=1) per SKILL: logits emitted only for last token in both phases.",
+                "model_ms": round(model_ms, 2),
+                "tokens_per_sec": round(S * 1000 / model_ms, 0),
+            }
+
+    out_path = UTILS / "performance_metrics.json"
+    out_path.write_text(json.dumps(out, indent=2))
+    print(f"Wrote {out_path}")
+
+
+if __name__ == "__main__":
+    main()

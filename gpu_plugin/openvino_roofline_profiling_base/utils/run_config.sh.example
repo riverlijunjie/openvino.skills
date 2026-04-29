@@ -1,0 +1,92 @@
+#!/bin/bash
+# run_config.sh — example for Qwen3-8B on BMG. Copy and edit for a new model.
+#
+# This file is sourced by run_all.sh.template. Paths are lab-specific; replace
+# them with your own.
+
+OPENVINO_SETUPVARS=/path/to/openvino/install/setupvars.sh
+CLILOADER=/path/to/clintercept/bin/cliloader
+BENCH_DIR=/path/to/roofline_test_utils/build
+RESULTS_DIR=/path/to/roofline_results/logs/PLATFORM
+
+# Iteration budgets — chosen so each op's GPU kernel time >= ~1 s (see SKILL §L4).
+FC_DEC_ITERS=8000       # decode body FC (~0.1–0.2 ms/iter)
+FC_DEC_LM_ITERS=1000    # decode LM_Head (~1.4–6 ms/iter)
+FC_PRE_ITERS=50         # prefill FC (multi-ms/iter)
+PA_DEC_ITERS=20000      # PA decode compute (~µs/iter)
+PA_PRE_ITERS=50
+SM_DEC_ITERS=50000
+SM_PRE_ITERS=500
+
+BUFS=8                  # rotation depth for activation tensors (>=4)
+PA_BUFS=4
+FLUSH_MB=64             # L2/L3 cache-flush kernel (>= platform L2; see SKILL §L3)
+
+# --- FC ops: "M K N TAG prec iters [group_size]" ---
+# prec is "u4" (INT4) or "u8" (INT8). TAG ends up in fc_${TAG}.log.
+FC_CONFIGS=(
+  "1 4096 6144   decode_QKV     u4 $FC_DEC_ITERS"
+  "1 4096 4096   decode_O       u4 $FC_DEC_ITERS"
+  "1 4096 12288  decode_Gate    u4 $FC_DEC_ITERS"
+  "1 4096 12288  decode_Up      u4 $FC_DEC_ITERS"
+  "1 12288 4096  decode_Down    u4 $FC_DEC_ITERS"
+  "1 4096 151936 decode_LMHead  u8 $FC_DEC_LM_ITERS"
+)
+for S in 1024 2048 4096 8192; do
+  FC_CONFIGS+=(
+    "$S 4096 6144   prefill_QKV_S${S}    u4 $FC_PRE_ITERS"
+    "$S 4096 4096   prefill_O_S${S}      u4 $FC_PRE_ITERS"
+    "$S 4096 12288  prefill_Gate_S${S}   u4 $FC_PRE_ITERS"
+    "$S 4096 12288  prefill_Up_S${S}     u4 $FC_PRE_ITERS"
+    "$S 12288 4096  prefill_Down_S${S}   u4 $FC_PRE_ITERS"
+  )
+done
+
+# --- PA ops: "mode M kv iters TAG kv_dtype" ---
+PA_CONFIGS=()
+for KV in 1024 2048 4096 8192; do
+  PA_CONFIGS+=("decode  1  $KV $PA_DEC_ITERS decode_kv${KV}_i8  i8")
+done
+for S in 1024 2048 4096 8192; do
+  PA_CONFIGS+=("prefill $S 0  $PA_PRE_ITERS prefill_S${S}_i8   i8")
+done
+
+# --- Small ops: "TAG iters op shape_args..." ---
+SM_CONFIGS=(
+  "decode_RMSNorm_hidden  $SM_DEC_ITERS rmsnorm   1 4096"
+  "decode_QNorm           $SM_DEC_ITERS rmsnorm3d 1 32 128"
+  "decode_KNorm           $SM_DEC_ITERS rmsnorm3d 1 8 128"
+  "decode_RoPE_Q          $SM_DEC_ITERS rope      1 32 128"
+  "decode_RoPE_K          $SM_DEC_ITERS rope      1 8 128"
+  "decode_Add_residual    $SM_DEC_ITERS add       1 4096"
+)
+for M in 1024 2048 4096 8192; do
+  SM_CONFIGS+=(
+    "prefill_RMSNorm_hidden_S${M}   $SM_PRE_ITERS rmsnorm   $M 4096"
+    "prefill_QNorm_S${M}            $SM_PRE_ITERS rmsnorm3d $M 32 128"
+    "prefill_KNorm_S${M}            $SM_PRE_ITERS rmsnorm3d $M 8 128"
+    "prefill_RoPE_Q_S${M}           $SM_PRE_ITERS rope      $M 32 128"
+    "prefill_RoPE_K_S${M}           $SM_PRE_ITERS rope      $M 8 128"
+    "prefill_Add_residual_S${M}     $SM_PRE_ITERS add       $M 4096"
+  )
+done
+
+# --- MoE: "B S H I NE TK TAG ITERS [SHARED_I=0]" ---
+# Only define MOE_CONFIGS for MoE models. moe_bench validates fusion at runtime
+# and exits non-zero if the GPU plugin did not collapse the subgraph into
+# moe_3gemm_fused_compressed (= the bench is silently measuring fallback FCs).
+# Use SHARED_I>0 (typically equal to moe_intermediate_size) to enable an
+# always-on shared expert that gets fused into the same primitive
+# (Qwen3.5-MoE, DeepSeek-V2/V3 family). Reference: src/plugins/intel_gpu/tests/
+# unit/test_cases/moe_3gemm_gpu_test.cpp::moe_3gemm_compressed_gpu_shared_random.
+# MOE_CONFIGS=(
+#   # Qwen3-MoE / Mixtral-style (no shared expert):
+#   "1 1    2048 768 128 8 decode_M1     200  0"
+#   "1 1024 2048 768 128 8 prefill_S1024  30  0"
+#   "1 2048 2048 768 128 8 prefill_S2048  20  0"
+#   "1 4096 2048 768 128 8 prefill_S4096  15  0"
+#   "1 8192 2048 768 128 8 prefill_S8192  10  0"
+#   # Qwen3.5-MoE-style (shared expert; intermediate_size_shared=512):
+#   # "1 1    2048 512 256 8 decode_M1_sh   200 512"
+#   # "1 4096 2048 512 256 8 prefill_S4096_sh 15 512"
+# )

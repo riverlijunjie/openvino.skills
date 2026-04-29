@@ -1,0 +1,253 @@
+{
+  "model": "Qwen3-8B",
+  "source": "https://github.com/huggingface/transformers/blob/main/src/transformers/models/qwen3",
+  "config": {
+    "hidden_size": 4096,
+    "num_attention_heads": 32,
+    "num_key_value_heads": 8,
+    "head_dim": 128,
+    "intermediate_size": 12288,
+    "num_hidden_layers": 36,
+    "vocab_size": 151936,
+    "rms_norm_eps": 1e-6,
+    "rope_theta": 1000000.0,
+    "qk_norm": true,
+    "weight_quant": "INT4_group128 (MatMul) / INT8_group128 (LM_Head)",
+    "kv_cache_quant": "INT8_per_channel",
+    "kv_block_size": 16,
+    "activation_dtype": "FP16"
+  },
+  "math_costs_per_element": {
+    "_note": "SKILL.md: non-trivial scalar costs to correct naive 1-fop assumption.",
+    "exp": 30,
+    "sin": 10,
+    "cos": 10,
+    "sqrt": 10,
+    "rsqrt": 10
+  },
+  "hardware": {
+    "_formula_note": "SKILL.md: FP16 XMX TFLOPS = xe_cores*8*256*freq_GHz; INT8 TOPS = 2*FP16.",
+    "BMG": {
+      "name": "Intel Arc B580 (Xe2 dGPU)",
+      "xe_cores": 20, "eu_per_core": 8, "threads_per_eu": 8,
+      "freq_mhz": 2850,
+      "memory_bw_gbs": 456,
+      "fp16_xmx_tflops": 116.736,
+      "int8_xmx_tops": 233.472,
+      "ridge_fp16_flops_per_byte": 256.0,
+      "ridge_int8_ops_per_byte": 512.0
+    },
+    "PTL": {
+      "name": "Intel PTL (Xe3 iGPU)",
+      "xe_cores": 12, "eu_per_core": 8, "threads_per_eu": 10,
+      "freq_mhz": 2400,
+      "memory_bw_gbs": 110,
+      "fp16_xmx_tflops": 58.982,
+      "int8_xmx_tops": 117.965,
+      "ridge_fp16_flops_per_byte": 536.2,
+      "ridge_int8_ops_per_byte": 1072.4
+    }
+  },
+  "per_layer_ops": [
+    {
+      "id": 1,
+      "name": "input_rmsnorm",
+      "type": "RMSNorm",
+      "gpu_kernel": "rms_gpu_bfyx_opt",
+      "calls_per_layer": 1,
+      "params": {"H": 4096},
+      "shapes": {"decode": "[1,4096]->[1,4096]", "prefill": "[M,4096]->[M,4096]"},
+      "flops_formula": "M*H*(2+10+2)",
+      "_flops_note": "sum(x^2)=2*H, rsqrt=10, multiply+gamma=2*H per row",
+      "bytes_formula": "M*H*2 (in) + H*2 (gamma) + M*H*2 (out)",
+      "arithmetic_intensity": 3.5,
+      "bound": "memory",
+      "bench_cmd": "small_ops_bench rmsnorm {M} 4096"
+    },
+    {
+      "id": 2,
+      "name": "fc_qkv",
+      "type": "FullyConnected_INT4_g128",
+      "gpu_kernel_prefill": "fully_connected_gpu_bf_tiled (INT8 XMX after dyn_quant)",
+      "gpu_kernel_decode": "fully_connected_gpu_bf_tiled (FP16 XMX)",
+      "calls_per_layer": 1,
+      "params": {"K": 4096, "N": 6144, "group_size": 128},
+      "shapes": {"decode": "[1,4096]->[1,6144]", "prefill": "[M,4096]->[M,6144]"},
+      "flops_formula": "2*M*K*N",
+      "weight_bytes": "4096*6144*0.5 + scales/zp",
+      "decode_bound": "memory",
+      "prefill_bound": "compute",
+      "bench_cmd": "fc_bench {M} 4096 6144 128"
+    },
+    {
+      "id": 3,
+      "name": "q_norm",
+      "type": "RMSNorm (per-head on Q)",
+      "gpu_kernel": "rms_gpu_bfyx_opt",
+      "calls_per_layer": 1,
+      "params": {"NH": 32, "HD": 128},
+      "shapes": {"all": "[M,32,128]->[M,32,128]"},
+      "flops_formula": "M*NH*HD*14",
+      "bytes_formula": "M*NH*HD*2*2 + HD*2",
+      "bound": "memory",
+      "bench_cmd": "small_ops_bench rmsnorm3d {M} 32 128"
+    },
+    {
+      "id": 4,
+      "name": "k_norm",
+      "type": "RMSNorm (per-head on K)",
+      "gpu_kernel": "rms_gpu_bfyx_opt",
+      "calls_per_layer": 1,
+      "params": {"NKV": 8, "HD": 128},
+      "shapes": {"all": "[M,8,128]->[M,8,128]"},
+      "flops_formula": "M*NKV*HD*14",
+      "bytes_formula": "M*NKV*HD*2*2 + HD*2",
+      "bound": "memory",
+      "bench_cmd": "small_ops_bench rmsnorm3d {M} 8 128"
+    },
+    {
+      "id": 5,
+      "name": "rope_q",
+      "type": "RoPE",
+      "gpu_kernel": "rope_opt",
+      "calls_per_layer": 1,
+      "params": {"NH": 32, "HD": 128},
+      "flops_formula": "M*NH*HD*(10+10+4)",
+      "_flops_note": "cos=10, sin=10, 2 multiplies + 2 add = 4 per element",
+      "bytes_formula": "M*NH*HD*2*2 + M*HD*2*2",
+      "bound": "memory",
+      "bench_cmd": "small_ops_bench rope {M} 32 128"
+    },
+    {
+      "id": 6,
+      "name": "rope_k",
+      "type": "RoPE",
+      "gpu_kernel": "rope_opt",
+      "calls_per_layer": 1,
+      "params": {"NKV": 8, "HD": 128},
+      "flops_formula": "M*NKV*HD*24",
+      "bytes_formula": "M*NKV*HD*2*2 + M*HD*2*2",
+      "bound": "memory",
+      "bench_cmd": "small_ops_bench rope {M} 8 128"
+    },
+    {
+      "id": 7,
+      "name": "paged_attention",
+      "type": "PagedAttention (split into kv_cache_update + pa_compute per SKILL)",
+      "gpu_kernel_kv_update": "pa_kv_cache_update / kv_cache_update",
+      "gpu_kernel_decode_compute": "paged_attention_opt (+finalization)",
+      "gpu_kernel_prefill_compute": "sdpa_opt / sdpa_micro (multi_tokens)",
+      "calls_per_layer": 1,
+      "params": {"NH": 32, "NKV": 8, "HD": 128, "block_size": 16, "kv_dtype": "INT8"},
+      "flops_formula_decode": "4*NH*HD*kv_len + NH*kv_len*30",
+      "flops_formula_prefill": "4*NH*HD*M*M + NH*M*M*30",
+      "_flops_note": "softmax exp=30 fops",
+      "bytes_formula_decode": "2*NKV*kv_len*HD*1 (INT8 KV) + M*NH*HD*2 (Q) + M*NH*HD*2 (O)",
+      "bound_decode": "memory",
+      "bound_prefill": "compute",
+      "bench_cmd_decode": "pa_bench decode 1 {kv_len} 32 8 128 16 i8",
+      "bench_cmd_prefill": "pa_bench prefill {M} {M} 32 8 128 16 i8"
+    },
+    {
+      "id": 8,
+      "name": "fc_o_proj",
+      "type": "FullyConnected_INT4_g128",
+      "gpu_kernel": "fully_connected_gpu_bf_tiled",
+      "calls_per_layer": 1,
+      "params": {"K": 4096, "N": 4096, "group_size": 128},
+      "decode_bound": "memory",
+      "prefill_bound": "compute",
+      "bench_cmd": "fc_bench {M} 4096 4096 128"
+    },
+    {
+      "id": 9,
+      "name": "residual_add_attn",
+      "type": "EltwiseAdd",
+      "gpu_kernel": "eltwise_simple_vload8",
+      "calls_per_layer": 1,
+      "params": {"H": 4096},
+      "flops_formula": "M*H",
+      "bytes_formula": "3*M*H*2",
+      "bound": "memory",
+      "bench_cmd": "small_ops_bench add {M} 4096"
+    },
+    {
+      "id": 10,
+      "name": "post_attn_rmsnorm",
+      "type": "RMSNorm",
+      "gpu_kernel": "rms_gpu_bfyx_opt",
+      "calls_per_layer": 1,
+      "params": {"H": 4096},
+      "bound": "memory",
+      "bench_cmd": "small_ops_bench rmsnorm {M} 4096"
+    },
+    {
+      "id": 11,
+      "name": "fc_gate_up_swiglu",
+      "type": "FullyConnected_INT4_g128 (SwiGLU fused)",
+      "gpu_kernel": "fully_connected_gpu_bf_tiled (GLUFusion: swish+multiply fused)",
+      "calls_per_layer": 1,
+      "params": {"K": 4096, "N_fc": 24576, "N_out": 12288, "group_size": 128},
+      "_note": "Output is [M,12288]. swish+multiply NOT profiled separately (SKILL tip).",
+      "decode_bound": "memory",
+      "prefill_bound": "compute",
+      "bench_cmd": "fc_bench {M} 4096 12288 128"
+    },
+    {
+      "id": 12,
+      "name": "fc_down_proj",
+      "type": "FullyConnected_INT4_g128",
+      "gpu_kernel": "fully_connected_gpu_bf_tiled",
+      "calls_per_layer": 1,
+      "params": {"K": 12288, "N": 4096, "group_size": 128},
+      "decode_bound": "memory",
+      "prefill_bound": "compute",
+      "bench_cmd": "fc_bench {M} 12288 4096 128"
+    },
+    {
+      "id": 13,
+      "name": "residual_add_mlp",
+      "type": "EltwiseAdd",
+      "gpu_kernel": "eltwise_simple_vload8",
+      "calls_per_layer": 1,
+      "params": {"H": 4096},
+      "bound": "memory",
+      "bench_cmd": "small_ops_bench add {M} 4096"
+    }
+  ],
+  "prefill_only_ops": [
+    {
+      "name": "dynamic_quantize_gpu_opt",
+      "_note": "Runs before every INT4 FC in prefill to quantize activations to INT8 for INT8 XMX path. SKILL requires profiling.",
+      "gpu_kernel": "dynamic_quantize_gpu_opt",
+      "calls_per_layer_prefill": 5,
+      "shapes_per_fc": {
+        "fc_qkv":   "[M,4096] fp16 -> [M,4096] i8 + per-group scale",
+        "fc_o":     "[M,4096] fp16 -> [M,4096] i8",
+        "fc_gate_up":"[M,4096] fp16 -> [M,4096] i8",
+        "fc_down":  "[M,12288] fp16 -> [M,12288] i8"
+      },
+      "bound": "memory",
+      "profiled_via": "cliloader kernel-level stats while running fc_bench in prefill shape"
+    }
+  ],
+  "non_layer_ops": [
+    {"name": "embedding", "type": "Gather", "calls": 1,
+     "note": "Token lookup [M] -> [M,4096]. Negligible (table lookup)."},
+    {"name": "final_rmsnorm", "type": "RMSNorm", "calls": 1, "params": {"H": 4096},
+     "bench_cmd": "small_ops_bench rmsnorm {M} 4096"},
+    {"name": "lm_head", "type": "FullyConnected_INT8_g128", "calls": 1,
+     "params": {"K": 4096, "N": 151936, "group_size": 128},
+     "note": "Tested only for single token (M=1) per SKILL.md; same measurement is reused for both prefill and decode totals because logits are emitted only for the last token in both phases.",
+     "bound": "memory",
+     "bench_cmd": "fc_bench 1 4096 151936 128 <iters> <warmup> <bufs> u8"}
+  ],
+  "summary": {
+    "per_layer_kernel_launches_decode": "~13",
+    "per_layer_kernel_launches_prefill": "~18 (13 + 5 dyn_quant before each INT4 FC)",
+    "fused_ops": ["SwiGLU into fc_gate_up via GLUFusion (swish+multiply)"],
+    "not_fused_ops": ["Residual Add", "RMSNorm", "Q/K norm", "RoPE"],
+    "significant_decode_ops": ["FC (5/layer including lm_head once)", "PA.compute"],
+    "significant_prefill_ops": ["FC (INT8 XMX)", "PA.compute (O(M^2))", "dynamic_quantize_gpu_opt"]
+  }
+}

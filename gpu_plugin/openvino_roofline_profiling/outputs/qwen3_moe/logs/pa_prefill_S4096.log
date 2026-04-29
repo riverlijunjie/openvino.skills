@@ -1,0 +1,102 @@
+=== PA Benchmark ===
+NH=32 NKV=8 HD=128
+Mode=prefill S_q=4096 S_kv=0 blocks=256 kv_type=i8 iters=30 warmup=5 bufs=2
+[1;30mGPU_Debug: [1;34mexecution_config.cpp:[1;35m233:[1;36moperator(): [0m[Warning] BY_CHANNEL quant mode is not supported for cache rotation yet. Switching to BY_TOKEN mode.
+[1;30mGPU_Debug: [1;34mexecution_config.cpp:[1;35m233:[1;36moperator(): [0m[Warning] BY_CHANNEL quant mode is not supported for cache rotation yet. Switching to BY_TOKEN mode.
+KV cache key type=i8 shape=[?,8,128,20]
+KV cache val type=i8 shape=[?,8,16,132]
+Resolved KC shape: [256,8,128,20]
+Median_ms: 12.1749
+Min_ms: 12.1581
+Avg_ms: 12.1768
+GFLOPS: 23679.9
+BW_GBs: 7.57912
+AI: 3124.36
+TotalFLOPs: 2.883e+11
+TotalBytes: 9.22747e+07
+Total Enqueues: 639
+
+
+Leak Checking:
+
+No cl_context leaks detected.
+No cl_command_queue leaks detected.
+No cl_mem leaks detected.
+No cl_program leaks detected.
+No cl_kernel leaks detected.
+No cl_event leaks detected.
+No SVM/USM allocation leaks detected.
+
+Host Performance Timing Results:
+
+Total Time (ns): 467060279
+
+                                                            Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+                                            (chrome trace flush overhead),    257,       2474632,    0.53%,          9628,          2003,        136470
+                                                 (device timing overhead),    257,       4751326,    1.02%,         18487,            40,         64726
+                                                           clBuildProgram,     10,       7724920,    1.65%,        772492,         96960,       2298192
+                                                           clCreateBuffer,      4,          4353,    0.00%,          1088,           287,          2452
+                                                     clCreateCommandQueue,      1,          1717,    0.00%,          1717,          1717,          1717
+                                       clCreateCommandQueueWithProperties,      5,       1088072,    0.23%,        217614,          2573,        968291
+                                                          clCreateContext,      2,         43918,    0.01%,         21959,         21914,         22004
+                                                           clCreateKernel,     31,         40766,    0.01%,          1315,           681,          3614
+                                                 clCreateKernelsInProgram,     16,         22819,    0.00%,          1426,           196,          3485
+                                                clCreateProgramWithBinary,      3,        458273,    0.10%,        152757,         23170,        236059
+                                                clCreateProgramWithSource,      7,        393071,    0.08%,         56153,          3014,         98784
+                                                        clCreateUserEvent,    350,         23895,    0.01%,            68,            47,          1056
+                                                    clDeviceMemAllocINTEL,     18,        136462,    0.03%,          7581,           153,         42663
+                                        clEnqueueMapBuffer( R; blocking ),    108,      31396746,    6.72%,        290710,          7292,       3721508
+                                             clEnqueueMemcpyINTEL( DtoH ),     35,         91819,    0.02%,          2623,          1744,         18414
+                                   clEnqueueMemcpyINTEL( HtoD; blocking ),      3,       1038173,    0.22%,        346057,         12750,       1007917
+                                             clEnqueueMemcpyINTEL( MtoD ),    245,     130186550,   27.87%,        531373,          1784,       2447845
+clEnqueueNDRangeKernel( pa_kv_cache_update_ref__7226791864492574839__sa ),     35,        191888,    0.04%,          5482,          3599,         44710
+    clEnqueueNDRangeKernel( sdpa_micro__prefill_7226791864492574839__sa ),     35,         94842,    0.02%,          2709,          1880,         16922
+                                             clEnqueueUnmapMemObject( R ),    108,        610787,    0.13%,          5655,          1117,        372772
+                                         clEnqueueWriteBuffer( blocking ),     70,        741422,    0.16%,         10591,          7784,        132775
+                                                                 clFinish,     39,     170870411,   36.58%,       4381292,          1939,       6298407
+                                                                  clFlush,     35,          3161,    0.00%,            90,            68,           159
+                                                         clGetContextInfo,     38,          4803,    0.00%,           126,            99,           308
+                                                           clGetDeviceIDs,      4,          2008,    0.00%,           502,           177,           865
+                                                          clGetDeviceInfo,    120,         17263,    0.00%,           143,            40,           760
+                                                           clGetEventInfo,    245,       1504517,    0.32%,          6140,          1553,        281860
+                                 clGetExtensionFunctionAddressForPlatform,     18,         13563,    0.00%,           753,           373,          3063
+                                                       clGetKernelArgInfo,      8,          6522,    0.00%,           815,            90,          5742
+                                                          clGetKernelInfo,    119,         13480,    0.00%,           113,            59,           681
+                                                   clGetMemAllocInfoINTEL,    333,         20427,    0.00%,            61,            25,           464
+                                                         clGetPlatformIDs,      4,      22752935,    4.87%,       5688233,           118,      22752521
+                                                        clGetPlatformInfo,      4,           407,    0.00%,           101,            54,           175
+                                                    clGetProgramBuildInfo,     16,          3956,    0.00%,           247,            88,           592
+                                                         clGetProgramInfo,      8,         23464,    0.01%,          2933,           366,         10470
+                                                      clHostMemAllocINTEL,     36,       6652858,    1.42%,        184801,            83,       3172035
+                                                           clMemFreeINTEL,     54,         43499,    0.01%,           805,            58,         32455
+                                                    clReleaseCommandQueue,     41,         27173,    0.01%,           662,            71,         13659
+                                                         clReleaseContext,     14,        331399,    0.07%,         23671,            25,        324173
+                                                          clReleaseDevice,     22,          2266,    0.00%,           103,            13,           280
+                                                           clReleaseEvent,    630,        153499,    0.03%,           243,            29,           789
+                                                          clReleaseKernel,    130,        671787,    0.14%,          5167,            60,        301471
+                                                       clReleaseMemObject,    179,          7941,    0.00%,            44,            21,           779
+                                                         clReleaseProgram,     40,         15656,    0.00%,           391,            74,         10989
+                                                     clRetainCommandQueue,     35,          2422,    0.00%,            69,            32,           213
+                                                          clRetainContext,     12,          1796,    0.00%,           149,            51,           358
+                                                           clRetainDevice,     22,          4003,    0.00%,           181,            54,           512
+                                                           clRetainKernel,     86,          5923,    0.00%,            68,            28,           236
+                                                        clRetainMemObject,    175,          6250,    0.00%,            35,            19,           214
+                                                          clRetainProgram,     30,          2433,    0.00%,            81,            57,           322
+                                                           clSetKernelArg,    140,         21773,    0.00%,           155,            51,           960
+                                            clSetKernelArgMemPointerINTEL,    560,         41015,    0.01%,            73,            16,           387
+                                                     clSetUserEventStatus,    350,         25758,    0.01%,            73,            53,           449
+                                                          clWaitForEvents,     35,      82289460,   17.62%,       2351127,       2347832,       2354689
+
+Device Performance Timing Results for Intel(R) Arc(TM) B580 Graphics (160CUs, 2900MHz):
+
+Total Time (ns): 411630953
+
+                                  Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+                        clEnqueueMapBuffer( R ),    108,        117804,    0.03%,          1090,           885,          2864
+                   clEnqueueMemcpyINTEL( DtoH ),     35,      82254208,   19.98%,       2350120,       2349895,       2351041
+                   clEnqueueMemcpyINTEL( HtoD ),      3,          6144,    0.00%,          2048,          1562,          2760
+                   clEnqueueMemcpyINTEL( MtoD ),    245,     157377071,   38.23%,        642355,          1145,       2594687
+                   clEnqueueUnmapMemObject( R ),    108,          4784,    0.00%,            44,             0,            52
+                           clEnqueueWriteBuffer,     70,         99305,    0.02%,          1418,          1302,          1979
+pa_kv_cache_update_ref__7226791864492574839__sa,     35,       4703316,    1.14%,        134380,        129791,        152395
+    sdpa_micro__prefill_7226791864492574839__sa,     35,     167068321,   40.59%,       4773380,       4681666,       6312187

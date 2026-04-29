@@ -256,6 +256,9 @@ Buffered `pread` cold path:
 
 O_DIRECT path: DMA straight to user buffer; no page allocation overhead → ~1.2 GB/s.
 
+
+
+
 ### 5.3. Why Thread Parallelism Has Diminishing Returns on This Hardware
 
 From `pread_bench.py` direct measurements:

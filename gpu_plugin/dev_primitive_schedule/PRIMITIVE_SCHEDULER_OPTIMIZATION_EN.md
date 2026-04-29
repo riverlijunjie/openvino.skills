@@ -211,15 +211,15 @@ Analogy: Smart Toolbox
 ┌─────────────────────────────────────┐
 │ Prefill Stage (bulk cargo)          │
 │   Tool selection: Truck (OneDNN)    │
-│   - High throughput                  │
-│   - Strong parallel processing       │
+│   - High throughput                 │
+│   - Strong parallel processing      │
 └─────────────────────────────────────┘
           ↓ Auto switch
 ┌─────────────────────────────────────┐
 │ Generate Stage (single delivery)    │
 │   Tool selection: Motorcycle (OCL)  │
-│   - Low latency                      │
-│   - Fast response                    │
+│   - Low latency                     │
+│   - Fast response                   │
 └─────────────────────────────────────┘
 ```
 

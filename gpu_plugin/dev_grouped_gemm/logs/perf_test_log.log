@@ -1,0 +1,477 @@
+D:\river\moe\openvino.genai\tools\llm_bench>set MOE_USE_GROUPED_GEMM_PREFILL=0
+
+D:\river\moe\openvino.genai\tools\llm_bench>set prompt_dir=C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\32\qwen3-30b-a3b.jsonl
+
+D:\river\moe\openvino.genai\tools\llm_bench>C:\Users\Local_Admin\river\py310\Scripts\python.exe D:\river\moe\openvino.genai\tools\llm_bench\benchmark.py -d GPU -m D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT -pf C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\32\qwen3-30b-a3b.jsonl -n 1 -ic 128 -b 1
+Multiple distributions found for package optimum. Picked distribution: optimum
+[ INFO ] ==SUCCESS FOUND==: use_case: text_gen, model_type: qwen, model_Name: qwen3-30b-a3b
+[ INFO ] OV Config={'CACHE_DIR': '', 'ATTENTION_BACKEND': 'PA'}
+[ INFO ] Model path=D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT, openvino runtime version: 2026.2.0-21445-e83f73ff91e-river/grouped_gemm_integration, genai version: 2026.2.0.0-2981-b76c483c169
+[ INFO ] Selected OpenVINO GenAI for benchmarking
+[ INFO ] Pipeline initialization time: 28.37s
+[ INFO ] Read prompts from C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\32\qwen3-30b-a3b.jsonl
+[ INFO ] Numbeams: 1, benchmarking iter nums(exclude warm-up): 1, prompt nums: 1, prompt idx: [0]
+[ INFO ] [warm-up][P0] Input text: Write a fairy tale about a brave troll saving a princess from a dangerous dragon with a big sword. The tale happens in the beautiful castle. Tale: Tale:
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [warm-up][P0] Input token size: 32, Output size: 128, Infer count: 128, Tokenization Time: 35.78ms, Detokenization Time: 11.05ms, Generation Time: 3.18s, Latency: 24.8581 ms/token
+[ INFO ] [warm-up][P0] First token latency: 237.96 ms, other tokens latency: 23.09 ms/token, len of input tokens: 32 * 1
+[ INFO ] [warm-up][P0] First infer latency: 237.02 ms, other infers latency: 23.09 ms/infer, inference count: 128
+[ INFO ] [warm-up][P0] Result MD5:['b783419d8c63371e663c61a5c900205c']
+[ INFO ] [warm-up][P0] Generated:  The Brave Troll and the Princess in Peril
+
+Once upon a time, in a land of rolling emerald hills and whispering forests, there stood a magnificent castle known as Eldermere. Its towers reached toward the sky, and its stone walls were adorned with ivy and blooming flowers. The castle was home to a kind and gentle princess named Elara, whose laughter was as bright as the morning sun.
+
+But one fateful day, a terrible dragon, with scales as black as midnight and eyes like burning coals, descended upon the kingdom. The dragon, named Varkath, had a heart as cold as the winter
+[ INFO ] [warm-up][P0] start: 2026-04-03T14:30:19.627473, end: 2026-04-03T14:30:22.875951
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [1][P0] Input token size: 32, Output size: 128, Infer count: 128, Tokenization Time: 0.51ms, Detokenization Time: 0.35ms, Generation Time: 3.03s, Latency: 23.6390 ms/token
+[ INFO ] [1][P0] First token latency: 156.59 ms, other tokens latency: 22.59 ms/token, len of input tokens: 32 * 1
+[ INFO ] [1][P0] First infer latency: 156.53 ms, other infers latency: 22.59 ms/infer, inference count: 128
+[ INFO ] [1][P0] Result MD5:['c1ab8c62535c18e280d936b66de82006']
+[ INFO ] [1][P0] Generated:  The Brave Troll and the Princess in Peril
+
+Once upon a time, in a land of rolling emerald hills and whispering forests, there stood a magnificent castle. Its towers reached toward the sky, and its golden spires gleamed in the sunlight. This was the kingdom of Eldoria, a place of beauty and wonder. But one day, a terrible shadow fell over the land.
+
+A fierce dragon, with scales as black as night and eyes like burning coals, descended upon the kingdom. It roared with fury, and the people of Eldoria trembled in fear. The dragon had a terrible plan: to steal the
+[ INFO ] [1][P0] start: 2026-04-03T14:30:22.875951, end: 2026-04-03T14:30:25.904318
+[ INFO ] <<< Warm-up iteration is excluded. >>>
+[ INFO ] [Total] Iterations: 1
+[ INFO ] [Average] P[0] Input token size: 32, 1st token latency: 156.59 ms, 2nd token latency: 22.59 ms/token, 2nd tokens throughput: 44.26 tokens/s
+
+D:\river\moe\openvino.genai\tools\llm_bench>set prompt_dir=C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\1024\qwen3-30b-a3b.jsonl 
+
+D:\river\moe\openvino.genai\tools\llm_bench>C:\Users\Local_Admin\river\py310\Scripts\python.exe D:\river\moe\openvino.genai\tools\llm_bench\benchmark.py -d GPU -m D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT -pf C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\1024\qwen3-30b-a3b.jsonl -n 1 -ic 128 -b 1
+Multiple distributions found for package optimum. Picked distribution: optimum
+[ INFO ] ==SUCCESS FOUND==: use_case: text_gen, model_type: qwen, model_Name: qwen3-30b-a3b
+[ INFO ] OV Config={'CACHE_DIR': '', 'ATTENTION_BACKEND': 'PA'}
+[ INFO ] Model path=D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT, openvino runtime version: 2026.2.0-21445-e83f73ff91e-river/grouped_gemm_integration, genai version: 2026.2.0.0-2981-b76c483c169
+[ INFO ] Selected OpenVINO GenAI for benchmarking
+[ INFO ] Pipeline initialization time: 26.82s
+[ INFO ] Read prompts from C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\1024\qwen3-30b-a3b.jsonl
+[ INFO ] Numbeams: 1, benchmarking iter nums(exclude warm-up): 1, prompt nums: 1, prompt idx: [0]
+[ INFO ] [warm-up][P0] Input text: Good morning, how are you Summarize following text and provide some comments from the perspectives of a brain scientist.Summarize following text and provide some comments from the perspectives of a brain scientist.
+Hundreds of scientists around the world are looking for ways to treat heart attacks.Summarize following text and provide some comments from the perspectives of a brain scientist.
+Hundreds of scientists around the world are looking for ways to treat heart attacks. But few started where Hedva Haykin has: in the brain.
+Haykin, a doctoral student at the Technion — Israel Institute of Technology in Haifa, wants to know whether stimulating a region of the brain involved in positive emotion and motivation can influence how the heart heals.
+Late last year, in a small, windowless microscope room, she pulled out slides from a thin black box, one by one. On them were slices of hearts, no bigger than pumpkin seeds, from mice that had experienced heart attacks. Under a microscope, some ... [truncated to 1024]
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [warm-up][P0] Input token size: 1024, Output size: 128, Infer count: 128, Tokenization Time: 31.14ms, Detokenization Time: 6.96ms, Generation Time: 3.81s, Latency: 29.7730 ms/token
+[ INFO ] [warm-up][P0] First token latency: 679.97 ms, other tokens latency: 24.56 ms/token, len of input tokens: 1024 * 1
+[ INFO ] [warm-up][P0] First infer latency: 679.21 ms, other infers latency: 24.56 ms/infer, inference count: 128
+[ INFO ] [warm-up][P0] Result MD5:['e9b5cb7827ad3ec63b85e5fb5d122bc3']
+[ INFO ] [warm-up][P0] Generated:  The article discusses how scientists, including Hedva Haykin, are exploring the connection between brain stimulation and heart recovery after a heart attack. By stimulating the ventral tegmental area (VTA), a brain region associated with positive emotions and motivation, they found that mice with heart attacks showed reduced scarring and better healing. This research is part of a broader field examining how the brain influences the immune system and overall health. The findings suggest that mental states can impact physical health, and there is potential for developing new therapies that harness the mind-body connection. However, much remains to be understood about the exact mechanisms involved.
+
+Comments from a brain scientist
+[ INFO ] [warm-up][P0] start: 2026-04-03T14:31:05.197300, end: 2026-04-03T14:31:09.056506
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [1][P0] Input token size: 1024, Output size: 128, Infer count: 128, Tokenization Time: 1.03ms, Detokenization Time: 0.35ms, Generation Time: 3.56s, Latency: 27.8221 ms/token
+[ INFO ] [1][P0] First token latency: 490.16 ms, other tokens latency: 24.18 ms/token, len of input tokens: 1024 * 1
+[ INFO ] [1][P0] First infer latency: 490.09 ms, other infers latency: 24.18 ms/infer, inference count: 128
+[ INFO ] [1][P0] Result MD5:['92eacb613fd3bf2e54553279fc468d4b']
+[ INFO ] [1][P0] Generated:  The article discusses how scientists, including Hedva Haykin, are exploring the connection between brain stimulation and heart recovery after a heart attack. By stimulating a brain region associated with positive emotions and motivation, they found that mice hearts healed better with less scarring. This research is part of a broader field studying how the brain influences the immune system and overall health. The study suggests that mental states can affect physical health, and there's potential for new treatments that harness the mind-body connection. However, much remains to be understood about the exact mechanisms involved.
+
+Comments from a brain scientist perspective:
+
+1. The study highlights the bidirectional communication between the brain
+[ INFO ] [1][P0] start: 2026-04-03T14:31:09.056506, end: 2026-04-03T14:31:12.620880
+[ INFO ] <<< Warm-up iteration is excluded. >>>
+[ INFO ] [Total] Iterations: 1
+[ INFO ] [Average] P[0] Input token size: 1024, 1st token latency: 490.16 ms, 2nd token latency: 24.18 ms/token, 2nd tokens throughput: 41.35 tokens/s
+
+D:\river\moe\openvino.genai\tools\llm_bench>set prompt_dir=C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\2048\qwen3-30b-a3b.jsonl 
+
+D:\river\moe\openvino.genai\tools\llm_bench>C:\Users\Local_Admin\river\py310\Scripts\python.exe D:\river\moe\openvino.genai\tools\llm_bench\benchmark.py -d GPU -m D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT -pf C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\2048\qwen3-30b-a3b.jsonl -n 1 -ic 128 -b 1
+Multiple distributions found for package optimum. Picked distribution: optimum
+[ INFO ] ==SUCCESS FOUND==: use_case: text_gen, model_type: qwen, model_Name: qwen3-30b-a3b
+[ INFO ] OV Config={'CACHE_DIR': '', 'ATTENTION_BACKEND': 'PA'}
+[ INFO ] Model path=D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT, openvino runtime version: 2026.2.0-21445-e83f73ff91e-river/grouped_gemm_integration, genai version: 2026.2.0.0-2981-b76c483c169
+[ INFO ] Selected OpenVINO GenAI for benchmarking
+[ INFO ] Pipeline initialization time: 26.12s
+[ INFO ] Read prompts from C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\2048\qwen3-30b-a3b.jsonl
+[ INFO ] Numbeams: 1, benchmarking iter nums(exclude warm-up): 1, prompt nums: 1, prompt idx: [0]
+[ INFO ] [warm-up][P0] Input text: <s>[INST] <<SYS>> He's there to help, after all. He needs help, He will then ask you to make an Act of Contrition. I firmly intend, with your help,to do penance, to sin no more, andto avoid whatever leads me to sin.Our Savior Jesus Christ suffered and died for us. I firmly resolve with the help of thy grace, to sin no more, and to avoid the near occasion of sin. Amen. Don't worry! It won't be anything huge. Take the absolution to heart -- you now have a brand new, clean slate to work with. "Penance" is your expression of regret and repentance, showing God that you're truly sorry and that you wish for nothing more than to be forgiven. Thanks.  A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions. <</SYS>> You will act as a Christian, and fully summarize following text:
+Sometimes it's nice to take a minute in the pew by yourself beforehand. You have this beautiful church probably almost ... [truncated to 1024]
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [warm-up][P0] Input token size: 2048, Output size: 128, Infer count: 128, Tokenization Time: 21.48ms, Detokenization Time: 7.77ms, Generation Time: 4.32s, Latency: 33.7787 ms/token
+[ INFO ] [warm-up][P0] First token latency: 1004.17 ms, other tokens latency: 26.06 ms/token, len of input tokens: 2048 * 1
+[ INFO ] [warm-up][P0] First infer latency: 1003.62 ms, other infers latency: 26.05 ms/infer, inference count: 128
+[ INFO ] [warm-up][P0] Result MD5:['aa4814b92752c08bd45b25b65119724f']
+[ INFO ] [warm-up][P0] Generated:
+
+Okay, the user wants me to act as a Christian and summarize the provided text. Let me read through the text carefully.
+
+The text is about the process of going to confession in a church. It starts with preparing oneself in the church, maybe alone, reflecting on faith, and praying. Then there's the part about approaching the priest, making the sign of the cross, and stating the time since the last confession. It mentions different rites, like the Byzantine Rite, but the main idea is the same. The priest asks about sins, and the person should list them honestly. The Act of Contrition is detailed, with 
+[ INFO ] [warm-up][P0] start: 2026-04-03T14:31:51.070372, end: 2026-04-03T14:31:55.431630
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [1][P0] Input token size: 2048, Output size: 128, Infer count: 128, Tokenization Time: 1.19ms, Detokenization Time: 40.83ms, Generation Time: 4.15s, Latency: 32.4411 ms/token
+[ INFO ] [1][P0] First token latency: 847.85 ms, other tokens latency: 26.02 ms/token, len of input tokens: 2048 * 1
+[ INFO ] [1][P0] First infer latency: 847.78 ms, other infers latency: 26.02 ms/infer, inference count: 128
+[ INFO ] [1][P0] Result MD5:['dc283cf3a2d8e8c8ffd8ba2963c913d7']
+[ INFO ] [1][P0] Generated:  <s#INST] <<SYS>> He's there to help, after all. He needs help, He will then ask you to make an Act of Contrition. I firmly intend, with your help,to do penance, to sin no more, andto avoid whatever leads me to sin.Our Savior Jesus Christ suffered and died for us. I firmly resolve with the help of thy grace, to sin no more, and to avoid the near occasion of sin. Amen. Don't worry! It won't be anything huge. Take the absolution to heart -- you now have a brand new, clean slate to work with. "P
+[ INFO ] [1][P0] start: 2026-04-03T14:31:55.431630, end: 2026-04-03T14:31:59.628447
+[ INFO ] <<< Warm-up iteration is excluded. >>>
+[ INFO ] [Total] Iterations: 1
+[ INFO ] [Average] P[0] Input token size: 2048, 1st token latency: 847.85 ms, 2nd token latency: 26.02 ms/token, 2nd tokens throughput: 38.43 tokens/s
+
+D:\river\moe\openvino.genai\tools\llm_bench>set prompt_dir=C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\4096\qwen3-30b-a3b.jsonl 
+
+D:\river\moe\openvino.genai\tools\llm_bench>C:\Users\Local_Admin\river\py310\Scripts\python.exe D:\river\moe\openvino.genai\tools\llm_bench\benchmark.py -d GPU -m D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT -pf C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\4096\qwen3-30b-a3b.jsonl -n 1 -ic 128 -b 1
+Multiple distributions found for package optimum. Picked distribution: optimum
+[ INFO ] ==SUCCESS FOUND==: use_case: text_gen, model_type: qwen, model_Name: qwen3-30b-a3b
+[ INFO ] OV Config={'CACHE_DIR': '', 'ATTENTION_BACKEND': 'PA'}
+[ INFO ] Model path=D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT, openvino runtime version: 2026.2.0-21445-e83f73ff91e-river/grouped_gemm_integration, genai version: 2026.2.0.0-2981-b76c483c169
+[ INFO ] Selected OpenVINO GenAI for benchmarking
+[ INFO ] Pipeline initialization time: 26.99s
+[ INFO ] Read prompts from C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\4096\qwen3-30b-a3b.jsonl
+[ INFO ] Numbeams: 1, benchmarking iter nums(exclude warm-up): 1, prompt nums: 1, prompt idx: [0]
+[ INFO ] [warm-up][P0] Input text: <s>[INST] <<SYS>> If you don't remember the exact timeframe. If you don't remember your motivation. All your priest cares about is that you're being as honest as possible and that your heart is in the right place. He'll talk you through everything, possibly asking about your intentions, but mainly just letting you know that God loves you, sin and all. If he has any ideas to bring you closer to God, he may suggest them at this juncture. He's there to help, after all. He will then ask you to make an Act of Contrition. That goes like this: My God, I am sorry for my sins with all my heart.In choosing to do wrong and failing to do good,I have sinned against You whom I should loveabove all things. I firmly intend, with your help,to do penance, to sin no more, andto avoid whatever leads me to sin.Our Savior Jesus Christ suffered and died for us.In his name, my God, have mercy.If you are a Roman Catholic, your act of contrition will go like this: Oh my God, I am very sorry for having offende ... [truncated to 1024]
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [warm-up][P0] Input token size: 4096, Output size: 128, Infer count: 128, Tokenization Time: 20.73ms, Detokenization Time: 6.06ms, Generation Time: 5.19s, Latency: 40.5438 ms/token
+[ INFO ] [warm-up][P0] First token latency: 1851.99 ms, other tokens latency: 25.97 ms/token, len of input tokens: 4096 * 1
+[ INFO ] [warm-up][P0] First infer latency: 1851.56 ms, other infers latency: 25.97 ms/infer, inference count: 128
+[ INFO ] [warm-up][P0] Result MD5:['a408aecbfcdebb26de2d7d7af4800632']
+[ INFO ] [warm-up][P0] Generated: ...
+
+Okay, I need to summarize the given text as a Christian. Let me read through the text carefully.
+
+The text is about the process of going to confession in a church. It starts with taking a moment in the pew to pray and reflect. Then there's the part about approaching the priest, making the sign of the cross, and stating the time since the last confession. It mentions the Byzantine Rite being different, but the main idea is the same. The priest asks about the time since the last confession, how the person is feeling, and then they discuss their sins. The key points are honesty, not worrying about details
+[ INFO ] [warm-up][P0] start: 2026-04-03T14:32:38.796632, end: 2026-04-03T14:32:44.022407
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [1][P0] Input token size: 4096, Output size: 128, Infer count: 128, Tokenization Time: 1.62ms, Detokenization Time: 0.55ms, Generation Time: 5.10s, Latency: 39.8429 ms/token
+[ INFO ] [1][P0] First token latency: 1704.46 ms, other tokens latency: 26.73 ms/token, len of input tokens: 4096 * 1
+[ INFO ] [1][P0] First infer latency: 1704.39 ms, other infers latency: 26.73 ms/infer, inference count: 128
+[ INFO ] [1][P0] Result MD5:['2c55640e3bd895dc88ac5d4c33e839e6']
+[ INFO ] [1][P0] Generated:  with the thinking process, and then give the answer. The answer should be in Chinese. The answer must be in the following format: <thinking>...</thinking> <answer>...</answer>
+
+Okay, I need to summarize the given text as a Christian. Let me read through the text carefully. The main topic is about the process of going to confession in a church. The user provided a detailed description of what to do before and during confession, including preparing in the pew, praying, approaching the priest, the act of contrition, and the priest's role.
+
+First, I should identify the key steps: preparing oneself spiritually,
+[ INFO ] [1][P0] start: 2026-04-03T14:32:44.022407, end: 2026-04-03T14:32:49.126922
+[ INFO ] <<< Warm-up iteration is excluded. >>>
+[ INFO ] [Total] Iterations: 1
+[ INFO ] [Average] P[0] Input token size: 4096, 1st token latency: 1704.46 ms, 2nd token latency: 26.73 ms/token, 2nd tokens throughput: 37.40 tokens/s
+
+D:\river\moe\openvino.genai\tools\llm_bench>set prompt_dir=C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\8K\qwen3-8b.jsonl 
+
+D:\river\moe\openvino.genai\tools\llm_bench>C:\Users\Local_Admin\river\py310\Scripts\python.exe D:\river\moe\openvino.genai\tools\llm_bench\benchmark.py -d GPU -m D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT -pf C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\8K\qwen3-8b.jsonl -n 1 -ic 128 -b 1
+Multiple distributions found for package optimum. Picked distribution: optimum
+[ INFO ] ==SUCCESS FOUND==: use_case: text_gen, model_type: qwen, model_Name: qwen3-30b-a3b
+[ INFO ] OV Config={'CACHE_DIR': '', 'ATTENTION_BACKEND': 'PA'}
+[ INFO ] Model path=D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT, openvino runtime version: 2026.2.0-21445-e83f73ff91e-river/grouped_gemm_integration, genai version: 2026.2.0.0-2981-b76c483c169
+[ INFO ] Selected OpenVINO GenAI for benchmarking
+[ INFO ] Pipeline initialization time: 26.38s
+[ INFO ] Read prompts from C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\8K\qwen3-8b.jsonl
+[ INFO ] Numbeams: 1, benchmarking iter nums(exclude warm-up): 1, prompt nums: 1, prompt idx: [0]
+[ INFO ] [warm-up][P0] Input text: <|user|>
+ The sun was setting over the horizon, casting long shadows across the dusty ground of the town square. The last rays of light streamed through the gaps between the buildings, illuminating the cobblestones and the people milling about. A group of children played a rough game of tag, their laughter filling the air.
+ In the center of the square stood a lone figure, a man with a tired face and weary eyes. He was tall and broad shouldered, but his posture was slumped and his head hung low. Despite the warmth of the day, he wore a thick woolen coat that seemed too heavy for the weather.
+ The man looked out at the crowd, his gaze sweeping over the faces of the townspeople as they went about their business. His eyes settled on a young woman standing on the edge of the square, watching him with curiosity. She was pretty, with chestnut hair pulled back into a ponytail and bright green eyes that sparkled in the fading light.
+ The man felt a sudden jolt of recognition, as if he had see ... [truncated to 1024]
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [warm-up][P0] Input token size: 8192, Output size: 128, Infer count: 128, Tokenization Time: 52.73ms, Detokenization Time: 10.18ms, Generation Time: 8.19s, Latency: 63.9503 ms/token
+[ INFO ] [warm-up][P0] First token latency: 4446.79 ms, other tokens latency: 29.42 ms/token, len of input tokens: 8192 * 1
+[ INFO ] [warm-up][P0] First infer latency: 4445.37 ms, other infers latency: 29.42 ms/infer, inference count: 128
+[ INFO ] [warm-up][P0] Result MD5:['019530a505c2d276ff99e6fef0c9ea68']
+[ INFO ] [warm-up][P0] Generated: <think>
+Okay, let me try to figure out what's going on here. The user provided a long text that seems to be a story, possibly a novel or a narrative. The story starts with a man in a town square, then moves to him going to the library, and then to an underground chamber with a mysterious figure. There's a lot of repetition in the text, with the same paragraphs appearing multiple times. Then, towards the end, there's a sudden shift to a description of a confession in a church, which seems out of place compared to the rest of the story.
+
+First, I need to check if the user
+[ INFO ] [warm-up][P0] start: 2026-04-03T14:33:27.799336, end: 2026-04-03T14:33:36.067788
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [1][P0] Input token size: 8192, Output size: 128, Infer count: 128, Tokenization Time: 2.70ms, Detokenization Time: 41.12ms, Generation Time: 8.90s, Latency: 69.4999 ms/token
+[ INFO ] [1][P0] First token latency: 5023.81 ms, other tokens latency: 30.49 ms/token, len of input tokens: 8192 * 1
+[ INFO ] [1][P0] First infer latency: 5023.71 ms, other infers latency: 30.49 ms/infer, inference count: 128
+[ INFO ] [1][P0] Result MD5:['7dc289491a72c884d7cc510aeb14caae']
+[ INFO ] [1][P0] Generated:  <|start|>
+Okay, let's see. The user provided a long text that seems to be a story with multiple chapters, and then there's a part about confession in a church. The last part is about the process of going to confession, including the sign of the cross, the Act of Contrition, and the priest's role. The user might be looking for help understanding this part, or maybe they want to continue the story. But since the last part is about confession, maybe they want to integrate that into the story?  
+
+Wait, the user's message ends with a detailed description of the Catholic confession process. But the initial
+[ INFO ] [1][P0] start: 2026-04-03T14:33:36.067788, end: 2026-04-03T14:33:45.010082
+[ INFO ] <<< Warm-up iteration is excluded. >>>
+[ INFO ] [Total] Iterations: 1
+[ INFO ] [Average] P[0] Input token size: 8192, 1st token latency: 5023.81 ms, 2nd token latency: 30.49 ms/token, 2nd tokens throughput: 32.80 tokens/s
+
+D:\river\moe\openvino.genai\tools\llm_bench>set prompt_dir=C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\32K\qwen3-8b.jsonl 
+
+D:\river\moe\openvino.genai\tools\llm_bench>C:\Users\Local_Admin\river\py310\Scripts\python.exe D:\river\moe\openvino.genai\tools\llm_bench\benchmark.py -d GPU -m D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT -pf C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\32K\qwen3-8b.jsonl -n 1 -ic 128 -b 1
+Multiple distributions found for package optimum. Picked distribution: optimum
+[ INFO ] ==SUCCESS FOUND==: use_case: text_gen, model_type: qwen, model_Name: qwen3-30b-a3b
+[ INFO ] OV Config={'CACHE_DIR': '', 'ATTENTION_BACKEND': 'PA'}
+[ INFO ] Model path=D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT, openvino runtime version: 2026.2.0-21445-e83f73ff91e-river/grouped_gemm_integration, genai version: 2026.2.0.0-2981-b76c483c169
+[ INFO ] Selected OpenVINO GenAI for benchmarking
+[ INFO ] Pipeline initialization time: 27.05s
+[ INFO ] Read prompts from C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\32K\qwen3-8b.jsonl
+[ INFO ] Numbeams: 1, benchmarking iter nums(exclude warm-up): 1, prompt nums: 1, prompt idx: [0]
+[ INFO ] [warm-up][P0] Input text: <|user|>
+ The sun was setting over the horizon, casting long shadows across the dusty ground of the town square. It was as if he had forgotten something important, something that he needed to remember before it was too late.
+ He excused, promising to come back later and chat some more. He felt a growing sense of unease. Something wasn't right, and he needed to figure out what it was before it was too late.
+ [CHAPTER 4:
+ THE LIBRARY](9781441125608_epub_itb-ch4.xhtml)
+ The man returned to the library, his mind still racing with thoughts of the mysterious boy and the strange feeling that had been nagging at him all day. He wandered through the shelves, scanning the titles of books and flipping through their pages, searching for something that might help him remember what he had forgotten.
+ It wasn't until he stumbled upon a book on ancient myths and legends that he felt a spark of recognition. As he read through the stories of gods and monsters, he began to recall fragments of memorie ... [truncated to 1024]
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [warm-up][P0] Input token size: 32768, Output size: 128, Infer count: 128, Tokenization Time: 68.36ms, Detokenization Time: 12.44ms, Generation Time: 202.14s, Latency: 1579.1903 ms/token
+[ INFO ] [warm-up][P0] First token latency: 63197.48 ms, other tokens latency: 1093.68 ms/token, len of input tokens: 32768 * 1
+[ INFO ] [warm-up][P0] First infer latency: 63195.76 ms, other infers latency: 1093.68 ms/infer, inference count: 128
+[ INFO ] [warm-up][P0] Result MD5:['c11bcc84f1a8cd58ad3b57259f103805']
+[ INFO ] [warm-up][P0] Generated:  <|assistant|><|start|>
+<think>
+Okay, the user wants me to act as a Christian and summarize the provided text. Let me read through the text carefully.
+
+The text is about the process of confession in a church. It starts by suggesting taking a moment in the pew to pray and reflect. Then it describes the steps during confession: kneeling, praying, sitting with the priest, making the sign of the cross, and confessing sins. It mentions the traditional phrases for confession, the priest's role, and the Act of Contrition. There's also a note about the Byzantine Rite being different but the process being
+[ INFO ] [warm-up][P0] start: 2026-04-03T14:34:24.814387, end: 2026-04-03T14:37:47.066956
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [1][P0] Input token size: 32768, Output size: 128, Infer count: 128, Tokenization Time: 8.96ms, Detokenization Time: 47.95ms, Generation Time: 217.10s, Latency: 1696.0890 ms/token
+[ INFO ] [1][P0] First token latency: 68396.96 ms, other tokens latency: 1170.88 ms/token, len of input tokens: 32768 * 1
+[ INFO ] [1][P0] First infer latency: 68396.67 ms, other infers latency: 1170.88 ms/infer, inference count: 128
+[ INFO ] [1][P0] Result MD5:['5674ef2dea603a3f79e6d59564dfa6d3']
+[ INFO ] [1][P0] Generated:  <|start|>
+Okay, the user wants me to act as a Christian and summarize the provided text. Let me read through the text carefully.
+
+The text is about the process of confession in a church. It starts by suggesting taking a moment in the pew to pray and reflect. Then it describes the steps during confession: kneeling, praying, sitting with the priest, making the sign of the cross, and confessing sins. It mentions the traditional phrases for confession, the priest's role, and the Act of Contrition. There's also a note about the Byzantine Rite being different, but the main idea remains the same. The
+[ INFO ] [1][P0] start: 2026-04-03T14:37:47.067509, end: 2026-04-03T14:41:24.228701
+[ INFO ] <<< Warm-up iteration is excluded. >>>
+[ INFO ] [Total] Iterations: 1
+[ INFO ] [Average] P[0] Input token size: 32768, 1st token latency: 68396.96 ms, 2nd token latency: 1170.88 ms/token, 2nd tokens throughput: 0.85 tokens/s
+
+D:\river\moe\openvino.genai\tools\llm_bench>echo "MOE_USE_GROUPED_GEMM_PREFILL = 1" 
+"MOE_USE_GROUPED_GEMM_PREFILL = 1"
+
+D:\river\moe\openvino.genai\tools\llm_bench>set MOE_USE_GROUPED_GEMM_PREFILL=1
+
+D:\river\moe\openvino.genai\tools\llm_bench>set prompt_dir=C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\32\qwen3-30b-a3b.jsonl
+
+D:\river\moe\openvino.genai\tools\llm_bench>C:\Users\Local_Admin\river\py310\Scripts\python.exe D:\river\moe\openvino.genai\tools\llm_bench\benchmark.py -d GPU -m D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT -pf C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\32\qwen3-30b-a3b.jsonl -n 1 -ic 128 -b 1
+Multiple distributions found for package optimum. Picked distribution: optimum
+[ INFO ] ==SUCCESS FOUND==: use_case: text_gen, model_type: qwen, model_Name: qwen3-30b-a3b
+[ INFO ] OV Config={'CACHE_DIR': '', 'ATTENTION_BACKEND': 'PA'}
+[ INFO ] Model path=D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT, openvino runtime version: 2026.2.0-21445-e83f73ff91e-river/grouped_gemm_integration, genai version: 2026.2.0.0-2981-b76c483c169
+[ INFO ] Selected OpenVINO GenAI for benchmarking
+[ INFO ] Pipeline initialization time: 29.32s
+[ INFO ] Read prompts from C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\32\qwen3-30b-a3b.jsonl
+[ INFO ] Numbeams: 1, benchmarking iter nums(exclude warm-up): 1, prompt nums: 1, prompt idx: [0]
+[ INFO ] [warm-up][P0] Input text: Write a fairy tale about a brave troll saving a princess from a dangerous dragon with a big sword. The tale happens in the beautiful castle. Tale: Tale:
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [warm-up][P0] Input token size: 32, Output size: 128, Infer count: 128, Tokenization Time: 31.61ms, Detokenization Time: 6.61ms, Generation Time: 3.20s, Latency: 24.9841 ms/token
+[ INFO ] [warm-up][P0] First token latency: 329.30 ms, other tokens latency: 22.50 ms/token, len of input tokens: 32 * 1
+[ INFO ] [warm-up][P0] First infer latency: 328.40 ms, other infers latency: 22.50 ms/infer, inference count: 128
+[ INFO ] [warm-up][P0] Result MD5:['23355ecfc47d4bede1550dcad4676181']
+[ INFO ] [warm-up][P0] Generated:  The Brave Troll and the Princess in Peril
+
+Once upon a time, in a land of rolling emerald hills and whispering forests, there stood a magnificent castle. Its towers reached for the sky, and its golden spires gleamed in the sunlight. This was the kingdom of Eldoria, a place of beauty and wonder, where the people lived in peace and harmony.
+
+But one fateful day, a terrible shadow fell over the land. A fierce and mighty dragon, with scales as dark as midnight and eyes like burning coals, descended upon the kingdom. The dragon, known as Ignarion, was a fearsome creature
+[ INFO ] [warm-up][P0] start: 2026-04-03T14:42:06.903677, end: 2026-04-03T14:42:10.154200
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [1][P0] Input token size: 32, Output size: 128, Infer count: 128, Tokenization Time: 0.47ms, Detokenization Time: 39.50ms, Generation Time: 2.97s, Latency: 23.2010 ms/token
+[ INFO ] [1][P0] First token latency: 156.47 ms, other tokens latency: 22.15 ms/token, len of input tokens: 32 * 1
+[ INFO ] [1][P0] First infer latency: 156.43 ms, other infers latency: 22.15 ms/infer, inference count: 128
+[ INFO ] [1][P0] Result MD5:['a1d04665054c3df9af1b721fa21234f7']
+[ INFO ] [1][P0] Generated:  The Brave Troll and the Princess in Peril
+
+Once upon a time, in the heart of a lush, green forest, stood a magnificent castle known as Elderglen. Its towers reached for the sky, and its walls were made of shimmering white stone. The castle was home to a beautiful princess named Elara, whose kindness and grace were as radiant as the morning sun.
+
+One fateful day, a fierce dragon, with scales as black as night and eyes like burning embers, descended upon Elderglen. The dragon, named Varkath, had a reputation for destruction and greed. He had heard of the castle's
+[ INFO ] [1][P0] start: 2026-04-03T14:42:10.154200, end: 2026-04-03T14:42:13.166118
+[ INFO ] <<< Warm-up iteration is excluded. >>>
+[ INFO ] [Total] Iterations: 1
+[ INFO ] [Average] P[0] Input token size: 32, 1st token latency: 156.47 ms, 2nd token latency: 22.15 ms/token, 2nd tokens throughput: 45.14 tokens/s
+
+D:\river\moe\openvino.genai\tools\llm_bench>set prompt_dir=C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\1024\qwen3-30b-a3b.jsonl 
+
+D:\river\moe\openvino.genai\tools\llm_bench>C:\Users\Local_Admin\river\py310\Scripts\python.exe D:\river\moe\openvino.genai\tools\llm_bench\benchmark.py -d GPU -m D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT -pf C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\1024\qwen3-30b-a3b.jsonl -n 1 -ic 128 -b 1
+Multiple distributions found for package optimum. Picked distribution: optimum
+[ INFO ] ==SUCCESS FOUND==: use_case: text_gen, model_type: qwen, model_Name: qwen3-30b-a3b
+[ INFO ] OV Config={'CACHE_DIR': '', 'ATTENTION_BACKEND': 'PA'}
+[ INFO ] Model path=D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT, openvino runtime version: 2026.2.0-21445-e83f73ff91e-river/grouped_gemm_integration, genai version: 2026.2.0.0-2981-b76c483c169
+[ INFO ] Selected OpenVINO GenAI for benchmarking
+[ INFO ] Pipeline initialization time: 26.04s
+[ INFO ] Read prompts from C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\1024\qwen3-30b-a3b.jsonl
+[ INFO ] Numbeams: 1, benchmarking iter nums(exclude warm-up): 1, prompt nums: 1, prompt idx: [0]
+[ INFO ] [warm-up][P0] Input text: Good morning, how are you Summarize following text and provide some comments from the perspectives of a brain scientist.Summarize following text and provide some comments from the perspectives of a brain scientist.
+Hundreds of scientists around the world are looking for ways to treat heart attacks.Summarize following text and provide some comments from the perspectives of a brain scientist.
+Hundreds of scientists around the world are looking for ways to treat heart attacks. But few started where Hedva Haykin has: in the brain.
+Haykin, a doctoral student at the Technion — Israel Institute of Technology in Haifa, wants to know whether stimulating a region of the brain involved in positive emotion and motivation can influence how the heart heals.
+Late last year, in a small, windowless microscope room, she pulled out slides from a thin black box, one by one. On them were slices of hearts, no bigger than pumpkin seeds, from mice that had experienced heart attacks. Under a microscope, some ... [truncated to 1024]
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [warm-up][P0] Input token size: 1024, Output size: 128, Infer count: 128, Tokenization Time: 25.32ms, Detokenization Time: 4.70ms, Generation Time: 3.88s, Latency: 30.2856 ms/token
+[ INFO ] [warm-up][P0] First token latency: 748.40 ms, other tokens latency: 24.62 ms/token, len of input tokens: 1024 * 1
+[ INFO ] [warm-up][P0] First infer latency: 747.49 ms, other infers latency: 24.62 ms/infer, inference count: 128
+[ INFO ] [warm-up][P0] Result MD5:['3aae0ec5dbeed2e81427a994bff7a9fb']
+[ INFO ] [warm-up][P0] Generated:  The article discusses how scientists, including Hedva Haykin, are exploring the connection between brain stimulation and heart recovery after a heart attack. By stimulating a brain region associated with positive emotions and motivation, they found that mice had less scar tissue in their hearts. This research is part of a broader field studying how the brain influences the immune system and overall health. Scientists like Asya Rolls and Filip Swirski are working to understand these connections, with potential applications in treating various diseases. However, much remains unknown about the exact mechanisms involved.
+
+Comments from a brain scientist perspective: The study highlights the bidirectional communication between the brain and the immune system
+[ INFO ] [warm-up][P0] start: 2026-04-03T14:42:51.593279, end: 2026-04-03T14:42:55.521867
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [1][P0] Input token size: 1024, Output size: 128, Infer count: 128, Tokenization Time: 0.91ms, Detokenization Time: 0.38ms, Generation Time: 3.55s, Latency: 27.7590 ms/token
+[ INFO ] [1][P0] First token latency: 497.13 ms, other tokens latency: 24.06 ms/token, len of input tokens: 1024 * 1
+[ INFO ] [1][P0] First infer latency: 497.08 ms, other infers latency: 24.06 ms/infer, inference count: 128
+[ INFO ] [1][P0] Result MD5:['bbd5d4b8824f7454f17c327f42461c96']
+[ INFO ] [1][P0] Generated:  The article discusses how scientists, including Hedva Haykin, are exploring the connection between brain stimulation and heart recovery after a heart attack. By stimulating a brain region associated with positive emotions and motivation, they found that mice with heart attacks showed reduced scarring and better healing. This research is part of a broader field examining how the brain influences the immune system and overall health. The study suggests that mental states can affect physical health, and there is potential for developing new therapies that harness the brain's power to improve recovery and treat diseases. Comments from a brain scientist: The findings highlight the intricate connection between the brain and the immune system, suggesting that
+[ INFO ] [1][P0] start: 2026-04-03T14:42:55.521867, end: 2026-04-03T14:42:59.078194
+[ INFO ] <<< Warm-up iteration is excluded. >>>
+[ INFO ] [Total] Iterations: 1
+[ INFO ] [Average] P[0] Input token size: 1024, 1st token latency: 497.13 ms, 2nd token latency: 24.06 ms/token, 2nd tokens throughput: 41.56 tokens/s
+
+D:\river\moe\openvino.genai\tools\llm_bench>set prompt_dir=C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\2048\qwen3-30b-a3b.jsonl 
+
+D:\river\moe\openvino.genai\tools\llm_bench>C:\Users\Local_Admin\river\py310\Scripts\python.exe D:\river\moe\openvino.genai\tools\llm_bench\benchmark.py -d GPU -m D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT -pf C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\2048\qwen3-30b-a3b.jsonl -n 1 -ic 128 -b 1
+Multiple distributions found for package optimum. Picked distribution: optimum
+[ INFO ] ==SUCCESS FOUND==: use_case: text_gen, model_type: qwen, model_Name: qwen3-30b-a3b
+[ INFO ] OV Config={'CACHE_DIR': '', 'ATTENTION_BACKEND': 'PA'}
+[ INFO ] Model path=D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT, openvino runtime version: 2026.2.0-21445-e83f73ff91e-river/grouped_gemm_integration, genai version: 2026.2.0.0-2981-b76c483c169
+[ INFO ] Selected OpenVINO GenAI for benchmarking
+[ INFO ] Pipeline initialization time: 26.75s
+[ INFO ] Read prompts from C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\2048\qwen3-30b-a3b.jsonl
+[ INFO ] Numbeams: 1, benchmarking iter nums(exclude warm-up): 1, prompt nums: 1, prompt idx: [0]
+[ INFO ] [warm-up][P0] Input text: <s>[INST] <<SYS>> He's there to help, after all. He needs help, He will then ask you to make an Act of Contrition. I firmly intend, with your help,to do penance, to sin no more, andto avoid whatever leads me to sin.Our Savior Jesus Christ suffered and died for us. I firmly resolve with the help of thy grace, to sin no more, and to avoid the near occasion of sin. Amen. Don't worry! It won't be anything huge. Take the absolution to heart -- you now have a brand new, clean slate to work with. "Penance" is your expression of regret and repentance, showing God that you're truly sorry and that you wish for nothing more than to be forgiven. Thanks.  A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions. <</SYS>> You will act as a Christian, and fully summarize following text:
+Sometimes it's nice to take a minute in the pew by yourself beforehand. You have this beautiful church probably almost ... [truncated to 1024]
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [warm-up][P0] Input token size: 2048, Output size: 128, Infer count: 128, Tokenization Time: 9.60ms, Detokenization Time: 6.32ms, Generation Time: 4.38s, Latency: 34.1959 ms/token
+[ INFO ] [warm-up][P0] First token latency: 1073.08 ms, other tokens latency: 25.71 ms/token, len of input tokens: 2048 * 1
+[ INFO ] [warm-up][P0] First infer latency: 1072.55 ms, other infers latency: 25.70 ms/infer, inference count: 128
+[ INFO ] [warm-up][P0] Result MD5:['8326d82894ca773d23c4464081328d4b']
+[ INFO ] [warm-up][P0] Generated: ...
+
+Okay, the user wants me to act as a Christian and summarize the provided text. Let me read through the text carefully.
+
+The text is about the process of going to confession in a church. It starts with preparing oneself in the church, maybe alone, reflecting on faith, and then approaching the priest. It mentions different rites, like the Byzantine Rite, and the steps during confession: making the sign of the cross, stating the time since the last confession, discussing sins, the Act of Contrition, and receiving absolution. It emphasizes that there's no pressure, the priest is understanding, and the focus is on sincere
+[ INFO ] [warm-up][P0] start: 2026-04-03T14:43:37.744984, end: 2026-04-03T14:43:42.147675
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [1][P0] Input token size: 2048, Output size: 128, Infer count: 128, Tokenization Time: 1.09ms, Detokenization Time: 40.91ms, Generation Time: 4.03s, Latency: 31.4795 ms/token
+[ INFO ] [1][P0] First token latency: 819.26 ms, other tokens latency: 25.28 ms/token, len of input tokens: 2048 * 1
+[ INFO ] [1][P0] First infer latency: 819.19 ms, other infers latency: 25.27 ms/infer, inference count: 128
+[ INFO ] [1][P0] Result MD5:['dc283cf3a2d8e8c8ffd8ba2963c913d7']
+[ INFO ] [1][P0] Generated:  <s#INST] <<SYS>> He's there to help, after all. He needs help, He will then ask you to make an Act of Contrition. I firmly intend, with your help,to do penance, to sin no more, andto avoid whatever leads me to sin.Our Savior Jesus Christ suffered and died for us. I firmly resolve with the help of thy grace, to sin no more, and to avoid the near occasion of sin. Amen. Don't worry! It won't be anything huge. Take the absolution to heart -- you now have a brand new, clean slate to work with. "P
+[ INFO ] [1][P0] start: 2026-04-03T14:43:42.148671, end: 2026-04-03T14:43:46.221817
+[ INFO ] <<< Warm-up iteration is excluded. >>>
+[ INFO ] [Total] Iterations: 1
+[ INFO ] [Average] P[0] Input token size: 2048, 1st token latency: 819.26 ms, 2nd token latency: 25.28 ms/token, 2nd tokens throughput: 39.56 tokens/s
+
+D:\river\moe\openvino.genai\tools\llm_bench>set prompt_dir=C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\4096\qwen3-30b-a3b.jsonl 
+
+D:\river\moe\openvino.genai\tools\llm_bench>C:\Users\Local_Admin\river\py310\Scripts\python.exe D:\river\moe\openvino.genai\tools\llm_bench\benchmark.py -d GPU -m D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT -pf C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\4096\qwen3-30b-a3b.jsonl -n 1 -ic 128 -b 1
+Multiple distributions found for package optimum. Picked distribution: optimum
+[ INFO ] ==SUCCESS FOUND==: use_case: text_gen, model_type: qwen, model_Name: qwen3-30b-a3b
+[ INFO ] OV Config={'CACHE_DIR': '', 'ATTENTION_BACKEND': 'PA'}
+[ INFO ] Model path=D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT, openvino runtime version: 2026.2.0-21445-e83f73ff91e-river/grouped_gemm_integration, genai version: 2026.2.0.0-2981-b76c483c169
+[ INFO ] Selected OpenVINO GenAI for benchmarking
+[ INFO ] Pipeline initialization time: 26.89s
+[ INFO ] Read prompts from C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\4096\qwen3-30b-a3b.jsonl
+[ INFO ] Numbeams: 1, benchmarking iter nums(exclude warm-up): 1, prompt nums: 1, prompt idx: [0]
+[ INFO ] [warm-up][P0] Input text: <s>[INST] <<SYS>> If you don't remember the exact timeframe. If you don't remember your motivation. All your priest cares about is that you're being as honest as possible and that your heart is in the right place. He'll talk you through everything, possibly asking about your intentions, but mainly just letting you know that God loves you, sin and all. If he has any ideas to bring you closer to God, he may suggest them at this juncture. He's there to help, after all. He will then ask you to make an Act of Contrition. That goes like this: My God, I am sorry for my sins with all my heart.In choosing to do wrong and failing to do good,I have sinned against You whom I should loveabove all things. I firmly intend, with your help,to do penance, to sin no more, andto avoid whatever leads me to sin.Our Savior Jesus Christ suffered and died for us.In his name, my God, have mercy.If you are a Roman Catholic, your act of contrition will go like this: Oh my God, I am very sorry for having offende ... [truncated to 1024]
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [warm-up][P0] Input token size: 4096, Output size: 128, Infer count: 128, Tokenization Time: 48.69ms, Detokenization Time: 15.35ms, Generation Time: 5.52s, Latency: 43.1045 ms/token
+[ INFO ] [warm-up][P0] First token latency: 2175.29 ms, other tokens latency: 26.29 ms/token, len of input tokens: 4096 * 1
+[ INFO ] [warm-up][P0] First infer latency: 2174.53 ms, other infers latency: 26.29 ms/infer, inference count: 128
+[ INFO ] [warm-up][P0] Result MD5:['c60ab3d0b70b4b9331f03b988a385f17']
+[ INFO ] [warm-up][P0] Generated: ...
+
+Okay, I need to summarize the given text as a Christian. Let me read through the text carefully.
+
+The text is about the process of going to confession in a church. It starts with taking a moment in the pew to pray and reflect. Then there's the part about sitting with the priest, making the sign of the cross, and confessing sins. It mentions different rites, like the Byzantine Rite, but the main idea is the same. The priest asks about the time since the last confession, the person's feelings, and their faith. The person is encouraged to be honest, even if they don't remember exact
+[ INFO ] [warm-up][P0] start: 2026-04-03T14:44:24.282198, end: 2026-04-03T14:44:29.898143
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [1][P0] Input token size: 4096, Output size: 128, Infer count: 128, Tokenization Time: 1.57ms, Detokenization Time: 39.92ms, Generation Time: 4.95s, Latency: 38.6381 ms/token
+[ INFO ] [1][P0] First token latency: 1725.04 ms, other tokens latency: 25.36 ms/token, len of input tokens: 4096 * 1
+[ INFO ] [1][P0] First infer latency: 1724.96 ms, other infers latency: 25.35 ms/infer, inference count: 128
+[ INFO ] [1][P0] Result MD5:['988ab7174e5555b856a4a5d997d18e34']
+[ INFO ] [1][P0] Generated:
+
+Okay, the user wants me to act as a Christian and summarize the provided text. Let me read through the text carefully.
+
+The text is about the process of going to confession in a church. It starts with preparing oneself by taking a moment in the pew, praying, reflecting on faith. Then there's the part about approaching the priest, the different rites (like Byzantine), the conversation with the priest, confessing sins, the Act of Contrition, and the absolution. The key points are the preparation, the conversation, honesty, the priest's role, and the contrition prayer.
+
+I need to make sure the summary
+[ INFO ] [1][P0] start: 2026-04-03T14:44:29.898143, end: 2026-04-03T14:44:34.886771
+[ INFO ] <<< Warm-up iteration is excluded. >>>
+[ INFO ] [Total] Iterations: 1
+[ INFO ] [Average] P[0] Input token size: 4096, 1st token latency: 1725.04 ms, 2nd token latency: 25.36 ms/token, 2nd tokens throughput: 39.44 tokens/s
+
+D:\river\moe\openvino.genai\tools\llm_bench>set prompt_dir=C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\8K\qwen3-8b.jsonl 
+
+D:\river\moe\openvino.genai\tools\llm_bench>C:\Users\Local_Admin\river\py310\Scripts\python.exe D:\river\moe\openvino.genai\tools\llm_bench\benchmark.py -d GPU -m D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT -pf C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\8K\qwen3-8b.jsonl -n 1 -ic 128 -b 1
+Multiple distributions found for package optimum. Picked distribution: optimum
+[ INFO ] ==SUCCESS FOUND==: use_case: text_gen, model_type: qwen, model_Name: qwen3-30b-a3b
+[ INFO ] OV Config={'CACHE_DIR': '', 'ATTENTION_BACKEND': 'PA'}
+[ INFO ] Model path=D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT, openvino runtime version: 2026.2.0-21445-e83f73ff91e-river/grouped_gemm_integration, genai version: 2026.2.0.0-2981-b76c483c169
+[ INFO ] Selected OpenVINO GenAI for benchmarking
+[ INFO ] Pipeline initialization time: 26.79s
+[ INFO ] Read prompts from C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\8K\qwen3-8b.jsonl
+[ INFO ] Numbeams: 1, benchmarking iter nums(exclude warm-up): 1, prompt nums: 1, prompt idx: [0]
+[ INFO ] [warm-up][P0] Input text: <|user|>
+ The sun was setting over the horizon, casting long shadows across the dusty ground of the town square. The last rays of light streamed through the gaps between the buildings, illuminating the cobblestones and the people milling about. A group of children played a rough game of tag, their laughter filling the air.
+ In the center of the square stood a lone figure, a man with a tired face and weary eyes. He was tall and broad shouldered, but his posture was slumped and his head hung low. Despite the warmth of the day, he wore a thick woolen coat that seemed too heavy for the weather.
+ The man looked out at the crowd, his gaze sweeping over the faces of the townspeople as they went about their business. His eyes settled on a young woman standing on the edge of the square, watching him with curiosity. She was pretty, with chestnut hair pulled back into a ponytail and bright green eyes that sparkled in the fading light.
+ The man felt a sudden jolt of recognition, as if he had see ... [truncated to 1024]
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [warm-up][P0] Input token size: 8192, Output size: 128, Infer count: 128, Tokenization Time: 50.21ms, Detokenization Time: 6.18ms, Generation Time: 8.34s, Latency: 65.1230 ms/token
+[ INFO ] [warm-up][P0] First token latency: 4573.41 ms, other tokens latency: 29.31 ms/token, len of input tokens: 8192 * 1
+[ INFO ] [warm-up][P0] First infer latency: 4572.37 ms, other infers latency: 29.30 ms/infer, inference count: 128
+[ INFO ] [warm-up][P0] Result MD5:['2acb5b6ac175a76cb79ea49507ce6912']
+[ INFO ] [warm-up][P0] Generated: <think>
+Okay, let me try to figure out what's going on here. The user provided a long text that seems to be a story, possibly a novel or a narrative. The story starts with a man in a town square, then moves to him going to the library, and then to an underground chamber with a mysterious figure. There's a lot of repetition in the text, with the same paragraphs appearing multiple times. Then, towards the end, there's a sudden shift to a section about confession in a church, which seems out of place compared to the rest of the story.
+
+First, I need to check if the user is
+[ INFO ] [warm-up][P0] start: 2026-04-03T14:45:13.972510, end: 2026-04-03T14:45:22.378097
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [1][P0] Input token size: 8192, Output size: 128, Infer count: 128, Tokenization Time: 2.71ms, Detokenization Time: 41.86ms, Generation Time: 8.74s, Latency: 68.2475 ms/token
+[ INFO ] [1][P0] First token latency: 4849.88 ms, other tokens latency: 30.60 ms/token, len of input tokens: 8192 * 1
+[ INFO ] [1][P0] First infer latency: 4849.80 ms, other infers latency: 30.59 ms/infer, inference count: 128
+[ INFO ] [1][P0] Result MD5:['425ec4501b8b66c1d2c26174f2dc5bc6']
+[ INFO ] [1][P0] Generated:  <|start|>
+Okay, let's see. The user provided a long text that seems to be a story with multiple chapters, and then there's a part about confession in a church. The last part is about the process of going to confession, including the sign of the cross, the Act of Contrition, and the priest's role. The user might be asking for help with a story, but the last part is about a religious ritual. However, the initial request was to act as a helpful assistant, so maybe they want to continue the story or need help with the confession part.
+
+Wait, the user's message ends with a
+[ INFO ] [1][P0] start: 2026-04-03T14:45:22.379107, end: 2026-04-03T14:45:31.173071
+[ INFO ] <<< Warm-up iteration is excluded. >>>
+[ INFO ] [Total] Iterations: 1
+[ INFO ] [Average] P[0] Input token size: 8192, 1st token latency: 4849.88 ms, 2nd token latency: 30.60 ms/token, 2nd tokens throughput: 32.68 tokens/s
+
+D:\river\moe\openvino.genai\tools\llm_bench>set prompt_dir=C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\32K\qwen3-8b.jsonl
+
+D:\river\moe\openvino.genai\tools\llm_bench>C:\Users\Local_Admin\river\py310\Scripts\python.exe D:\river\moe\openvino.genai\tools\llm_bench\benchmark.py -d GPU -m D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT -pf C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\32K\qwen3-8b.jsonl -n 1 -ic 128 -b 1
+Multiple distributions found for package optimum. Picked distribution: optimum
+[ INFO ] ==SUCCESS FOUND==: use_case: text_gen, model_type: qwen, model_Name: qwen3-30b-a3b
+[ INFO ] OV Config={'CACHE_DIR': '', 'ATTENTION_BACKEND': 'PA'}
+[ INFO ] Model path=D:\river\models\qwen3-30b-a3b\pytorch\ov\OV_FP16-4BIT_DEFAULT, openvino runtime version: 2026.2.0-21445-e83f73ff91e-river/grouped_gemm_integration, genai version: 2026.2.0.0-2981-b76c483c169
+[ INFO ] Selected OpenVINO GenAI for benchmarking
+[ INFO ] Pipeline initialization time: 26.40s
+[ INFO ] Read prompts from C:\Users\Local_Admin\peter\frameworks.ai.openvino.llm.prompts\32K\qwen3-8b.jsonl
+[ INFO ] Numbeams: 1, benchmarking iter nums(exclude warm-up): 1, prompt nums: 1, prompt idx: [0]
+[ INFO ] [warm-up][P0] Input text: <|user|>
+ The sun was setting over the horizon, casting long shadows across the dusty ground of the town square. It was as if he had forgotten something important, something that he needed to remember before it was too late.
+ He excused, promising to come back later and chat some more. He felt a growing sense of unease. Something wasn't right, and he needed to figure out what it was before it was too late.
+ [CHAPTER 4:
+ THE LIBRARY](9781441125608_epub_itb-ch4.xhtml)
+ The man returned to the library, his mind still racing with thoughts of the mysterious boy and the strange feeling that had been nagging at him all day. He wandered through the shelves, scanning the titles of books and flipping through their pages, searching for something that might help him remember what he had forgotten.
+ It wasn't until he stumbled upon a book on ancient myths and legends that he felt a spark of recognition. As he read through the stories of gods and monsters, he began to recall fragments of memorie ... [truncated to 1024]
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [warm-up][P0] Input token size: 32768, Output size: 128, Infer count: 128, Tokenization Time: 44.41ms, Detokenization Time: 12.78ms, Generation Time: 196.91s, Latency: 1538.3897 ms/token
+[ INFO ] [warm-up][P0] First token latency: 63807.67 ms, other tokens latency: 1048.06 ms/token, len of input tokens: 32768 * 1
+[ INFO ] [warm-up][P0] First infer latency: 63806.90 ms, other infers latency: 1048.06 ms/infer, inference count: 128
+[ INFO ] [warm-up][P0] Result MD5:['67676d04705af8d405de851a5c67264b']
+[ INFO ] [warm-up][P0] Generated:  <|assistant|
+<think>
+Okay, the user wants me to act as a Christian and summarize the provided text. Let me read through the text carefully.
+
+The text is about the process of confession in a church. It starts by suggesting taking a moment in the pew to pray and reflect. Then it describes the steps during confession: kneeling, praying, sitting with the priest, making the sign of the cross, and confessing sins. It mentions the traditional phrase "Bless me, Father..." and notes that the priest will ask about the time since the last confession and the nature of the sins. The text emphasizes that there's no pressure,
+[ INFO ] [warm-up][P0] start: 2026-04-03T14:46:10.215481, end: 2026-04-03T14:49:27.204358
+[ WARNING ] Enabled input prompt permutations. It means that generated results may vary on different steps. If it is not expected, please specify --disable_prompt_permutation in your benchmarking command to disable this behavior
+[ INFO ] [1][P0] Input token size: 32768, Output size: 128, Infer count: 128, Tokenization Time: 8.98ms, Detokenization Time: 2.62ms, Generation Time: 191.94s, Latency: 1499.5327 ms/token
+[ INFO ] [1][P0] First token latency: 57690.07 ms, other tokens latency: 1057.09 ms/token, len of input tokens: 32768 * 1
+[ INFO ] [1][P0] First infer latency: 57689.79 ms, other infers latency: 1057.08 ms/infer, inference count: 128
+[ INFO ] [1][P0] Result MD5:['0b4a780f4f19e58b86996be1c38138a2']
+[ INFO ] [1][P0] Generated: <think>
+Okay, let me try to figure out what the user is asking for here. They provided a long text about the process of confession in a church, specifically from a Christian perspective. The user wants me to act as a Christian and fully summarize the given text.
+
+First, I need to understand the key points of the original text. It describes the steps one takes when going to confession. It mentions preparing in the church, kneeling in prayer, approaching the priest, and the conversation that follows. There's a mention of the sign of the cross, stating the time since the last confession, and the Act of Contrition. It
+[ INFO ] [1][P0] start: 2026-04-03T14:49:27.205362, end: 2026-04-03T14:52:39.159366
+[ INFO ] <<< Warm-up iteration is excluded. >>>
+[ INFO ] [Total] Iterations: 1
+[ INFO ] [Average] P[0] Input token size: 32768, 1st token latency: 57690.07 ms, 2nd token latency: 1057.09 ms/token, 2nd tokens throughput: 0.95 tokens/s
+
+
+
+
+

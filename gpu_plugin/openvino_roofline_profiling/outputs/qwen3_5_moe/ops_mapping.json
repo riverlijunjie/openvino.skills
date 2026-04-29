@@ -1,0 +1,49 @@
+{
+  "model": "Qwen/Qwen3.5-MoE-35B-A3B (qwen3_5_moe)",
+  "config": {
+    "vocab_size": 248320,
+    "hidden_size": 2048,
+    "num_hidden_layers": 40,
+    "num_full_attention_layers": 10,
+    "num_linear_attention_layers": 30,
+    "layer_pattern": "linear_attention × 3 then full_attention × 1, repeated (full_attention_interval=4)",
+    "num_attention_heads": 16,
+    "num_key_value_heads": 2,
+    "head_dim": 256,
+    "linear_num_key_heads": 16,
+    "linear_num_value_heads": 32,
+    "linear_key_head_dim": 128,
+    "linear_value_head_dim": 128,
+    "moe_intermediate_size": 512,
+    "shared_expert_intermediate_size": 512,
+    "num_experts": 256,
+    "num_experts_per_tok": 8,
+    "weight_quant_body": "INT4 g=128 (asymmetric)",
+    "weight_quant_lm_head": "INT8 g=128",
+    "kv_cache_quant": "INT8",
+    "activation_dtype": "FP16"
+  },
+  "ops": {
+    "qkv_fused_full_attn":
+      { "shape": "FC(M, 2048, 5120)", "weight": "INT4 g=128", "calls_per_decode": 10,
+        "note": "Q=16*256=4096, K=2*256=512, V=2*256=512 -> 5120; 10 full-attn layers" },
+    "o_proj_full_attn":
+      { "shape": "FC(M, 4096, 2048)", "weight": "INT4 g=128", "calls_per_decode": 10,
+        "note": "16*256 -> 2048; 10 full-attn layers" },
+    "paged_attention_full":
+      { "config": "NH=16, NKV=2, HD=256, GQA=8, kv_int8", "calls_per_decode": 10 },
+    "linattn_input_proj":
+      { "shape": "FC(M, 2048, 12288)", "weight": "INT4 g=128", "calls_per_decode": 30,
+        "note": "Q=16*128 + K=16*128 + V=32*128 + gate=32*128 = 12288; 30 GDN layers" },
+    "gated_delta_net":
+      { "config": "HK=32, K=V=128, kernel=GatedDeltaNet (gdn_bench)", "calls_per_decode": 30 },
+    "moe_3gemm_fused":
+      { "config": "H=2048, I=512, NE=256, TK=8, +shared_I=512", "calls_per_decode": 40,
+        "note": "with always-on shared expert (additional dense gate/up/down with I=512)" },
+    "lm_head":
+      { "shape": "FC(1, 2048, 248320)", "weight": "INT8 g=128", "calls_per_decode": 1 },
+    "small_ops_per_layer":
+      ["rmsnorm_x2", "qk_norm_x2 (full_attn only)", "rope_q (full_attn only)",
+       "rope_k (full_attn only)", "add_x2"]
+  }
+}

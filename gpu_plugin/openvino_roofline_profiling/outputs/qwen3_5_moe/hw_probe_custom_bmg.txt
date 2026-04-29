@@ -1,0 +1,43 @@
+In file included from /usr/include/CL/cl.h:20,
+                 from gpu_info.c:9:
+/usr/include/CL/cl_version.h:22:9: note: ‘#pragma message: cl_version.h: CL_TARGET_OPENCL_VERSION is not defined. Defaulting to 300 (OpenCL 3.0)’
+   22 | #pragma message("cl_version.h: CL_TARGET_OPENCL_VERSION is not defined. Defaulting to 300 (OpenCL 3.0)")
+      |         ^~~~~~~
+In file included from /usr/include/CL/cl.h:20,
+                 from mem_bw.c:13:
+/usr/include/CL/cl_version.h:22:9: note: ‘#pragma message: cl_version.h: CL_TARGET_OPENCL_VERSION is not defined. Defaulting to 300 (OpenCL 3.0)’
+   22 | #pragma message("cl_version.h: CL_TARGET_OPENCL_VERSION is not defined. Defaulting to 300 (OpenCL 3.0)")
+      |         ^~~~~~~
+mem_bw.c: In function ‘main’:
+mem_bw.c:60:5: warning: ‘clCreateCommandQueue’ is deprecated [-Wdeprecated-declarations]
+   60 |     cl_command_queue q = clCreateCommandQueue(ctx, dv, qprops, &err); CHK(err);
+      |     ^~~~~~~~~~~~~~~~
+/usr/include/CL/cl.h:1914:1: note: declared here
+ 1914 | clCreateCommandQueue(cl_context                     context,
+      | ^~~~~~~~~~~~~~~~~~~~
+=== gpu_info ===
+Platform: Intel(R) OpenCL Graphics
+  Device name                      : Intel(R) Arc(TM) B580 Graphics
+  Device version                   : OpenCL 3.0 NEO 
+  Driver version                   : 25.48.36300.8
+  Compute units (Xe×EU)           : 160
+  Max clock (MHz)                  : 2900
+  Max work-group size              : 1024
+  Local mem (SLM)                  : 131072  (0.12 MiB)
+  Global mem                       : 12168933376  (11605.20 MiB)
+  Global mem cache (L3)            : 18874368  (18.00 MiB)
+  Cache line (B)                   : 256
+  Max mem alloc                    : 12168933376  (11605.20 MiB)
+  Subgroup sizes (Intel)           : 16 32
+=== mem_bw 1 GiB ===
+Device          : Intel(R) Arc(TM) B580 Graphics
+Buffer per iter : 1024 MiB (×3 buffers, rotated to defeat L2 reuse)
+Iterations      : 20
+Copy  BW (R+W)  : 401.97 GB/s
+Read  BW        : 452.95 GB/s
+=== mem_bw 2 GiB ===
+Device          : Intel(R) Arc(TM) B580 Graphics
+Buffer per iter : 2048 MiB (×3 buffers, rotated to defeat L2 reuse)
+Iterations      : 10
+Copy  BW (R+W)  : 401.60 GB/s
+Read  BW        : 453.08 GB/s

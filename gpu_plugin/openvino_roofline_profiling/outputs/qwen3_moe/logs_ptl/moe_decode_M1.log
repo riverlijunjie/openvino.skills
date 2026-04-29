@@ -1,0 +1,56 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: C:\Users\Local_Admin\Downloads\clintercept-3.0.6-win64\Release\opencl.dll
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(NOT supported)
+    clock(steady_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept registry key: SOFTWARE\INTEL\IGFX\CLINTERCEPT
+Trying to load dispatch from: real_opencl.dll
+Couldn't get exported function pointer to: clGetGLContextInfoKHR
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+Total Enqueues: 0
+
+MoE bench: B=1 S=1 H=2048 I=768 NE=128 TK=8 g=128 iters=100 warm=10 bufs=4 flush=64MB shared_I=0 [no shared expert]
+[FUSION OK] Runtime node: MOE3GemmFusedCompressed_1253 layer_type=moe_3gemm_fused_compressed
+[INPUT SEED] filled 4 USM_DEVICE input buffer(s) with random f32 in [-1,1] (B*S*H=2048 elems each)
+warmup 10 iters...
+measuring 100 iters...
+total host wallclock = 169.613 ms (1.69613 ms/iter host-side)
+=> rely on cliloader DevicePerformanceTiming for fused MoE kernel avg
+Total Enqueues: 1123
+
+
+Device Performance Timing Results for Intel(R) Arc(TM) B390 GPU (96CUs, 2400MHz):
+
+Total Time (ns): 168192051
+
+                                         Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+                 activation_opt_477147924471330069_0_0,    110,     141709219,   84.25%,       1288265,       1256041,       1881770
+                            clEnqueueMemFillINTEL( D ),      8,         22184,    0.01%,          2773,          1145,          6145
+                            clEnqueueMemFillINTEL( H ),     10,       2253328,    1.34%,        225332,          1145,       1116250
+                                  clEnqueueWriteBuffer,      4,         12914,    0.01%,          3228,          2343,          4843
+      dynamic_quantize_gpu_opt_2680479405095583548_0_0,    110,        196799,    0.12%,          1789,          1666,          5937
+                                           gemm_kernel,    110,        494022,    0.29%,          4491,          4062,         11666
+moe_3gemm_swiglu_fuse_softmax_topk_5535578167686122921,    110,        519323,    0.31%,          4721,          4479,          8958
+         moe_3gemm_swiglu_mlp_down_5535578167686122921,    110,       7670893,    4.56%,         69735,         66145,        157604
+      moe_3gemm_swiglu_mlp_gate_up_5535578167686122921,    110,      14832869,    8.82%,        134844,        130520,        307395
+       moe_3gemm_swiglu_mlp_reduce_5535578167686122921,    110,        104743,    0.06%,           952,           833,          6145
+                 reorder_data_10036098096901348289_0_0,      1,          7708,    0.00%,          7708,          7708,          7708
+         reorder_data_fast_b1_10637276651640940812_0_0,    110,        122474,    0.07%,          1113,           833,          6041
+          reorder_data_fast_b1_2055831431303789805_0_0,    110,        245575,    0.15%,          2232,          1770,          6770
+CLIntercept is shutting down...
+... shutdown complete.

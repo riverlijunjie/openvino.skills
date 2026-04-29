@@ -1,0 +1,27 @@
+{
+  "title": "f'# {model_name} — Per-token-size Kernel Tables'",
+  "variables": {
+    "NL": "cfg['num_hidden_layers']",
+    "H": "cfg['hidden_size']"
+  },
+  "modes": [
+    {
+      "name": "decode",
+      "heading": "'### DECODE — per size'",
+      "axis_name": "kv",
+      "axis_label": "kv",
+      "axis_values": [1024, 2048, 4096, 8192],
+      "peak_compute": "platform.get('fp16_xmx_tflops', 0) * 1000",
+      "specs": [
+        {
+          "op": "'example_op'",
+          "log": "f'example_decode_kv{kv}'",
+          "calls": "NL",
+          "bytes": "H * kv * 2",
+          "flops": "H * kv * 4",
+          "bound": "'memory'"
+        }
+      ]
+    }
+  ]
+}

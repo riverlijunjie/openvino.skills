@@ -1,0 +1,183 @@
+== moe_decode_M1 == ./moe_bench 1 1 2048 768 128 8 128 200 20 4 64
+== moe_prefill_S1024 == ./moe_bench 1 1024 2048 768 128 8 128 30 5 2 64
+== moe_prefill_S2048 == ./moe_bench 1 2048 2048 768 128 8 128 20 3 2 64
+== moe_prefill_S4096 == ./moe_bench 1 4096 2048 768 128 8 128 15 3 2 64
+== moe_prefill_S8192 == ./moe_bench 1 8192 2048 768 128 8 128 10 2 2 64
+== moe_prefill_S16384 == ./moe_bench 1 16384 2048 768 128 8 128 6 2 1 64
+== moe_prefill_S32768 == ./moe_bench 1 32768 2048 768 128 8 128 4 1 1 64
+== moe_prefill_S65536 == ./moe_bench 1 65536 2048 768 128 8 128 2 1 1 64
+== moe_prefill_S131072 == ./moe_bench 1 131072 2048 768 128 8 128 2 1 1 64
+FAIL moe_prefill_S131072
+                                               clGetPlatformIDs,      4,      18947840,    2.14%,       4736960,            82,      18947524
+                                              clGetPlatformInfo,      4,           317,    0.00%,            79,            29,           177
+                                          clGetProgramBuildInfo,     10,          2678,    0.00%,           267,            54,           586
+                                               clGetProgramInfo,      4,          1158,    0.00%,           289,           188,           444
+                                            clHostMemAllocINTEL,     15,      80771686,    9.13%,       5384779,           153,      61864202
+                                                 clMemFreeINTEL,     34,       5417356,    0.61%,        159334,            54,       4436668
+                                          clReleaseCommandQueue,     12,         33899,    0.00%,          2824,           124,         10767
+                                               clReleaseContext,     25,          5870,    0.00%,           234,            21,          4207
+                                                clReleaseDevice,     30,          1761,    0.00%,            58,            13,           289
+                                                 clReleaseEvent,     13,          3771,    0.00%,           290,            29,           598
+                                                clReleaseKernel,    122,        103408,    0.01%,           847,            21,         35908
+                                               clReleaseProgram,     34,         11055,    0.00%,           325,            21,          8836
+                                           clRetainCommandQueue,      1,           275,    0.00%,           275,           275,           275
+                                                clRetainContext,     23,          1413,    0.00%,            61,            20,           257
+                                                 clRetainDevice,     30,          2406,    0.00%,            80,            14,           376
+                                                  clRetainEvent,      1,            42,    0.00%,            42,            42,            42
+                                                 clRetainKernel,     80,          3298,    0.00%,            41,            20,           149
+                                                clRetainProgram,     26,          1268,    0.00%,            48,            21,           206
+                                  clSetKernelArgMemPointerINTEL,      4,           659,    0.00%,           164,            34,           464
+                                                clWaitForEvents,     23,     105938438,   11.97%,       4606019,           103,      93249712
+
+Device Performance Timing Results for Intel(R) Arc(TM) B580 Graphics (160CUs, 2900MHz):
+
+Total Time (ns): 127928793
+
+                        Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+           clEnqueueMemFillINTEL( D ),      8,      12040518,    9.41%,       1505064,          1979,       6388645
+           clEnqueueMemFillINTEL( H ),      3,      93410416,   73.02%,      31136805,        185729,      92853958
+         clEnqueueMemcpyINTEL( HtoD ),     10,      22473380,   17.57%,       2247338,         10989,       7211562
+reorder_data_16168865864945595600_0_0,      1,          4479,    0.00%,          4479,          4479,          4479
+== fc_qkv_decode_M1 == ./fc_bench 1 2048 5120 128 8000 500 8 u4 64
+== fc_o_decode_M1 == ./fc_bench 1 4096 2048 128 8000 500 8 u4 64
+== lm_head_decode_M1 == ./fc_bench 1 2048 151936 128 1000 100 8 u8 64
+== fc_qkv_prefill_S1024 == ./fc_bench 1024 2048 5120 128 30 5 4 u4 64
+== fc_o_prefill_S1024 == ./fc_bench 1024 4096 2048 128 30 5 4 u4 64
+== fc_qkv_prefill_S2048 == ./fc_bench 2048 2048 5120 128 30 5 4 u4 64
+== fc_o_prefill_S2048 == ./fc_bench 2048 4096 2048 128 30 5 4 u4 64
+== fc_qkv_prefill_S4096 == ./fc_bench 4096 2048 5120 128 30 5 4 u4 64
+== fc_o_prefill_S4096 == ./fc_bench 4096 4096 2048 128 30 5 4 u4 64
+== fc_qkv_prefill_S8192 == ./fc_bench 8192 2048 5120 128 30 5 4 u4 64
+== fc_o_prefill_S8192 == ./fc_bench 8192 4096 2048 128 30 5 4 u4 64
+== fc_qkv_prefill_S16384 == ./fc_bench 16384 2048 5120 128 30 5 4 u4 64
+== fc_o_prefill_S16384 == ./fc_bench 16384 4096 2048 128 30 5 4 u4 64
+== fc_qkv_prefill_S32768 == ./fc_bench 32768 2048 5120 128 30 5 4 u4 64
+== fc_o_prefill_S32768 == ./fc_bench 32768 4096 2048 128 30 5 4 u4 64
+== fc_qkv_prefill_S65536 == ./fc_bench 65536 2048 5120 128 30 5 4 u4 64
+== fc_o_prefill_S65536 == ./fc_bench 65536 4096 2048 128 30 5 4 u4 64
+== fc_qkv_prefill_S131072 == ./fc_bench 131072 2048 5120 128 30 5 4 u4 64
+== fc_o_prefill_S131072 == ./fc_bench 131072 4096 2048 128 30 5 4 u4 64
+== pa_decode_kv1024 == ./pa_bench decode 1 1024 10000 300 4 i8
+== pa_decode_kv2048 == ./pa_bench decode 1 2048 10000 300 4 i8
+== pa_decode_kv4096 == ./pa_bench decode 1 4096 10000 300 4 i8
+== pa_decode_kv8192 == ./pa_bench decode 1 8192 10000 300 4 i8
+== pa_decode_kv16384 == ./pa_bench decode 1 16384 10000 300 4 i8
+== pa_decode_kv32768 == ./pa_bench decode 1 32768 10000 300 4 i8
+== pa_decode_kv65536 == ./pa_bench decode 1 65536 10000 300 4 i8
+== pa_decode_kv131072 == ./pa_bench decode 1 131072 10000 300 4 i8
+== pa_prefill_S1024 == ./pa_bench prefill 1024 0 30 5 2 i8
+== pa_prefill_S2048 == ./pa_bench prefill 2048 0 30 5 2 i8
+== pa_prefill_S4096 == ./pa_bench prefill 4096 0 30 5 2 i8
+== pa_prefill_S8192 == ./pa_bench prefill 8192 0 30 5 2 i8
+== pa_prefill_S16384 == ./pa_bench prefill 16384 0 30 5 2 i8
+== pa_prefill_S32768 == ./pa_bench prefill 32768 0 30 5 2 i8
+== pa_prefill_S65536 == ./pa_bench prefill 65536 0 30 5 2 i8
+== pa_prefill_S131072 == ./pa_bench prefill 131072 0 30 5 2 i8
+== so_rmsnorm_h2048_decode == ./small_ops_bench rmsnorm 1 2048 --iters 50000 --warmup 500 --bufs 8
+== so_rmsnorm3d_qnorm_decode == ./small_ops_bench rmsnorm3d 1 32 128 --iters 50000 --warmup 500 --bufs 8
+== so_rmsnorm3d_knorm_decode == ./small_ops_bench rmsnorm3d 1 4 128 --iters 50000 --warmup 500 --bufs 8
+== so_rope_q_decode == ./small_ops_bench rope 1 32 128 --iters 50000 --warmup 500 --bufs 8
+== so_rope_k_decode == ./small_ops_bench rope 1 4 128 --iters 50000 --warmup 500 --bufs 8
+== so_add_decode == ./small_ops_bench add 1 2048 --iters 50000 --warmup 500 --bufs 8
+== so_rmsnorm_h2048_prefill_S1024 == ./small_ops_bench rmsnorm 1024 2048 --iters 500 --warmup 50 --bufs 4
+== so_rope_q_prefill_S1024 == ./small_ops_bench rope 1024 32 128 --iters 500 --warmup 50 --bufs 4
+== so_rmsnorm_h2048_prefill_S2048 == ./small_ops_bench rmsnorm 2048 2048 --iters 500 --warmup 50 --bufs 4
+== so_rope_q_prefill_S2048 == ./small_ops_bench rope 2048 32 128 --iters 500 --warmup 50 --bufs 4
+== so_rmsnorm_h2048_prefill_S4096 == ./small_ops_bench rmsnorm 4096 2048 --iters 500 --warmup 50 --bufs 4
+== so_rope_q_prefill_S4096 == ./small_ops_bench rope 4096 32 128 --iters 500 --warmup 50 --bufs 4
+== so_rmsnorm_h2048_prefill_S8192 == ./small_ops_bench rmsnorm 8192 2048 --iters 500 --warmup 50 --bufs 4
+== so_rope_q_prefill_S8192 == ./small_ops_bench rope 8192 32 128 --iters 500 --warmup 50 --bufs 4
+===
+All logs in /mnt/river/model_loading/roofline_test_utils/logs/bmg/qwen3_moe
+fc_o_decode_M1.log
+fc_o_prefill_S1024.log
+fc_o_prefill_S131072.log
+fc_o_prefill_S16384.log
+fc_o_prefill_S2048.log
+fc_o_prefill_S32768.log
+fc_o_prefill_S4096.log
+fc_o_prefill_S65536.log
+fc_o_prefill_S8192.log
+fc_qkv_decode_M1.log
+fc_qkv_prefill_S1024.log
+fc_qkv_prefill_S131072.log
+fc_qkv_prefill_S16384.log
+fc_qkv_prefill_S2048.log
+fc_qkv_prefill_S32768.log
+fc_qkv_prefill_S4096.log
+fc_qkv_prefill_S65536.log
+fc_qkv_prefill_S8192.log
+_index.txt
+lm_head_decode_M1.log
+moe_decode_M1.log
+moe_prefill_S1024.log
+moe_prefill_S131072.log
+moe_prefill_S16384.log
+moe_prefill_S2048.log
+moe_prefill_S32768.log
+moe_prefill_S4096.log
+moe_prefill_S65536.log
+moe_prefill_S8192.log
+pa_decode_kv1024.log
+pa_decode_kv131072.log
+pa_decode_kv16384.log
+pa_decode_kv2048.log
+pa_decode_kv32768.log
+pa_decode_kv4096.log
+pa_decode_kv65536.log
+pa_decode_kv8192.log
+pa_prefill_S1024.log
+pa_prefill_S131072.log
+pa_prefill_S16384.log
+pa_prefill_S2048.log
+pa_prefill_S32768.log
+pa_prefill_S4096.log
+pa_prefill_S65536.log
+pa_prefill_S8192.log
+_run.log
+so_add_decode.log
+so_rmsnorm3d_knorm_decode.log
+so_rmsnorm3d_qnorm_decode.log
+so_rmsnorm_h2048_decode.log
+so_rmsnorm_h2048_prefill_S1024.log
+so_rmsnorm_h2048_prefill_S2048.log
+so_rmsnorm_h2048_prefill_S4096.log
+so_rmsnorm_h2048_prefill_S8192.log
+so_rope_k_decode.log
+so_rope_q_decode.log
+so_rope_q_prefill_S1024.log
+so_rope_q_prefill_S2048.log
+so_rope_q_prefill_S4096.log
+so_rope_q_prefill_S8192.log
+== moe_prefill_S16384 == ./moe_bench 1 16384 2048 768 128 8 128 6 2 1 64
+== moe_prefill_S32768 == ./moe_bench 1 32768 2048 768 128 8 128 4 1 1 64
+== moe_prefill_S65536 == ./moe_bench 1 65536 2048 768 128 8 128 2 1 1 64
+== moe_prefill_S131072 == ./moe_bench 1 131072 2048 768 128 8 128 2 1 1 64
+FAIL moe_prefill_S131072
+
+Device Performance Timing Results for Intel(R) Arc(TM) B580 Graphics (160CUs, 2900MHz):
+
+Total Time (ns): 129662753
+
+                        Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+           clEnqueueMemFillINTEL( D ),      8,      12040101,    9.29%,       1505012,          2083,       6388750
+           clEnqueueMemFillINTEL( H ),      3,      95142707,   73.38%,      31714235,        185833,      94586145
+         clEnqueueMemcpyINTEL( HtoD ),     10,      22476091,   17.33%,       2247609,         10781,       7211354
+reorder_data_16168865864945595600_0_0,      1,          3854,    0.00%,          3854,          3854,          3854
+== fc_qkv_prefill_S16384 == ./fc_bench 16384 2048 5120 128 20 5 2 u4 64
+== fc_o_prefill_S16384 == ./fc_bench 16384 4096 2048 128 20 5 2 u4 64
+== fc_qkv_prefill_S32768 == ./fc_bench 32768 2048 5120 128 20 5 2 u4 64
+== fc_o_prefill_S32768 == ./fc_bench 32768 4096 2048 128 20 5 2 u4 64
+== fc_qkv_prefill_S65536 == ./fc_bench 65536 2048 5120 128 20 5 2 u4 64
+== fc_o_prefill_S65536 == ./fc_bench 65536 4096 2048 128 20 5 2 u4 64
+== fc_qkv_prefill_S131072 == ./fc_bench 131072 2048 5120 128 20 5 2 u4 64
+== fc_o_prefill_S131072 == ./fc_bench 131072 4096 2048 128 20 5 2 u4 64
+== pa_decode_kv16384 == ./pa_bench decode 1 16384 8000 200 4 i8
+== pa_decode_kv32768 == ./pa_bench decode 1 32768 8000 200 4 i8
+== pa_decode_kv65536 == ./pa_bench decode 1 65536 8000 200 4 i8
+== pa_decode_kv131072 == ./pa_bench decode 1 131072 8000 200 4 i8
+== pa_prefill_S16384 == ./pa_bench prefill 16384 0 15 3 2 i8
+== pa_prefill_S32768 == ./pa_bench prefill 32768 0 8 2 2 i8
+== pa_prefill_S65536 == ./pa_bench prefill 65536 0 4 1 2 i8
+== pa_prefill_S131072 == ./pa_bench prefill 131072 0 2 1 1 i8
+Ext done. Logs in /mnt/river/model_loading/roofline_test_utils/logs/bmg/qwen3_moe

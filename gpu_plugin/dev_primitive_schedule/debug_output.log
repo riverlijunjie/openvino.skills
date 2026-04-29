@@ -1,0 +1,35 @@
+[FCCmpOpt] fullyconnectedcompressed:__module.model.layers.35.mlp.up_proj/ov_ext::linear/MatMul validate_impl PASS
+fullyconnectedcompressed:__module.model.layers.35.mlp.up_proj/ov_ext::linear/MatMul: add_impl_to_pool(onednn)
+[FCCmpOpt] fullyconnectedcompressed:__module.model.layers.35.mlp.up_proj/ov_ext::linear/MatMul validate_impl PASS
+[FCCmpOpt][JIT] node compile: K=4096 N=12288 B=2048 NUM_GROUPS=32 GROUP_SIZE=128 IS_ACT_INT8=1 HAS_ZP=1 ZP_IS_U8=1
+[FCCmpOpt][JIT] scale shape: 12288 32 fmt=fbyx
+fullyconnectedcompressed:__module.model.layers.35.mlp.up_proj/ov_ext::linear/MatMul: add_impl_to_pool(ocl)
+fullyconnectedcompressed:__module.model.layers.35.mlp.up_proj/ov_ext::linear/MatMul: multi-impl pool: registered alt impl type=ocl
+fullyconnectedcompressed:__module.model.layers.35.mlp.up_proj/ov_ext::linear/MatMul: multi-impl pool enabled (primary=onednn, alts=1, policy=1)
+[FCCmpOpt] fullyconnectedcompressed:__module.model.layers.35.mlp.gate_proj/ov_ext::linear/MatMul validate_impl PASS
+fullyconnectedcompressed:__module.model.layers.35.mlp.gate_proj/ov_ext::linear/MatMul: multi-impl pool: primary has 2 OneDNN-specific fused post-ops; no compatible alternatives, skipping
+[FCCmpOpt] fullyconnectedcompressed:__module.model.layers.35.mlp.down_proj/ov_ext::linear/MatMul validate_impl PASS
+fullyconnectedcompressed:__module.model.layers.35.mlp.down_proj/ov_ext::linear/MatMul: multi-impl pool: primary has 1 OneDNN-specific fused post-ops; no compatible alternatives, skipping
+[FCCmpOpt] fullyconnectedcompressed:__module.lm_head/ov_ext::linear/MatMul.0 FAIL: weight dtype=u8
+fullyconnectedcompressed:__module.lm_head/ov_ext::linear/MatMul.0: add_impl_to_pool(onednn)
+fullyconnectedcompressed:__module.lm_head/ov_ext::linear/MatMul.0: multi-impl pool: type=ocl rejected (weight IO contract: rule1: reorder flag mismatch)
+fullyconnectedcompressed:__module.model.layers.0.self_attn.q_proj/ov_ext::linear/MatMul_fused_3FCs: impl switch onednn → ocl
+[FCCmpOpt][DISPATCH] B=1 N=6144 global=[6144,1,1]
+[FCCmpOpt][DISPATCH] scale shape: 6144 32 fmt=fbyx
+[FCCmpOpt][DISPATCH] act_scale shape: 0 1 1
+[ ERROR ] An exception occurred
+[ INFO ] Traceback (most recent call last):
+  File "/mnt/river/moe/openvino.genai/tools/llm_bench/benchmark.py", line 313, in main
+    iter_data_list, pretrain_time, iter_timestamp = CASE_TO_BENCH[model_args['use_case'].task](
+                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/moe/openvino.genai/tools/llm_bench/task/text_generation.py", line 626, in run_text_generation_benchmark
+    text_gen_fn(input_text, num, model, tokenizer, args, iter_data_list, md5_list,
+  File "/mnt/river/moe/openvino.genai/tools/llm_bench/task/text_generation.py", line 350, in run_text_generation_genai
+    generated_tokens, perf_metrics, generation_time = genai_generate(streaming, model, tokens_len, gen_config,
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/moe/openvino.genai/tools/llm_bench/task/text_generation.py", line 246, in genai_generate
+    generation_result = model.generate(input_data, gen_config)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Exception from src/inference/src/cpp/infer_request.cpp:224:
+Check 'args[i].index < data.inputs.size() && data.inputs[args[i].index]' failed at src/plugins/intel_gpu/src/runtime/ocl/ocl_stream.cpp:92:
+The allocated input memory is necessary to set kernel arguments.
