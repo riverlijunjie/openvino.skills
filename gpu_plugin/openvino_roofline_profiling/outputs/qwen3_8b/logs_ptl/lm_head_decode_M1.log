@@ -29,11 +29,11 @@ M=1 K=4096 N=151936 group_size=128 iters=500 warmup=50 bufs=8 flush_mb=64
 Dynamic quantization: OFF (decode mode, group_size=0)
 Input tensors allocated in USM_DEVICE (VRAM) via RemoteContext.
 L2/L3 flush kernel: 64 MB f16 Relu between every FC infer.
-Median_ms: 6.0464
-Min_ms: 6.0205
-Avg_ms: 6.09412
-GFLOPS: 205.851
-BW_GBs: 104.586
+Median_ms: 6.106
+Min_ms: 6.0327
+Avg_ms: 6.14908
+GFLOPS: 203.842
+BW_GBs: 103.565
 AI: 1.96826
 WeightBytes: 6.2233e+08
 TotalBytes: 6.32366e+08
@@ -43,12 +43,12 @@ Total Enqueues: 1657
 
 Device Performance Timing Results for Intel(R) Arc(TM) B390 GPU (96CUs, 2400MHz):
 
-Total Time (ns): 3987674434
+Total Time (ns): 3997515588
 
                         Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
-activation_opt_477147924471330069_0_0,    551,     667810915,   16.75%,       1211998,       1191666,       1725312
-           clEnqueueMemFillINTEL( H ),      5,       2216977,    0.06%,        443395,          1250,       1070937
-                          gemm_kernel,    550,    3316523209,   83.17%,       6030042,       5985312,       6538125
- reorder_data_9349221491652127916_0_0,      1,       1123333,    0.03%,       1123333,       1123333,       1123333
+activation_opt_477147924471330069_0_0,    551,     676999668,   16.94%,       1228674,       1201875,       1754479
+           clEnqueueMemFillINTEL( H ),      5,       2215831,    0.06%,        443166,          1354,       1067395
+                          gemm_kernel,    550,    3317162485,   82.98%,       6031204,       5984895,       6664791
+ reorder_data_9349221491652127916_0_0,      1,       1137604,    0.03%,       1137604,       1137604,       1137604
 CLIntercept is shutting down...
 ... shutdown complete.

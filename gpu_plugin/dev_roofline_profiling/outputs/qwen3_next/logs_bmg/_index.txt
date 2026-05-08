@@ -1,0 +1,20 @@
+=== START 2026年 05月 01日 星期五 11:22:18 CST ===
+== moe_decode_M1 == ./moe_bench 1 1 2048 512 512 10 128 200 20 4 64 512
+== moe_prefill_S1024 == ./moe_bench 1 1024 2048 512 512 10 128 30 5 2 64 512
+== moe_prefill_S2048 == ./moe_bench 1 2048 2048 512 512 10 128 20 3 2 64 512
+== moe_prefill_S4096 == ./moe_bench 1 4096 2048 512 512 10 128 15 3 2 64 512
+== moe_prefill_S8192 == ./moe_bench 1 8192 2048 512 512 10 128 10 2 2 64 512
+== moe_prefill_S16384 == ./moe_bench 1 16384 2048 512 512 10 128 5 1 1 64 512
+== moe_prefill_S32768 == ./moe_bench 1 32768 2048 512 512 10 128 3 1 1 64 512
+== moe_prefill_S65536 == ./moe_bench 1 65536 2048 512 512 10 128 2 1 1 64 512
+== moe_prefill_S131072 == ./moe_bench 1 131072 2048 512 512 10 128 1 1 1 64 512
+== lm_head_decode_M1 == ./fc_bench 1 2048 151936 128 600 60 4 u8 64
+== so_rmsnorm_h2048_prefill_S16384 == ./small_ops_bench rmsnorm 16384 2048 --iters 200 --warmup 20 --bufs 4
+== so_rope_q_prefill_S16384 == ./small_ops_bench rope 16384 16 256 --iters 200 --warmup 20 --bufs 4
+== so_rmsnorm_h2048_prefill_S32768 == ./small_ops_bench rmsnorm 32768 2048 --iters 200 --warmup 20 --bufs 4
+== so_rope_q_prefill_S32768 == ./small_ops_bench rope 32768 16 256 --iters 200 --warmup 20 --bufs 4
+== so_rmsnorm_h2048_prefill_S65536 == ./small_ops_bench rmsnorm 65536 2048 --iters 200 --warmup 20 --bufs 4
+== so_rope_q_prefill_S65536 == ./small_ops_bench rope 65536 16 256 --iters 200 --warmup 20 --bufs 4
+== so_rmsnorm_h2048_prefill_S131072 == ./small_ops_bench rmsnorm 131072 2048 --iters 200 --warmup 20 --bufs 4
+== so_rope_q_prefill_S131072 == ./small_ops_bench rope 131072 16 256 --iters 200 --warmup 20 --bufs 4
+=== END 2026年 05月 01日 星期五 11:23:52 CST ===

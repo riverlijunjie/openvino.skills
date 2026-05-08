@@ -15,7 +15,7 @@ When profile roofline, first require to understand below prequistites:
       - cliloader is loacted in: /mnt/river/model_loading/clintercept-3.0.6-Linux/bin
       - test utils directory: /mnt/river/model_loading/roofline_test_utils
 
-  - Target Remote Windows machine: 
+  - Target Remote Windows machine with PTL 12Xe GPU: 
       - Target hardware: PTL
       - GPU frequency: 2400 MHz
       - Local_Admin@10.239.132.229
@@ -28,6 +28,19 @@ When profile roofline, first require to understand below prequistites:
       - OV Runtime DLLs: D:\river\moe\openvino\release_install\runtime\bin\intel64\Release
       - Results directory: D:\river\moe\roofline_results
 
+  - Target Remote Linux machine with PTL 4Xe GPU: 
+      - Target hardware: PTL
+      - GPU frequency: 2400 MHz
+      - intel@10.239.152.140
+      - password:intel123
+      - openvino directory:~/river/openvino
+      - openvino.genai directory: ~/river/openvino.genai
+      - cliloader is loacted in: ~/river/clintercept-3.0.6-Linux/bin/cliloader
+      - test utils directory: ~/river/roofline_test_utils
+      - TBB DLLs (needed for SSH sessions):~/river/openvino/temp/Linux_x86_64/tbb/lib
+      - OV Runtime DLLs: ~/river/openvino/install_release/runtime/lib/intel64
+      - Results directory: ~/river/roofline_results
+
   - Model: user should point out which model to use, if no assign then default is qwen3_moe
   - Input token size: user should provide token size, default values are 1024, 2048, 4096, 8192, 16K, 32K, 64K, 128K
   - Matmul Weights compression: 4-bit quantization with group size 128，and activation dtype is FP16，it will decompress weights to FP16 during computation.
@@ -39,6 +52,11 @@ When profile roofline, first require to understand below prequistites:
   - KV cache is compressed by int8 quantization, and will be read as int8 and then decompressed to FP16 in memory, kv cache layout
         k: [num_blocks, num_kv_heads, head_size, block_size(16)]
         v: [num_blocks, num_kv_heads, block_size(16), head_size]
+  - SDPA contains 3 implements, you need ask user to provide which one to be used, default is PagedAttention:
+        - PagedAttention: it also has 2 different lauguage implement, one is opencl + micro_kernel, another is cm kernel. Default is opencl + micro_kernel implement, but if user want to use cm kernel implement, please make sure the target platform support cm kernel, Windows should supporte but Linux need add CM dependencies
+        - SDPA kernels: it is opencl + micro_kernel implement
+        - vlsdpa kernels: it cm kernel implement.
+  - FC_Q, FC_K and FC_V will be fused into one gemm kernel: FC_QKV
   - If didn't find cliloder, you need download it from 
 
 Then do proofline analysis with below steps:
@@ -67,7 +85,7 @@ Then do proofline analysis with below steps:
         - Register size: 256 bytes
         - Shared Local memory size: 32KB
         - Video Memory Bandwidth: 456 GB/s
-    - GPU architectures: Intel PTL GPU architecture
+    - GPU architectures: Intel PTL 12Xe GPU architecture
         - Xe Core Number: 12
         - EU number of each Xe Core: 8
         - Threads number of each EU: 10
@@ -76,12 +94,23 @@ Then do proofline analysis with below steps:
         - Register size: 256 bytes
         - Shared Local memory size: 32KB
         - Video Memory Bandwidth: 110 GB/s
-        - GPU frequency: 2850 MHz
+        - GPU frequency: 2450 MHz
+    - GPU architectures: Intel PTL 4Xe GPU architecture
+        - Xe Core Number: 4
+        - EU number of each Xe Core: 8
+        - Threads number of each EU: 10
+        - Subgroup size: 16 or 32
+        - Register number of each EU: 256
+        - Register size: 256 bytes
+        - Shared Local memory size: 32KB
+        - Video Memory Bandwidth: 110 GB/s
+        - GPU frequency: 2450 MHz
     - GPU architectures: Intel(R) Arc(TM) B390 GPU (96CUs, 2400MHz)
         - It is same with Intel PTL GPU architecture due to recongnition issue of cliloader, so we will use the same performance metrics for both PTL and B390, and also use the same theoretical roofline for both PTL and B390.
 4. **Probe hardware capabilities**: 
     - Use tools like clinfo, clpeak, cliloader to probe the hardware capabilities and collect performance metrics for the target GPU architecture.
        - clpeak may provide memory bandwidth with cache hit, we should excluse such data.
+       - clinfo can provide some basic GPU information, such as GPU frequency, EU number, hardware threads number, subgroup size, shared local memory size.
     - Write our own test utils based on opencl to collect the performance metrics for the target GPU architecture, such as FLOPS, memory bandwidth, EU number hardware threads, EU number, subgroup size, shared local memory size, etc， then to compare with above tools results to make sure the performance metrics are accurate.
       - Write a test util to measure the actual memory bandwidth of the target GPU architecture by performing a large memory copy operation and measuring the time taken, which can provide insights into the effective memory bandwidth that can be achieved on the target GPU architecture for real workloads.
       - Write a test util based on opencl to get gpu info, such as GPU frequnecy, EU number, hardware threads number, subgroup size, shared local memory size, etc.
@@ -153,6 +182,7 @@ Then do proofline analysis with below steps:
     - Math computaion, exp is 30 fops, sin and cos is 10 fops, sqrt is 10 fops, and use these numbers to calculate the theoretical roofline for those ops, instead of using 1 fop for each element.
     - prefill will use dynamic_quantize_gpu_opt kernel, please also analyze its performance metrics as other kernels
     - pa kernel should be split to kv_cache_update and pa computation 2 parts to profiling
+    - PA prefill uses causal mask (lower-triangular attention), so the actual computation is only half of the full attention matrix. When calculating theoretical FLOPs for PA prefill, use effective attention pairs = Sq*(Sq+1)/2 ≈ Sq²/2 instead of Sq*Skv. For decode (Sq=1), no causal mask reduction applies since the single query attends to all past KV tokens.
     - Should list each op's performance metrics: average latency, total calls time per inference, total latency, achieved FLOPS, achieved memory bandwidth, and efficiency percentage relative to the theoretical roofline.
     - ops test iterations should be set to a proper value, should make this ops test can last more than 1000ms total kernel execution time, to get stable performance metrics, a simple moethod is 1000 ms divide the theorial latency of each op, and set the iterations to be a bit more than that to make sure the total kernel execution time can be more than 1000ms.
     - Change all time units to ms
@@ -183,6 +213,7 @@ Then do proofline analysis with below steps:
     - SUMMARY should contains series of table to show the performance metrics for each significant kernels, such as single latency, calling times, total latency, achieved FLOPS, achieved memory bandwidth, and efficiency percentage relative to the theoretical roofline.
     - SUMMARY should contain a clean kernel breakdown
     - SUMMARY should contain series of table to show: ops name, kernel name, single latency, calling times, total latency, achieved FLOPS, achieved memory bandwidth, and efficiency percentage relative to the theoretical roofline, memory bound or compute bound, for each significant op in prefill and decode separately, and one table list one sequence of input token size for prefill or decode. For example, theret are 1024, 2048, 4096, 8192, 16K, 32K, 64K, 128K input token size for prefill, then we should have 8 tables for prefill performance metrics and roofline analysis, and each table is for one input token size. And also we should have 8 tables for decode performance metrics and roofline analysis, and each table is for one input token size.
+    - The SUMMARY contains 8 decode + 8 prefill per-kernel tables (op / kernel / single ms / calls / total ms / GFLOPS / GB/s / Eff% / bound), bottleneck breakdowns, top optimization levers, reproduction commands, and caveats
     - Update all scripts for roofline analysis in the "utils" folder, and document how to use them for future reference.
     - Put all logs data into a database or structured format for easy querying and analysis in the future, and also can help us to track the performance metrics over time and across different models and GPU architectures.
     - Remove data out of date, such as old performance metrics, and make sure all the information in "SUMMARY_<model_name>_<date>.md" is accurate and up to date.

@@ -1,0 +1,51 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: C:\Users\Local_Admin\Downloads\clintercept-3.0.6-win64\Release\opencl.dll
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(NOT supported)
+    clock(steady_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept registry key: SOFTWARE\INTEL\IGFX\CLINTERCEPT
+Trying to load dispatch from: real_opencl.dll
+Couldn't get exported function pointer to: clGetGLContextInfoKHR
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+Total Enqueues: 0
+
+=== VLSDPA Benchmark (CM kernel) ===
+head_size=80 num_heads=16 total_tokens=2048 num_seqs=2 iters=100 warmup=10 bufs=4
+Median_ms: 1.4623
+Min_ms: 1.3364
+Avg_ms: 1.49016
+GFLOPS: 7916.49
+BW_GBs: 14.3415
+AI: 552
+TotalFLOPs: 1.15763e+10
+TotalBytes: 2.09715e+07
+Total Enqueues: 743
+
+
+Device Performance Timing Results for Intel(R) Arc(TM) B390 GPU (96CUs, 2400MHz):
+
+Total Time (ns): 128704386
+
+                        Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+           clEnqueueMemFillINTEL( H ),      1,         28541,    0.02%,         28541,         28541,         28541
+         clEnqueueMemcpyINTEL( DtoM ),    110,        131375,    0.10%,          1194,          1093,          3854
+         clEnqueueMemcpyINTEL( HtoH ),     82,       8738817,    6.79%,        106570,         99375,        211562
+         clEnqueueMemcpyINTEL( MtoD ),    440,      72799555,   56.56%,        165453,          1041,       1094375
+cm_sdpa_vlen_10376755940530348800__sa,    110,      47006098,   36.52%,        427328,        395729,        609375
+CLIntercept is shutting down...
+... shutdown complete.

@@ -308,186 +308,170 @@
 
 | Op | Kernel | Single ms | Calls/inf | Total ms | GFLOPS | GB/s | Eff% | Bound |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| fc_up | `gemm_kernel` | 0.2559 | 36 | 9.211 | 393 | 102.3 | 97.5% | memory |
-| fc_down | `gemm_kernel` | 0.2555 | 36 | 9.197 | 394 | 102.5 | 97.6% | memory |
-| fc_gate | `gemm_kernel` | 0.2552 | 36 | 9.187 | 394 | 102.6 | 97.7% | memory |
-| lm_head | `gemm_kernel` | 6.0300 | 1 | 6.030 | 206 | 104.9 | 99.9% | memory |
-| fc_qkv | `gemm_kernel` | 0.1292 | 36 | 4.652 | 390 | 101.3 | 96.5% | memory |
-| fc_o | `gemm_kernel` | 0.0873 | 36 | 3.141 | 385 | 100.1 | 95.3% | memory |
-| paged_attention | `paged_attention_opt_single_token_sa` | 0.0511 | 36 | 1.838 | 289 | 36.1 | 34.4% | memory |
-| rmsnorm | `rms_gpu_bfyx_opt_0_0` | 0.0031 | 72 | 0.225 | 10 | 5.2 | 5.0% | memory |
-| add | `eltwise_simple_vload8_0_0` | 0.0019 | 72 | 0.139 | 2 | 12.7 | 12.1% | memory |
-| paged_attention | `pa_kv_cache_update_ref_sa` | 0.0039 | 36 | 0.139 | 289 | 36.1 | 34.4% | memory |
-| paged_attention | `paged_attention_opt_single_token_finalization_sa` | 0.0031 | 36 | 0.112 | 289 | 36.1 | 34.4% | memory |
-| multiply | `eltwise_simple_vload8_0_0` | 0.0029 | 36 | 0.104 | 4 | 25.6 | 24.3% | memory |
-| q_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.087 | 14 | 6.8 | 6.5% | memory |
+| fc_down | `gemm_kernel` | 0.2557 | 36 | 9.204 | 394 | 102.4 | 97.5% | memory |
+| fc_gate | `gemm_kernel` | 0.2547 | 36 | 9.170 | 395 | 102.8 | 97.9% | memory |
+| lm_head | `gemm_kernel` | 6.0312 | 1 | 6.031 | 206 | 104.8 | 99.9% | memory |
+| fc_qkv | `gemm_kernel` | 0.1292 | 36 | 4.649 | 390 | 101.4 | 96.6% | memory |
+| paged_attention | `paged_attention_opt_single_token_sa` | 0.0520 | 36 | 1.871 | 284 | 35.5 | 33.8% | memory |
+| rmsnorm | `rms_gpu_bfyx_opt_0_0` | 0.0031 | 72 | 0.226 | 10 | 5.2 | 5.0% | memory |
+| paged_attention | `pa_kv_cache_update_ref_sa` | 0.0041 | 36 | 0.147 | 284 | 35.5 | 33.8% | memory |
+| add | `eltwise_simple_vload8_0_0` | 0.0019 | 72 | 0.140 | 2 | 12.7 | 12.1% | memory |
+| paged_attention | `paged_attention_opt_single_token_finalization_sa` | 0.0031 | 36 | 0.112 | 284 | 35.5 | 33.8% | memory |
+| multiply | `eltwise_simple_vload8_0_0` | 0.0029 | 36 | 0.103 | 4 | 25.8 | 24.5% | memory |
+| q_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.088 | 13 | 6.7 | 6.4% | memory |
 | k_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.086 | 3 | 1.7 | 1.6% | memory |
-| rope_q | `rope_opt` | 0.0021 | 36 | 0.077 | 19 | 7.7 | 7.3% | memory |
+| rope_q | `rope_opt` | 0.0022 | 36 | 0.078 | 19 | 7.6 | 7.2% | memory |
 | rope_k | `rope_opt` | 0.0020 | 36 | 0.071 | 5 | 2.1 | 2.0% | memory |
-| swish | `activation_opt_0_0` | 0.0018 | 36 | 0.064 | 28 | 27.8 | 26.5% | memory |
+| swish | `activation_opt_0_0` | 0.0018 | 36 | 0.064 | 28 | 27.7 | 26.4% | memory |
 
-**Total inference time (this stage)** ≈ **44.36 ms**
+**Total inference time (this stage)** ≈ **32.04 ms**
 
 #### PTL — decode kv=2048
 
 | Op | Kernel | Single ms | Calls/inf | Total ms | GFLOPS | GB/s | Eff% | Bound |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| fc_up | `gemm_kernel` | 0.2559 | 36 | 9.211 | 393 | 102.3 | 97.5% | memory |
-| fc_down | `gemm_kernel` | 0.2555 | 36 | 9.197 | 394 | 102.5 | 97.6% | memory |
-| fc_gate | `gemm_kernel` | 0.2552 | 36 | 9.187 | 394 | 102.6 | 97.7% | memory |
-| lm_head | `gemm_kernel` | 6.0300 | 1 | 6.030 | 206 | 104.9 | 99.9% | memory |
-| fc_qkv | `gemm_kernel` | 0.1292 | 36 | 4.652 | 390 | 101.3 | 96.5% | memory |
-| fc_o | `gemm_kernel` | 0.0873 | 36 | 3.141 | 385 | 100.1 | 95.3% | memory |
-| paged_attention | `paged_attention_opt_single_token_sa` | 0.0843 | 36 | 3.033 | 365 | 45.7 | 43.5% | memory |
-| rmsnorm | `rms_gpu_bfyx_opt_0_0` | 0.0031 | 72 | 0.225 | 10 | 5.2 | 5.0% | memory |
-| add | `eltwise_simple_vload8_0_0` | 0.0019 | 72 | 0.139 | 2 | 12.7 | 12.1% | memory |
-| paged_attention | `paged_attention_opt_single_token_finalization_sa` | 0.0038 | 36 | 0.137 | 365 | 45.7 | 43.5% | memory |
-| multiply | `eltwise_simple_vload8_0_0` | 0.0029 | 36 | 0.104 | 4 | 25.6 | 24.3% | memory |
-| q_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.087 | 14 | 6.8 | 6.5% | memory |
+| fc_down | `gemm_kernel` | 0.2557 | 36 | 9.204 | 394 | 102.4 | 97.5% | memory |
+| fc_gate | `gemm_kernel` | 0.2547 | 36 | 9.170 | 395 | 102.8 | 97.9% | memory |
+| lm_head | `gemm_kernel` | 6.0312 | 1 | 6.031 | 206 | 104.8 | 99.9% | memory |
+| fc_qkv | `gemm_kernel` | 0.1292 | 36 | 4.649 | 390 | 101.4 | 96.6% | memory |
+| paged_attention | `paged_attention_opt_single_token_sa` | 0.0841 | 36 | 3.027 | 366 | 45.7 | 43.6% | memory |
+| rmsnorm | `rms_gpu_bfyx_opt_0_0` | 0.0031 | 72 | 0.226 | 10 | 5.2 | 5.0% | memory |
+| add | `eltwise_simple_vload8_0_0` | 0.0019 | 72 | 0.140 | 2 | 12.7 | 12.1% | memory |
+| paged_attention | `pa_kv_cache_update_ref_sa` | 0.0038 | 36 | 0.138 | 366 | 45.7 | 43.6% | memory |
+| multiply | `eltwise_simple_vload8_0_0` | 0.0029 | 36 | 0.103 | 4 | 25.8 | 24.5% | memory |
+| q_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.088 | 13 | 6.7 | 6.4% | memory |
 | k_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.086 | 3 | 1.7 | 1.6% | memory |
-| rope_q | `rope_opt` | 0.0021 | 36 | 0.077 | 19 | 7.7 | 7.3% | memory |
+| rope_q | `rope_opt` | 0.0022 | 36 | 0.078 | 19 | 7.6 | 7.2% | memory |
 | rope_k | `rope_opt` | 0.0020 | 36 | 0.071 | 5 | 2.1 | 2.0% | memory |
-| swish | `activation_opt_0_0` | 0.0018 | 36 | 0.064 | 28 | 27.8 | 26.5% | memory |
+| swish | `activation_opt_0_0` | 0.0018 | 36 | 0.064 | 28 | 27.7 | 26.4% | memory |
 
-**Total inference time (this stage)** ≈ **45.44 ms**
+**Total inference time (this stage)** ≈ **33.07 ms**
 
 #### PTL — decode kv=4096
 
 | Op | Kernel | Single ms | Calls/inf | Total ms | GFLOPS | GB/s | Eff% | Bound |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| fc_up | `gemm_kernel` | 0.2559 | 36 | 9.211 | 393 | 102.3 | 97.5% | memory |
-| fc_down | `gemm_kernel` | 0.2555 | 36 | 9.197 | 394 | 102.5 | 97.6% | memory |
-| fc_gate | `gemm_kernel` | 0.2552 | 36 | 9.187 | 394 | 102.6 | 97.7% | memory |
-| lm_head | `gemm_kernel` | 6.0300 | 1 | 6.030 | 206 | 104.9 | 99.9% | memory |
-| fc_qkv | `gemm_kernel` | 0.1292 | 36 | 4.652 | 390 | 101.3 | 96.5% | memory |
-| paged_attention | `paged_attention_opt_gqa_single_token_sa` | 0.1003 | 36 | 3.611 | 613 | 76.6 | 72.9% | memory |
-| fc_o | `gemm_kernel` | 0.0873 | 36 | 3.141 | 385 | 100.1 | 95.3% | memory |
-| rmsnorm | `rms_gpu_bfyx_opt_0_0` | 0.0031 | 72 | 0.225 | 10 | 5.2 | 5.0% | memory |
-| paged_attention | `paged_attention_opt_single_token_finalization_sa` | 0.0054 | 36 | 0.193 | 613 | 76.6 | 72.9% | memory |
-| add | `eltwise_simple_vload8_0_0` | 0.0019 | 72 | 0.139 | 2 | 12.7 | 12.1% | memory |
-| multiply | `eltwise_simple_vload8_0_0` | 0.0029 | 36 | 0.104 | 4 | 25.6 | 24.3% | memory |
-| q_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.087 | 14 | 6.8 | 6.5% | memory |
+| fc_down | `gemm_kernel` | 0.2557 | 36 | 9.204 | 394 | 102.4 | 97.5% | memory |
+| fc_gate | `gemm_kernel` | 0.2547 | 36 | 9.170 | 395 | 102.8 | 97.9% | memory |
+| lm_head | `gemm_kernel` | 6.0312 | 1 | 6.031 | 206 | 104.8 | 99.9% | memory |
+| fc_qkv | `gemm_kernel` | 0.1292 | 36 | 4.649 | 390 | 101.4 | 96.6% | memory |
+| paged_attention | `paged_attention_opt_gqa_single_token_sa` | 0.1010 | 36 | 3.636 | 609 | 76.1 | 72.5% | memory |
+| rmsnorm | `rms_gpu_bfyx_opt_0_0` | 0.0031 | 72 | 0.226 | 10 | 5.2 | 5.0% | memory |
+| paged_attention | `paged_attention_opt_single_token_finalization_sa` | 0.0054 | 36 | 0.194 | 609 | 76.1 | 72.5% | memory |
+| add | `eltwise_simple_vload8_0_0` | 0.0019 | 72 | 0.140 | 2 | 12.7 | 12.1% | memory |
+| multiply | `eltwise_simple_vload8_0_0` | 0.0029 | 36 | 0.103 | 4 | 25.8 | 24.5% | memory |
+| q_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.088 | 13 | 6.7 | 6.4% | memory |
 | k_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.086 | 3 | 1.7 | 1.6% | memory |
-| rope_q | `rope_opt` | 0.0021 | 36 | 0.077 | 19 | 7.7 | 7.3% | memory |
+| rope_q | `rope_opt` | 0.0022 | 36 | 0.078 | 19 | 7.6 | 7.2% | memory |
 | rope_k | `rope_opt` | 0.0020 | 36 | 0.071 | 5 | 2.1 | 2.0% | memory |
-| swish | `activation_opt_0_0` | 0.0018 | 36 | 0.064 | 28 | 27.8 | 26.5% | memory |
+| swish | `activation_opt_0_0` | 0.0018 | 36 | 0.064 | 28 | 27.7 | 26.4% | memory |
 
-**Total inference time (this stage)** ≈ **46.07 ms**
+**Total inference time (this stage)** ≈ **33.74 ms**
 
 #### PTL — decode kv=8192
 
 | Op | Kernel | Single ms | Calls/inf | Total ms | GFLOPS | GB/s | Eff% | Bound |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| fc_up | `gemm_kernel` | 0.2559 | 36 | 9.211 | 393 | 102.3 | 97.5% | memory |
-| fc_down | `gemm_kernel` | 0.2555 | 36 | 9.197 | 394 | 102.5 | 97.6% | memory |
-| fc_gate | `gemm_kernel` | 0.2552 | 36 | 9.187 | 394 | 102.6 | 97.7% | memory |
-| paged_attention | `paged_attention_opt_gqa_single_token_sa` | 0.1933 | 36 | 6.961 | 644 | 80.5 | 76.7% | memory |
-| lm_head | `gemm_kernel` | 6.0300 | 1 | 6.030 | 206 | 104.9 | 99.9% | memory |
-| fc_qkv | `gemm_kernel` | 0.1292 | 36 | 4.652 | 390 | 101.3 | 96.5% | memory |
-| fc_o | `gemm_kernel` | 0.0873 | 36 | 3.141 | 385 | 100.1 | 95.3% | memory |
-| paged_attention | `paged_attention_opt_single_token_finalization_sa` | 0.0110 | 36 | 0.397 | 644 | 80.5 | 76.7% | memory |
-| rmsnorm | `rms_gpu_bfyx_opt_0_0` | 0.0031 | 72 | 0.225 | 10 | 5.2 | 5.0% | memory |
-| add | `eltwise_simple_vload8_0_0` | 0.0019 | 72 | 0.139 | 2 | 12.7 | 12.1% | memory |
-| multiply | `eltwise_simple_vload8_0_0` | 0.0029 | 36 | 0.104 | 4 | 25.6 | 24.3% | memory |
-| q_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.087 | 14 | 6.8 | 6.5% | memory |
+| fc_down | `gemm_kernel` | 0.2557 | 36 | 9.204 | 394 | 102.4 | 97.5% | memory |
+| fc_gate | `gemm_kernel` | 0.2547 | 36 | 9.170 | 395 | 102.8 | 97.9% | memory |
+| paged_attention | `paged_attention_opt_gqa_single_token_sa` | 0.1936 | 36 | 6.970 | 643 | 80.4 | 76.6% | memory |
+| lm_head | `gemm_kernel` | 6.0312 | 1 | 6.031 | 206 | 104.8 | 99.9% | memory |
+| fc_qkv | `gemm_kernel` | 0.1292 | 36 | 4.649 | 390 | 101.4 | 96.6% | memory |
+| paged_attention | `paged_attention_opt_single_token_finalization_sa` | 0.0110 | 36 | 0.395 | 643 | 80.4 | 76.6% | memory |
+| rmsnorm | `rms_gpu_bfyx_opt_0_0` | 0.0031 | 72 | 0.226 | 10 | 5.2 | 5.0% | memory |
+| add | `eltwise_simple_vload8_0_0` | 0.0019 | 72 | 0.140 | 2 | 12.7 | 12.1% | memory |
+| multiply | `eltwise_simple_vload8_0_0` | 0.0029 | 36 | 0.103 | 4 | 25.8 | 24.5% | memory |
+| q_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.088 | 13 | 6.7 | 6.4% | memory |
 | k_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.086 | 3 | 1.7 | 1.6% | memory |
-| rope_q | `rope_opt` | 0.0021 | 36 | 0.077 | 19 | 7.7 | 7.3% | memory |
+| rope_q | `rope_opt` | 0.0022 | 36 | 0.078 | 19 | 7.6 | 7.2% | memory |
 | rope_k | `rope_opt` | 0.0020 | 36 | 0.071 | 5 | 2.1 | 2.0% | memory |
-| swish | `activation_opt_0_0` | 0.0018 | 36 | 0.064 | 28 | 27.8 | 26.5% | memory |
+| swish | `activation_opt_0_0` | 0.0018 | 36 | 0.064 | 28 | 27.7 | 26.4% | memory |
 
-**Total inference time (this stage)** ≈ **49.63 ms**
+**Total inference time (this stage)** ≈ **37.27 ms**
 
 #### PTL — decode kv=16384
 
 | Op | Kernel | Single ms | Calls/inf | Total ms | GFLOPS | GB/s | Eff% | Bound |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| paged_attention | `paged_attention_opt_gqa_single_token_sa` | 0.3773 | 36 | 13.583 | 660 | 82.5 | 78.6% | memory |
-| fc_up | `gemm_kernel` | 0.2559 | 36 | 9.211 | 393 | 102.3 | 97.5% | memory |
-| fc_down | `gemm_kernel` | 0.2555 | 36 | 9.197 | 394 | 102.5 | 97.6% | memory |
-| fc_gate | `gemm_kernel` | 0.2552 | 36 | 9.187 | 394 | 102.6 | 97.7% | memory |
-| lm_head | `gemm_kernel` | 6.0300 | 1 | 6.030 | 206 | 104.9 | 99.9% | memory |
-| fc_qkv | `gemm_kernel` | 0.1292 | 36 | 4.652 | 390 | 101.3 | 96.5% | memory |
-| fc_o | `gemm_kernel` | 0.0873 | 36 | 3.141 | 385 | 100.1 | 95.3% | memory |
-| paged_attention | `paged_attention_opt_single_token_finalization_sa` | 0.0238 | 36 | 0.858 | 660 | 82.5 | 78.6% | memory |
-| rmsnorm | `rms_gpu_bfyx_opt_0_0` | 0.0031 | 72 | 0.225 | 10 | 5.2 | 5.0% | memory |
-| add | `eltwise_simple_vload8_0_0` | 0.0019 | 72 | 0.139 | 2 | 12.7 | 12.1% | memory |
-| multiply | `eltwise_simple_vload8_0_0` | 0.0029 | 36 | 0.104 | 4 | 25.6 | 24.3% | memory |
-| q_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.087 | 14 | 6.8 | 6.5% | memory |
+| paged_attention | `paged_attention_opt_gqa_single_token_sa` | 0.3781 | 36 | 13.613 | 657 | 82.1 | 78.2% | memory |
+| fc_down | `gemm_kernel` | 0.2557 | 36 | 9.204 | 394 | 102.4 | 97.5% | memory |
+| fc_gate | `gemm_kernel` | 0.2547 | 36 | 9.170 | 395 | 102.8 | 97.9% | memory |
+| lm_head | `gemm_kernel` | 6.0312 | 1 | 6.031 | 206 | 104.8 | 99.9% | memory |
+| fc_qkv | `gemm_kernel` | 0.1292 | 36 | 4.649 | 390 | 101.4 | 96.6% | memory |
+| paged_attention | `paged_attention_opt_single_token_finalization_sa` | 0.0235 | 36 | 0.845 | 657 | 82.1 | 78.2% | memory |
+| rmsnorm | `rms_gpu_bfyx_opt_0_0` | 0.0031 | 72 | 0.226 | 10 | 5.2 | 5.0% | memory |
+| add | `eltwise_simple_vload8_0_0` | 0.0019 | 72 | 0.140 | 2 | 12.7 | 12.1% | memory |
+| multiply | `eltwise_simple_vload8_0_0` | 0.0029 | 36 | 0.103 | 4 | 25.8 | 24.5% | memory |
+| q_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.088 | 13 | 6.7 | 6.4% | memory |
 | k_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.086 | 3 | 1.7 | 1.6% | memory |
-| rope_q | `rope_opt` | 0.0021 | 36 | 0.077 | 19 | 7.7 | 7.3% | memory |
+| rope_q | `rope_opt` | 0.0022 | 36 | 0.078 | 19 | 7.6 | 7.2% | memory |
 | rope_k | `rope_opt` | 0.0020 | 36 | 0.071 | 5 | 2.1 | 2.0% | memory |
-| swish | `activation_opt_0_0` | 0.0018 | 36 | 0.064 | 28 | 27.8 | 26.5% | memory |
+| swish | `activation_opt_0_0` | 0.0018 | 36 | 0.064 | 28 | 27.7 | 26.4% | memory |
 
-**Total inference time (this stage)** ≈ **56.71 ms**
+**Total inference time (this stage)** ≈ **44.37 ms**
 
 #### PTL — decode kv=32768
 
 | Op | Kernel | Single ms | Calls/inf | Total ms | GFLOPS | GB/s | Eff% | Bound |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| paged_attention | `paged_attention_opt_gqa_single_token_sa` | 0.7529 | 36 | 27.104 | 661 | 82.6 | 78.7% | memory |
-| fc_up | `gemm_kernel` | 0.2559 | 36 | 9.211 | 393 | 102.3 | 97.5% | memory |
-| fc_down | `gemm_kernel` | 0.2555 | 36 | 9.197 | 394 | 102.5 | 97.6% | memory |
-| fc_gate | `gemm_kernel` | 0.2552 | 36 | 9.187 | 394 | 102.6 | 97.7% | memory |
-| lm_head | `gemm_kernel` | 6.0300 | 1 | 6.030 | 206 | 104.9 | 99.9% | memory |
-| fc_qkv | `gemm_kernel` | 0.1292 | 36 | 4.652 | 390 | 101.3 | 96.5% | memory |
-| fc_o | `gemm_kernel` | 0.0873 | 36 | 3.141 | 385 | 100.1 | 95.3% | memory |
-| paged_attention | `paged_attention_opt_single_token_finalization_sa` | 0.0511 | 36 | 1.840 | 661 | 82.6 | 78.7% | memory |
-| rmsnorm | `rms_gpu_bfyx_opt_0_0` | 0.0031 | 72 | 0.225 | 10 | 5.2 | 5.0% | memory |
-| add | `eltwise_simple_vload8_0_0` | 0.0019 | 72 | 0.139 | 2 | 12.7 | 12.1% | memory |
-| multiply | `eltwise_simple_vload8_0_0` | 0.0029 | 36 | 0.104 | 4 | 25.6 | 24.3% | memory |
-| q_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.087 | 14 | 6.8 | 6.5% | memory |
+| paged_attention | `paged_attention_opt_gqa_single_token_sa` | 0.7640 | 36 | 27.504 | 652 | 81.5 | 77.6% | memory |
+| fc_down | `gemm_kernel` | 0.2557 | 36 | 9.204 | 394 | 102.4 | 97.5% | memory |
+| fc_gate | `gemm_kernel` | 0.2547 | 36 | 9.170 | 395 | 102.8 | 97.9% | memory |
+| lm_head | `gemm_kernel` | 6.0312 | 1 | 6.031 | 206 | 104.8 | 99.9% | memory |
+| fc_qkv | `gemm_kernel` | 0.1292 | 36 | 4.649 | 390 | 101.4 | 96.6% | memory |
+| paged_attention | `paged_attention_opt_single_token_finalization_sa` | 0.0514 | 36 | 1.849 | 652 | 81.5 | 77.6% | memory |
+| rmsnorm | `rms_gpu_bfyx_opt_0_0` | 0.0031 | 72 | 0.226 | 10 | 5.2 | 5.0% | memory |
+| add | `eltwise_simple_vload8_0_0` | 0.0019 | 72 | 0.140 | 2 | 12.7 | 12.1% | memory |
+| multiply | `eltwise_simple_vload8_0_0` | 0.0029 | 36 | 0.103 | 4 | 25.8 | 24.5% | memory |
+| q_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.088 | 13 | 6.7 | 6.4% | memory |
 | k_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.086 | 3 | 1.7 | 1.6% | memory |
-| rope_q | `rope_opt` | 0.0021 | 36 | 0.077 | 19 | 7.7 | 7.3% | memory |
+| rope_q | `rope_opt` | 0.0022 | 36 | 0.078 | 19 | 7.6 | 7.2% | memory |
 | rope_k | `rope_opt` | 0.0020 | 36 | 0.071 | 5 | 2.1 | 2.0% | memory |
-| swish | `activation_opt_0_0` | 0.0018 | 36 | 0.064 | 28 | 27.8 | 26.5% | memory |
+| swish | `activation_opt_0_0` | 0.0018 | 36 | 0.064 | 28 | 27.7 | 26.4% | memory |
 
-**Total inference time (this stage)** ≈ **71.21 ms**
+**Total inference time (this stage)** ≈ **59.26 ms**
 
 #### PTL — decode kv=65536
 
 | Op | Kernel | Single ms | Calls/inf | Total ms | GFLOPS | GB/s | Eff% | Bound |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| paged_attention | `paged_attention_opt_gqa_single_token_sa` | 1.5092 | 36 | 54.330 | 662 | 82.7 | 78.8% | memory |
-| fc_up | `gemm_kernel` | 0.2559 | 36 | 9.211 | 393 | 102.3 | 97.5% | memory |
-| fc_down | `gemm_kernel` | 0.2555 | 36 | 9.197 | 394 | 102.5 | 97.6% | memory |
-| fc_gate | `gemm_kernel` | 0.2552 | 36 | 9.187 | 394 | 102.6 | 97.7% | memory |
-| lm_head | `gemm_kernel` | 6.0300 | 1 | 6.030 | 206 | 104.9 | 99.9% | memory |
-| fc_qkv | `gemm_kernel` | 0.1292 | 36 | 4.652 | 390 | 101.3 | 96.5% | memory |
-| paged_attention | `paged_attention_opt_single_token_finalization_sa` | 0.1050 | 36 | 3.779 | 662 | 82.7 | 78.8% | memory |
-| fc_o | `gemm_kernel` | 0.0873 | 36 | 3.141 | 385 | 100.1 | 95.3% | memory |
-| rmsnorm | `rms_gpu_bfyx_opt_0_0` | 0.0031 | 72 | 0.225 | 10 | 5.2 | 5.0% | memory |
-| add | `eltwise_simple_vload8_0_0` | 0.0019 | 72 | 0.139 | 2 | 12.7 | 12.1% | memory |
-| multiply | `eltwise_simple_vload8_0_0` | 0.0029 | 36 | 0.104 | 4 | 25.6 | 24.3% | memory |
-| q_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.087 | 14 | 6.8 | 6.5% | memory |
+| paged_attention | `paged_attention_opt_gqa_single_token_sa` | 1.5367 | 36 | 55.321 | 651 | 81.4 | 77.5% | memory |
+| fc_down | `gemm_kernel` | 0.2557 | 36 | 9.204 | 394 | 102.4 | 97.5% | memory |
+| fc_gate | `gemm_kernel` | 0.2547 | 36 | 9.170 | 395 | 102.8 | 97.9% | memory |
+| lm_head | `gemm_kernel` | 6.0312 | 1 | 6.031 | 206 | 104.8 | 99.9% | memory |
+| fc_qkv | `gemm_kernel` | 0.1292 | 36 | 4.649 | 390 | 101.4 | 96.6% | memory |
+| paged_attention | `paged_attention_opt_single_token_finalization_sa` | 0.1053 | 36 | 3.791 | 651 | 81.4 | 77.5% | memory |
+| rmsnorm | `rms_gpu_bfyx_opt_0_0` | 0.0031 | 72 | 0.226 | 10 | 5.2 | 5.0% | memory |
+| add | `eltwise_simple_vload8_0_0` | 0.0019 | 72 | 0.140 | 2 | 12.7 | 12.1% | memory |
+| multiply | `eltwise_simple_vload8_0_0` | 0.0029 | 36 | 0.103 | 4 | 25.8 | 24.5% | memory |
+| q_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.088 | 13 | 6.7 | 6.4% | memory |
 | k_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.086 | 3 | 1.7 | 1.6% | memory |
-| rope_q | `rope_opt` | 0.0021 | 36 | 0.077 | 19 | 7.7 | 7.3% | memory |
+| rope_q | `rope_opt` | 0.0022 | 36 | 0.078 | 19 | 7.6 | 7.2% | memory |
 | rope_k | `rope_opt` | 0.0020 | 36 | 0.071 | 5 | 2.1 | 2.0% | memory |
-| swish | `activation_opt_0_0` | 0.0018 | 36 | 0.064 | 28 | 27.8 | 26.5% | memory |
+| swish | `activation_opt_0_0` | 0.0018 | 36 | 0.064 | 28 | 27.7 | 26.4% | memory |
 
-**Total inference time (this stage)** ≈ **100.38 ms**
+**Total inference time (this stage)** ≈ **89.02 ms**
 
 #### PTL — decode kv=131072
 
 | Op | Kernel | Single ms | Calls/inf | Total ms | GFLOPS | GB/s | Eff% | Bound |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| paged_attention | `paged_attention_opt_gqa_single_token_sa` | 3.0534 | 36 | 109.921 | 660 | 82.5 | 78.5% | memory |
-| fc_up | `gemm_kernel` | 0.2559 | 36 | 9.211 | 393 | 102.3 | 97.5% | memory |
-| fc_down | `gemm_kernel` | 0.2555 | 36 | 9.197 | 394 | 102.5 | 97.6% | memory |
-| fc_gate | `gemm_kernel` | 0.2552 | 36 | 9.187 | 394 | 102.6 | 97.7% | memory |
-| paged_attention | `paged_attention_opt_single_token_finalization_sa` | 0.1949 | 36 | 7.017 | 660 | 82.5 | 78.5% | memory |
-| lm_head | `gemm_kernel` | 6.0300 | 1 | 6.030 | 206 | 104.9 | 99.9% | memory |
-| fc_qkv | `gemm_kernel` | 0.1292 | 36 | 4.652 | 390 | 101.3 | 96.5% | memory |
-| fc_o | `gemm_kernel` | 0.0873 | 36 | 3.141 | 385 | 100.1 | 95.3% | memory |
-| rmsnorm | `rms_gpu_bfyx_opt_0_0` | 0.0031 | 72 | 0.225 | 10 | 5.2 | 5.0% | memory |
-| add | `eltwise_simple_vload8_0_0` | 0.0019 | 72 | 0.139 | 2 | 12.7 | 12.1% | memory |
-| multiply | `eltwise_simple_vload8_0_0` | 0.0029 | 36 | 0.104 | 4 | 25.6 | 24.3% | memory |
-| q_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.087 | 14 | 6.8 | 6.5% | memory |
+| paged_attention | `paged_attention_opt_gqa_single_token_sa` | 4.4387 | 36 | 159.794 | 459 | 57.4 | 54.7% | memory |
+| fc_down | `gemm_kernel` | 0.2557 | 36 | 9.204 | 394 | 102.4 | 97.5% | memory |
+| fc_gate | `gemm_kernel` | 0.2547 | 36 | 9.170 | 395 | 102.8 | 97.9% | memory |
+| paged_attention | `paged_attention_opt_single_token_finalization_sa` | 0.2238 | 36 | 8.058 | 459 | 57.4 | 54.7% | memory |
+| lm_head | `gemm_kernel` | 6.0312 | 1 | 6.031 | 206 | 104.8 | 99.9% | memory |
+| fc_qkv | `gemm_kernel` | 0.1292 | 36 | 4.649 | 390 | 101.4 | 96.6% | memory |
+| rmsnorm | `rms_gpu_bfyx_opt_0_0` | 0.0031 | 72 | 0.226 | 10 | 5.2 | 5.0% | memory |
+| add | `eltwise_simple_vload8_0_0` | 0.0019 | 72 | 0.140 | 2 | 12.7 | 12.1% | memory |
+| multiply | `eltwise_simple_vload8_0_0` | 0.0029 | 36 | 0.103 | 4 | 25.8 | 24.5% | memory |
+| q_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.088 | 13 | 6.7 | 6.4% | memory |
 | k_norm | `rms_gpu_bfyx_opt_0_0` | 0.0024 | 36 | 0.086 | 3 | 1.7 | 1.6% | memory |
-| rope_q | `rope_opt` | 0.0021 | 36 | 0.077 | 19 | 7.7 | 7.3% | memory |
+| rope_q | `rope_opt` | 0.0022 | 36 | 0.078 | 19 | 7.6 | 7.2% | memory |
 | rope_k | `rope_opt` | 0.0020 | 36 | 0.071 | 5 | 2.1 | 2.0% | memory |
-| swish | `activation_opt_0_0` | 0.0018 | 36 | 0.064 | 28 | 27.8 | 26.5% | memory |
+| swish | `activation_opt_0_0` | 0.0018 | 36 | 0.064 | 28 | 27.7 | 26.4% | memory |
 
-**Total inference time (this stage)** ≈ **159.21 ms**
+**Total inference time (this stage)** ≈ **197.76 ms**
 
 ### PREFILL — per-S-size (compute-bound uses INT8 XMX peak = 118.0 TOPS)
 
@@ -495,108 +479,108 @@
 
 | Op | Kernel | Single ms | Calls/inf | Total ms | GFLOPS | GB/s | Eff% | Bound |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| fc_gate | `gemm_kernel` | 1.5820 | 36 | 56.953 | 60723 | 49.9 | 51.5% | compute |
-| fc_down | `gemm_kernel` | 1.5670 | 36 | 56.412 | 54162 | 44.5 | 45.9% | compute |
-| fc_up | `gemm_kernel` | 1.4895 | 36 | 53.621 | 64865 | 53.3 | 55.0% | compute |
-| fc_qkv | `gemm_kernel` | 0.7302 | 36 | 26.288 | 62099 | 56.1 | 52.6% | compute |
-| paged_attention | `sdpa_micro_prefill_sa` | 0.6196 | 36 | 22.307 | 25364 | 49.5 | 21.5% | compute |
-| fc_o | `gemm_kernel` | 0.5026 | 36 | 18.094 | 56804 | 55.9 | 48.2% | compute |
-| fc_down | `dynamic_quantize_gpu_opt_0_0` | 0.3362 | 36 | 12.102 | 54162 | 44.5 | 45.9% | compute |
-| fc_gate | `dynamic_quantize_gpu_opt_0_0` | 0.1155 | 36 | 4.158 | 60723 | 49.9 | 51.5% | compute |
-| fc_o | `dynamic_quantize_gpu_opt_0_0` | 0.1023 | 36 | 3.682 | 56804 | 55.9 | 48.2% | compute |
-| fc_qkv | `dynamic_quantize_gpu_opt_0_0` | 0.0997 | 36 | 3.590 | 62099 | 56.1 | 52.6% | compute |
-| fc_up | `dynamic_quantize_gpu_opt_0_0` | 0.0996 | 36 | 3.587 | 64865 | 53.3 | 55.0% | compute |
-| paged_attention | `pa_kv_cache_update_ref_sa` | 0.0577 | 36 | 2.077 | 25364 | 49.5 | 21.5% | compute |
+| fc_down | `gemm_kernel` | 1.6040 | 36 | 57.743 | 52412 | 43.1 | 44.4% | compute |
+| fc_gate | `gemm_kernel` | 1.4925 | 36 | 53.729 | 64661 | 53.1 | 54.8% | compute |
+| fc_up | `gemm_kernel` | 1.4886 | 36 | 53.591 | 64911 | 53.3 | 55.0% | compute |
+| fc_qkv | `gemm_kernel` | 0.7497 | 36 | 26.990 | 60396 | 54.5 | 51.2% | compute |
+| paged_attention | `sdpa_micro_prefill_sa` | 0.6436 | 36 | 23.169 | 23622 | 46.1 | 20.0% | compute |
+| fc_o | `gemm_kernel` | 0.5047 | 36 | 18.169 | 56966 | 56.1 | 48.3% | compute |
+| fc_down | `dynamic_quantize_gpu_opt_0_0` | 0.3628 | 36 | 13.059 | 52412 | 43.1 | 44.4% | compute |
+| fc_qkv | `dynamic_quantize_gpu_opt_0_0` | 0.1036 | 36 | 3.731 | 60396 | 54.5 | 51.2% | compute |
+| fc_gate | `dynamic_quantize_gpu_opt_0_0` | 0.1017 | 36 | 3.661 | 64661 | 53.1 | 54.8% | compute |
+| fc_up | `dynamic_quantize_gpu_opt_0_0` | 0.0994 | 36 | 3.578 | 64911 | 53.3 | 55.0% | compute |
+| fc_o | `dynamic_quantize_gpu_opt_0_0` | 0.0985 | 36 | 3.545 | 56966 | 56.1 | 48.3% | compute |
+| paged_attention | `pa_kv_cache_update_ref_sa` | 0.0837 | 36 | 3.013 | 23622 | 46.1 | 20.0% | compute |
 
-**Total inference time (this stage)** ≈ **262.87 ms**
+**Total inference time (this stage)** ≈ **263.98 ms**
 
 #### PTL — prefill S=2048
 
 | Op | Kernel | Single ms | Calls/inf | Total ms | GFLOPS | GB/s | Eff% | Bound |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| fc_down | `gemm_kernel` | 2.9729 | 36 | 107.026 | 58029 | 33.3 | 49.2% | compute |
-| fc_gate | `gemm_kernel` | 2.8141 | 36 | 101.307 | 68513 | 39.3 | 58.1% | compute |
-| fc_up | `gemm_kernel` | 2.8007 | 36 | 100.826 | 68800 | 39.5 | 58.3% | compute |
-| paged_attention | `sdpa_micro_prefill_sa` | 2.2826 | 36 | 82.173 | 28615 | 27.9 | 24.3% | compute |
-| fc_qkv | `gemm_kernel` | 1.4281 | 36 | 51.412 | 62346 | 40.8 | 52.9% | compute |
-| fc_o | `gemm_kernel` | 0.9868 | 36 | 35.524 | 56732 | 41.8 | 48.1% | compute |
-| fc_down | `dynamic_quantize_gpu_opt_0_0` | 0.5797 | 36 | 20.871 | 58029 | 33.3 | 49.2% | compute |
-| fc_qkv | `dynamic_quantize_gpu_opt_0_0` | 0.2252 | 36 | 8.108 | 62346 | 40.8 | 52.9% | compute |
-| fc_o | `dynamic_quantize_gpu_opt_0_0` | 0.2245 | 36 | 8.083 | 56732 | 41.8 | 48.1% | compute |
-| fc_up | `dynamic_quantize_gpu_opt_0_0` | 0.1958 | 36 | 7.048 | 68800 | 39.5 | 58.3% | compute |
-| fc_gate | `dynamic_quantize_gpu_opt_0_0` | 0.1950 | 36 | 7.019 | 68513 | 39.3 | 58.1% | compute |
+| fc_down | `gemm_kernel` | 3.0258 | 36 | 108.927 | 56390 | 32.3 | 47.8% | compute |
+| fc_up | `gemm_kernel` | 2.7906 | 36 | 100.462 | 68875 | 39.5 | 58.4% | compute |
+| fc_gate | `gemm_kernel` | 2.7887 | 36 | 100.395 | 68957 | 39.5 | 58.5% | compute |
+| paged_attention | `sdpa_micro_prefill_sa` | 2.3300 | 36 | 83.879 | 28050 | 27.4 | 23.8% | compute |
+| fc_qkv | `gemm_kernel` | 1.4189 | 36 | 51.081 | 63293 | 41.4 | 53.7% | compute |
+| fc_o | `gemm_kernel` | 1.0012 | 36 | 36.043 | 55946 | 41.2 | 47.4% | compute |
+| fc_down | `dynamic_quantize_gpu_opt_0_0` | 0.6302 | 36 | 22.687 | 56390 | 32.3 | 47.8% | compute |
+| fc_o | `dynamic_quantize_gpu_opt_0_0` | 0.2271 | 36 | 8.176 | 55946 | 41.2 | 47.4% | compute |
+| fc_qkv | `dynamic_quantize_gpu_opt_0_0` | 0.2097 | 36 | 7.548 | 63293 | 41.4 | 53.7% | compute |
+| fc_up | `dynamic_quantize_gpu_opt_0_0` | 0.2026 | 36 | 7.295 | 68875 | 39.5 | 58.4% | compute |
+| fc_gate | `dynamic_quantize_gpu_opt_0_0` | 0.2009 | 36 | 7.233 | 68957 | 39.5 | 58.5% | compute |
 
-**Total inference time (this stage)** ≈ **529.40 ms**
+**Total inference time (this stage)** ≈ **533.73 ms**
 
 #### PTL — prefill S=4096
 
 | Op | Kernel | Single ms | Calls/inf | Total ms | GFLOPS | GB/s | Eff% | Bound |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| paged_attention | `sdpa_micro_prefill_sa` | 8.8177 | 36 | 317.437 | 30378 | 14.8 | 25.8% | compute |
-| fc_down | `gemm_kernel` | 5.7702 | 36 | 207.728 | 59250 | 26.6 | 50.2% | compute |
-| fc_gate | `gemm_kernel` | 5.5674 | 36 | 200.426 | 69104 | 31.1 | 58.6% | compute |
-| fc_up | `gemm_kernel` | 5.4587 | 36 | 196.514 | 70524 | 31.7 | 59.8% | compute |
-| fc_qkv | `gemm_kernel` | 2.7573 | 36 | 99.262 | 65633 | 34.8 | 55.6% | compute |
-| fc_o | `gemm_kernel` | 1.8688 | 36 | 67.278 | 60924 | 37.3 | 51.6% | compute |
-| fc_down | `dynamic_quantize_gpu_opt_0_0` | 1.1887 | 36 | 42.793 | 59250 | 26.6 | 50.2% | compute |
-| fc_gate | `dynamic_quantize_gpu_opt_0_0` | 0.3992 | 36 | 14.371 | 69104 | 31.1 | 58.6% | compute |
-| fc_up | `dynamic_quantize_gpu_opt_0_0` | 0.3877 | 36 | 13.958 | 70524 | 31.7 | 59.8% | compute |
-| fc_o | `dynamic_quantize_gpu_opt_0_0` | 0.3871 | 36 | 13.935 | 60924 | 37.3 | 51.6% | compute |
-| fc_qkv | `dynamic_quantize_gpu_opt_0_0` | 0.3838 | 36 | 13.817 | 65633 | 34.8 | 55.6% | compute |
+| paged_attention | `sdpa_micro_prefill_sa` | 8.8175 | 36 | 317.431 | 30370 | 14.8 | 25.7% | compute |
+| fc_down | `gemm_kernel` | 5.8378 | 36 | 210.160 | 57470 | 25.8 | 48.7% | compute |
+| fc_gate | `gemm_kernel` | 5.5901 | 36 | 201.242 | 68796 | 30.9 | 58.3% | compute |
+| fc_up | `gemm_kernel` | 5.4926 | 36 | 197.733 | 70113 | 31.5 | 59.4% | compute |
+| fc_qkv | `gemm_kernel` | 2.7575 | 36 | 99.268 | 65536 | 34.8 | 55.6% | compute |
+| fc_o | `gemm_kernel` | 1.8748 | 36 | 67.493 | 60291 | 36.9 | 51.1% | compute |
+| fc_down | `dynamic_quantize_gpu_opt_0_0` | 1.3367 | 36 | 48.122 | 57470 | 25.8 | 48.7% | compute |
+| fc_o | `dynamic_quantize_gpu_opt_0_0` | 0.4048 | 36 | 14.573 | 60291 | 36.9 | 51.1% | compute |
+| fc_gate | `dynamic_quantize_gpu_opt_0_0` | 0.4033 | 36 | 14.518 | 68796 | 30.9 | 58.3% | compute |
+| fc_qkv | `dynamic_quantize_gpu_opt_0_0` | 0.3883 | 36 | 13.978 | 65536 | 34.8 | 55.6% | compute |
+| fc_up | `dynamic_quantize_gpu_opt_0_0` | 0.3882 | 36 | 13.974 | 70113 | 31.5 | 59.4% | compute |
 
-**Total inference time (this stage)** ≈ **1187.52 ms**
+**Total inference time (this stage)** ≈ **1198.49 ms**
 
 #### PTL — prefill S=8192
 
 | Op | Kernel | Single ms | Calls/inf | Total ms | GFLOPS | GB/s | Eff% | Bound |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| paged_attention | `sdpa_micro_prefill_sa` | 34.8375 | 36 | 1254.150 | 31097 | 7.6 | 26.4% | compute |
-| fc_down | `gemm_kernel` | 11.4309 | 36 | 411.512 | 57475 | 22.3 | 48.7% | compute |
-| fc_up | `gemm_kernel` | 11.0415 | 36 | 397.495 | 69336 | 26.9 | 58.8% | compute |
-| fc_gate | `gemm_kernel` | 11.0064 | 36 | 396.232 | 69573 | 27.0 | 59.0% | compute |
-| fc_qkv | `gemm_kernel` | 5.4634 | 36 | 196.682 | 66134 | 31.0 | 56.1% | compute |
-| fc_o | `gemm_kernel` | 3.7608 | 36 | 135.387 | 59888 | 33.0 | 50.8% | compute |
-| fc_down | `dynamic_quantize_gpu_opt_0_0` | 2.9169 | 36 | 105.009 | 57475 | 22.3 | 48.7% | compute |
-| fc_up | `dynamic_quantize_gpu_opt_0_0` | 0.8517 | 36 | 30.662 | 69336 | 26.9 | 58.8% | compute |
-| fc_gate | `dynamic_quantize_gpu_opt_0_0` | 0.8463 | 36 | 30.468 | 69573 | 27.0 | 59.0% | compute |
-| fc_o | `dynamic_quantize_gpu_opt_0_0` | 0.8291 | 36 | 29.848 | 59888 | 33.0 | 50.8% | compute |
-| fc_qkv | `dynamic_quantize_gpu_opt_0_0` | 0.7712 | 36 | 27.764 | 66134 | 31.0 | 56.1% | compute |
+| paged_attention | `sdpa_micro_prefill_sa` | 34.8601 | 36 | 1254.965 | 31092 | 7.6 | 26.4% | compute |
+| fc_down | `gemm_kernel` | 11.3879 | 36 | 409.965 | 57735 | 22.4 | 48.9% | compute |
+| fc_gate | `gemm_kernel` | 11.1352 | 36 | 400.866 | 68792 | 26.7 | 58.3% | compute |
+| fc_up | `gemm_kernel` | 10.7386 | 36 | 386.591 | 71355 | 27.7 | 60.5% | compute |
+| fc_qkv | `gemm_kernel` | 5.7864 | 36 | 208.312 | 62180 | 29.2 | 52.7% | compute |
+| fc_o | `gemm_kernel` | 3.8241 | 36 | 137.669 | 58238 | 32.0 | 49.4% | compute |
+| fc_down | `dynamic_quantize_gpu_opt_0_0` | 2.8951 | 36 | 104.224 | 57735 | 22.4 | 48.9% | compute |
+| fc_o | `dynamic_quantize_gpu_opt_0_0` | 0.8957 | 36 | 32.247 | 58238 | 32.0 | 49.4% | compute |
+| fc_gate | `dynamic_quantize_gpu_opt_0_0` | 0.8521 | 36 | 30.677 | 68792 | 26.7 | 58.3% | compute |
+| fc_qkv | `dynamic_quantize_gpu_opt_0_0` | 0.8446 | 36 | 30.404 | 62180 | 29.2 | 52.7% | compute |
+| fc_up | `dynamic_quantize_gpu_opt_0_0` | 0.8182 | 36 | 29.455 | 71355 | 27.7 | 60.5% | compute |
 
-**Total inference time (this stage)** ≈ **3015.21 ms**
+**Total inference time (this stage)** ≈ **3025.37 ms**
 
 #### PTL — prefill S=16384
 
 | Op | Kernel | Single ms | Calls/inf | Total ms | GFLOPS | GB/s | Eff% | Bound |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| paged_attention | `sdpa_micro_prefill_sa` | 138.5833 | 36 | 4988.998 | 31501 | 3.8 | 26.7% | compute |
-| fc_down | `gemm_kernel` | 22.5891 | 36 | 813.206 | 58775 | 21.0 | 49.8% | compute |
-| fc_gate | `gemm_kernel` | 22.1070 | 36 | 795.851 | 68562 | 24.4 | 58.1% | compute |
-| fc_up | `gemm_kernel` | 21.6913 | 36 | 780.887 | 69883 | 24.9 | 59.2% | compute |
-| fc_qkv | `gemm_kernel` | 11.2362 | 36 | 404.502 | 62624 | 27.4 | 53.1% | compute |
-| fc_o | `gemm_kernel` | 7.4059 | 36 | 266.611 | 58148 | 30.2 | 49.3% | compute |
-| fc_down | `dynamic_quantize_gpu_opt_0_0` | 5.4717 | 36 | 196.981 | 58775 | 21.0 | 49.8% | compute |
-| fc_o | `dynamic_quantize_gpu_opt_0_0` | 2.0486 | 36 | 73.749 | 58148 | 30.2 | 49.3% | compute |
-| fc_gate | `dynamic_quantize_gpu_opt_0_0` | 1.9482 | 36 | 70.136 | 68562 | 24.4 | 58.1% | compute |
-| fc_qkv | `dynamic_quantize_gpu_opt_0_0` | 1.9319 | 36 | 69.547 | 62624 | 27.4 | 53.1% | compute |
-| fc_up | `dynamic_quantize_gpu_opt_0_0` | 1.9091 | 36 | 68.726 | 69883 | 24.9 | 59.2% | compute |
+| paged_attention | `sdpa_micro_prefill_sa` | 138.8725 | 36 | 4999.412 | 31438 | 3.8 | 26.7% | compute |
+| fc_down | `gemm_kernel` | 22.5206 | 36 | 810.743 | 59115 | 21.1 | 50.1% | compute |
+| fc_gate | `gemm_kernel` | 22.0057 | 36 | 792.204 | 68877 | 24.6 | 58.4% | compute |
+| fc_up | `gemm_kernel` | 21.6280 | 36 | 778.609 | 70087 | 25.0 | 59.4% | compute |
+| fc_qkv | `gemm_kernel` | 11.1694 | 36 | 402.099 | 62922 | 27.6 | 53.3% | compute |
+| fc_o | `gemm_kernel` | 7.4975 | 36 | 269.910 | 57579 | 29.9 | 48.8% | compute |
+| fc_down | `dynamic_quantize_gpu_opt_0_0` | 5.3787 | 36 | 193.635 | 59115 | 21.1 | 50.1% | compute |
+| fc_o | `dynamic_quantize_gpu_opt_0_0` | 2.0504 | 36 | 73.814 | 57579 | 29.9 | 48.8% | compute |
+| fc_gate | `dynamic_quantize_gpu_opt_0_0` | 1.9396 | 36 | 69.826 | 68877 | 24.6 | 58.4% | compute |
+| fc_qkv | `dynamic_quantize_gpu_opt_0_0` | 1.9363 | 36 | 69.707 | 62922 | 27.6 | 53.3% | compute |
+| fc_up | `dynamic_quantize_gpu_opt_0_0` | 1.9038 | 36 | 68.537 | 70087 | 25.0 | 59.4% | compute |
 
-**Total inference time (this stage)** ≈ **8529.20 ms**
+**Total inference time (this stage)** ≈ **8528.50 ms**
 
 #### PTL — prefill S=32768
 
 | Op | Kernel | Single ms | Calls/inf | Total ms | GFLOPS | GB/s | Eff% | Bound |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
-| paged_attention | `sdpa_micro_prefill_sa` | 671.5162 | 36 | 24174.582 | 26116 | 1.6 | 22.1% | compute |
-| fc_up | `gemm_kernel` | 55.7676 | 36 | 2007.634 | 55119 | 18.8 | 46.7% | compute |
-| fc_down | `gemm_kernel` | 46.0086 | 36 | 1656.309 | 58286 | 19.9 | 49.4% | compute |
-| fc_gate | `gemm_kernel` | 43.9443 | 36 | 1581.995 | 69099 | 23.6 | 58.6% | compute |
-| fc_qkv | `gemm_kernel` | 21.6273 | 36 | 778.583 | 65004 | 27.5 | 55.1% | compute |
-| fc_o | `gemm_kernel` | 14.3138 | 36 | 515.297 | 60882 | 30.7 | 51.6% | compute |
-| fc_down | `dynamic_quantize_gpu_opt_0_0` | 10.5836 | 36 | 381.010 | 58286 | 19.9 | 49.4% | compute |
-| fc_up | `dynamic_quantize_gpu_opt_0_0` | 4.0767 | 36 | 146.761 | 55119 | 18.8 | 46.7% | compute |
-| fc_gate | `dynamic_quantize_gpu_opt_0_0` | 3.7922 | 36 | 136.521 | 69099 | 23.6 | 58.6% | compute |
-| fc_o | `dynamic_quantize_gpu_opt_0_0` | 3.7458 | 36 | 134.850 | 60882 | 30.7 | 51.6% | compute |
-| fc_qkv | `dynamic_quantize_gpu_opt_0_0` | 3.7446 | 36 | 134.807 | 65004 | 27.5 | 55.1% | compute |
+| paged_attention | `sdpa_micro_prefill_sa` | 693.1064 | 36 | 24951.832 | 25305 | 1.5 | 21.5% | compute |
+| fc_down | `gemm_kernel` | 50.0179 | 36 | 1800.645 | 54147 | 18.5 | 45.9% | compute |
+| fc_gate | `gemm_kernel` | 43.8858 | 36 | 1579.888 | 69157 | 23.6 | 58.6% | compute |
+| fc_up | `gemm_kernel` | 43.8781 | 36 | 1579.613 | 69231 | 23.6 | 58.7% | compute |
+| fc_qkv | `gemm_kernel` | 21.6138 | 36 | 778.097 | 64983 | 27.4 | 55.1% | compute |
+| fc_o | `gemm_kernel` | 14.1071 | 36 | 507.854 | 61641 | 31.1 | 52.3% | compute |
+| fc_down | `dynamic_quantize_gpu_opt_0_0` | 10.8997 | 36 | 392.390 | 54147 | 18.5 | 45.9% | compute |
+| fc_gate | `dynamic_quantize_gpu_opt_0_0` | 3.8107 | 36 | 137.187 | 69157 | 23.6 | 58.6% | compute |
+| fc_up | `dynamic_quantize_gpu_opt_0_0` | 3.7674 | 36 | 135.626 | 69231 | 23.6 | 58.7% | compute |
+| fc_qkv | `dynamic_quantize_gpu_opt_0_0` | 3.7663 | 36 | 135.585 | 64983 | 27.4 | 55.1% | compute |
+| fc_o | `dynamic_quantize_gpu_opt_0_0` | 3.7304 | 36 | 134.294 | 61641 | 31.1 | 52.3% | compute |
 
-**Total inference time (this stage)** ≈ **31648.35 ms**
+**Total inference time (this stage)** ≈ **32133.01 ms**
 

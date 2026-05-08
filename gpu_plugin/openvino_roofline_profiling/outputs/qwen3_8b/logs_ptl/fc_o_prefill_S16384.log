@@ -29,11 +29,11 @@ M=16384 K=4096 N=4096 group_size=128 iters=20 warmup=5 bufs=4 flush_mb=64
 Dynamic quantization: ON (group_size=128)
 Input tensors allocated in USM_DEVICE (VRAM) via RemoteContext.
 L2/L3 flush kernel: 64 MB f16 Relu between every FC infer.
-Median_ms: 8.9613
-Min_ms: 8.7637
-Avg_ms: 9.35799
-GFLOPS: 61347.8
-BW_GBs: 30.9203
+Median_ms: 9.2338
+Min_ms: 8.9598
+Avg_ms: 9.62305
+GFLOPS: 59537.3
+BW_GBs: 30.0078
 AI: 1984.06
 WeightBytes: 8.38861e+06
 TotalBytes: 2.77086e+08
@@ -43,14 +43,14 @@ Total Enqueues: 110
 
 Device Performance Timing Results for Intel(R) Arc(TM) B390 GPU (96CUs, 2400MHz):
 
-Total Time (ns): 279615487
+Total Time (ns): 282135903
 
                                    Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
-           activation_opt_477147924471330069_0_0,     26,      35965093,   12.86%,       1383272,       1231666,       2112395
-                      clEnqueueMemFillINTEL( D ),      3,        302812,    0.11%,        100937,         13854,        273125
-                      clEnqueueMemFillINTEL( H ),      5,       6940727,    2.48%,       1388145,         11562,       2407708
-dynamic_quantize_gpu_opt_5790446330686255747_0_0,     25,      51214886,   18.32%,       2048595,       1550625,       3372187
-                                     gemm_kernel,     25,     185146344,   66.21%,       7405853,       6995937,       8719687
-            reorder_data_8022986047467355601_0_0,      1,         45625,    0.02%,         45625,         45625,         45625
+           activation_opt_477147924471330069_0_0,     26,      36122386,   12.80%,       1389322,       1226250,       2061250
+                      clEnqueueMemFillINTEL( D ),      3,        315520,    0.11%,        105173,         11875,        287395
+                      clEnqueueMemFillINTEL( H ),      5,       6957706,    2.47%,       1391541,         11875,       2412187
+dynamic_quantize_gpu_opt_5790446330686255747_0_0,     25,      51259781,   18.17%,       2050391,       1415104,       3295729
+                                     gemm_kernel,     25,     187437385,   66.44%,       7497495,       7154270,       8716770
+            reorder_data_8022986047467355601_0_0,      1,         43125,    0.02%,         43125,         43125,         43125
 CLIntercept is shutting down...
 ... shutdown complete.
