@@ -53,11 +53,11 @@ When profile roofline, first require to understand below prequistites:
         k: [num_blocks, num_kv_heads, head_size, block_size(16)]
         v: [num_blocks, num_kv_heads, block_size(16), head_size]
   - SDPA contains 3 implements, you need ask user to provide which one to be used, default is PagedAttention:
-        - PagedAttention: it also has 2 different lauguage implement, one is opencl + micro_kernel, another is cm kernel. Default is opencl + micro_kernel implement, but if user want to use cm kernel implement, please make sure the target platform support cm kernel, Windows should supporte but Linux need add CM dependencies
+        - PagedAttention: it also has 2 different lauguage implement, one is opencl + micro_kernel, another is cm kernel. Default is opencl + micro_kernel implement, but if user want to use cm kernel implement, please make sure the target platform support cm kernel, Windows should support but Linux need add CM dependencies: export CM_FE_DIR=<path of libclangFEWrapper.so>
         - SDPA kernels: it is opencl + micro_kernel implement
         - vlsdpa kernels: it cm kernel implement.
   - FC_Q, FC_K and FC_V will be fused into one gemm kernel: FC_QKV
-  - If didn't find cliloder, you need download it from 
+  - If didn't find cliloder, you need download it from https://github.com/intel/opencl-intercept-layer/releases/tag/v3.0.6
 
 Then do proofline analysis with below steps:
 1. **First top priority needed**:
@@ -214,6 +214,7 @@ Then do proofline analysis with below steps:
     - SUMMARY should contain a clean kernel breakdown
     - SUMMARY should contain series of table to show: ops name, kernel name, single latency, calling times, total latency, achieved FLOPS, achieved memory bandwidth, and efficiency percentage relative to the theoretical roofline, memory bound or compute bound, for each significant op in prefill and decode separately, and one table list one sequence of input token size for prefill or decode. For example, theret are 1024, 2048, 4096, 8192, 16K, 32K, 64K, 128K input token size for prefill, then we should have 8 tables for prefill performance metrics and roofline analysis, and each table is for one input token size. And also we should have 8 tables for decode performance metrics and roofline analysis, and each table is for one input token size.
     - The SUMMARY contains 8 decode + 8 prefill per-kernel tables (op / kernel / single ms / calls / total ms / GFLOPS / GB/s / Eff% / bound), bottleneck breakdowns, top optimization levers, reproduction commands, and caveats
+    - The SUMMARY should apply SUMMARY_TEMPLATE.md to be generated.
     - Update all scripts for roofline analysis in the "utils" folder, and document how to use them for future reference.
     - Put all logs data into a database or structured format for easy querying and analysis in the future, and also can help us to track the performance metrics over time and across different models and GPU architectures.
     - Remove data out of date, such as old performance metrics, and make sure all the information in "SUMMARY_<model_name>_<date>.md" is accurate and up to date.

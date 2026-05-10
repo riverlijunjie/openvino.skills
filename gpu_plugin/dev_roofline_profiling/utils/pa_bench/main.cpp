@@ -265,6 +265,16 @@ int main(int argc, char* argv[]) {
 
     // For decode: past_lens = S_kv, new tokens = S_q, total_context = S_kv + S_q
     // For prefill: S_q = S (input_len), S_kv = 0 (no past), total_context = S_q
+    //   Force S_kv=0 for prefill so that:
+    //   1. past_lens[0] = 0 → GPU plugin detects PREFILL stage (not MIXED)
+    //   2. KV cache blocks match S_q (no oversized allocation)
+    //   3. max_context_len = S_q (correct partitioning)
+    if (mode == "prefill") {
+        if (S_kv != 0) {
+            std::cout << "[prefill] Overriding S_kv from " << S_kv << " to 0 (no past context for first-time prefill)" << std::endl;
+            S_kv = 0;
+        }
+    }
     int total_context = S_kv + S_q;
     int num_blocks = (total_context + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
@@ -366,10 +376,15 @@ int main(int argc, char* argv[]) {
             req.set_input_tensor(4, t);
         }
 
-        // past_lens = [S_kv]
+        // past_lens = [past_context_length]:
+        //   decode:  past_lens[0] = S_kv (existing KV tokens before this decode step)
+        //   prefill: past_lens[0] = 0    (first-time prefill: no past context)
+        // When past_lens[0] != 0 AND query_tokens > batch_seqs, the GPU plugin
+        // detects MIXED stage (not PREFILL), causing it to dispatch
+        // sdpa_micro__generate instead of sdpa_micro__prefill.
         {
             auto t = Tensor(element::i32, Shape{1});
-            t.data<int32_t>()[0] = S_kv;
+            t.data<int32_t>()[0] = (mode == "prefill") ? 0 : S_kv;
             req.set_input_tensor(5, t);
         }
         // subsequence_begins = [0, S_q]
