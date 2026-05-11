@@ -1,0 +1,61 @@
+{
+  "title": "f'# {model_name} — Per-token-size Kernel Tables'",
+  "variables": {
+    "NL_F": "cfg['num_full_attention_layers']",
+    "NL_L": "cfg['num_linear_attention_layers']",
+    "NL": "cfg['num_hidden_layers']",
+    "H": "cfg['hidden_size']",
+    "NH": "cfg['num_attention_heads']",
+    "NKV": "cfg['num_key_value_heads']",
+    "HD": "cfg['head_dim']",
+    "I": "cfg['moe_intermediate_size']",
+    "SI": "cfg['shared_expert_intermediate_size']",
+    "TK": "cfg['num_experts_per_tok']",
+    "VOCAB": "cfg['vocab_size']"
+  },
+  "modes": [
+    {
+      "name": "decode",
+      "heading": "'### DECODE — per kv (M=1)'",
+      "axis_name": "kv",
+      "axis_label": "kv",
+      "axis_values": [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072],
+      "peak_compute": "platform.get('fp16_xmx_tflops', 0) * 1000",
+      "specs": [
+        {"op": "'moe_3gemm_fused'", "log": "'moe_decode_M1'", "calls": "NL", "bytes": "(TK+1)*(3*H*I//2 + 3*(H//128)*I*2 + 3*(H//128)*I//2) + (H + (TK*I + SI)*2)*2", "flops": "(TK+1)*3*H*I*2", "bound": "'memory'"},
+        {"op": "'fc_qkv_full'", "log": "'fc_qkv_decode_M1'", "calls": "NL_F", "bytes": "fc_bytes_int4(1, H, 5120)", "flops": "fc_flops(1, H, 5120)", "bound": "'memory'"},
+        {"op": "'fc_o_full'", "log": "'fc_o_decode_M1'", "calls": "NL_F", "bytes": "fc_bytes_int4(1, NH*HD, H)", "flops": "fc_flops(1, NH*HD, H)", "bound": "'memory'"},
+        {"op": "'fc_linattn_proj'", "log": "'fc_linattn_proj_decode_M1'", "calls": "NL_L", "bytes": "fc_bytes_int4(1, H, 12288)", "flops": "fc_flops(1, H, 12288)", "bound": "'memory'"},
+        {"op": "'lm_head'", "log": "'lm_head_decode_M1'", "calls": "1", "bytes": "fc_bytes_int8(1, H, VOCAB)", "flops": "fc_flops(1, H, VOCAB)", "bound": "'memory'"},
+        {"op": "'paged_attention'", "log": "f'pa_decode_kv{kv}'", "calls": "NL_F", "bytes": "2*NKV*HD*kv", "flops": "2*NH*HD*kv*2", "bound": "'memory'"},
+        {"op": "'sdpa'", "log": "f'sdpa_decode_kv{kv}'", "calls": "NL_F", "bytes": "2*2*NKV*HD*kv", "flops": "2*NH*HD*kv*2", "bound": "'memory'"},
+        {"op": "'gated_delta_net'", "log": "'gdn_decode_T1'", "calls": "NL_L", "bytes": "32*128*128*4", "flops": "2*32*128*128", "bound": "'memory'"},
+        {"op": "'rmsnorm'", "log": "'so_rmsnorm_h2048_decode'", "calls": "2*NL", "bytes": "H*4", "flops": "H*8", "bound": "'memory'"},
+        {"op": "'rope_q'", "log": "'so_rope_q_decode'", "calls": "NL_F", "bytes": "NH*HD*4", "flops": "NH*HD*10", "bound": "'memory'"},
+        {"op": "'rope_k'", "log": "'so_rope_k_decode'", "calls": "NL_F", "bytes": "NKV*HD*4", "flops": "NKV*HD*10", "bound": "'memory'"},
+        {"op": "'q_norm'", "log": "'so_rmsnorm3d_qnorm_decode'", "calls": "NL_F", "bytes": "NH*HD*4", "flops": "NH*HD*8", "bound": "'memory'"},
+        {"op": "'k_norm'", "log": "'so_rmsnorm3d_knorm_decode'", "calls": "NL_F", "bytes": "NKV*HD*4", "flops": "NKV*HD*8", "bound": "'memory'"},
+        {"op": "'add'", "log": "'so_add_decode'", "calls": "2*NL", "bytes": "H*6", "flops": "H", "bound": "'memory'"}
+      ]
+    },
+    {
+      "name": "prefill",
+      "heading": "f\"### PREFILL — per S (compute-bound uses INT8 XMX peak = {platform.get('int8_xmx_tops', 0):.1f} TOPS)\"",
+      "axis_name": "S",
+      "axis_label": "S",
+      "axis_values": [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072],
+      "peak_compute": "platform.get('int8_xmx_tops', 0) * 1000",
+      "specs": [
+        {"op": "'moe_3gemm_fused'", "log": "f'moe_prefill_S{S}'", "calls": "NL", "bytes": "3*H*I*cfg['num_experts']//2 + S*(TK+1)*(3*H + 3*I)*2", "flops": "S*(TK+1)*3*H*I*2", "bound": "'compute'", "ignore_kernel_patterns": ["'^reorder_data'"]},
+        {"op": "'fc_qkv_full'", "log": "f'fc_qkv_prefill_S{S}'", "calls": "NL_F", "bytes": "fc_bytes_int8(S, H, 5120)", "flops": "fc_flops(S, H, 5120)", "bound": "'compute'"},
+        {"op": "'fc_o_full'", "log": "f'fc_o_prefill_S{S}'", "calls": "NL_F", "bytes": "fc_bytes_int8(S, NH*HD, H)", "flops": "fc_flops(S, NH*HD, H)", "bound": "'compute'"},
+        {"op": "'fc_linattn_proj'", "log": "f'fc_linattn_proj_prefill_S{S}'", "calls": "NL_L", "bytes": "fc_bytes_int8(S, H, 12288)", "flops": "fc_flops(S, H, 12288)", "bound": "'compute'"},
+        {"op": "'paged_attention'", "log": "f'pa_prefill_S{S}'", "calls": "NL_F", "bytes": "4*S*NH*HD*2", "flops": "4*S*S*NH*HD", "bound": "'compute'"},
+        {"op": "'sdpa'", "log": "f'sdpa_prefill_S{S}'", "calls": "NL_F", "bytes": "4*S*NH*HD*2", "flops": "4*S*S*NH*HD", "bound": "'compute'"},
+        {"op": "'gated_delta_net'", "log": "f'gdn_prefill_S{S}'", "calls": "NL_L", "bytes": "S*32*128*4", "flops": "S*32*128*128*2", "bound": "'compute'"},
+        {"op": "'rmsnorm'", "log": "f'so_rmsnorm_h2048_prefill_S{S}'", "calls": "2*NL", "bytes": "S*H*4", "flops": "S*H*8", "bound": "'memory'"},
+        {"op": "'rope_q'", "log": "f'so_rope_q_prefill_S{S}'", "calls": "NL_F", "bytes": "S*NH*HD*4", "flops": "S*NH*HD*10", "bound": "'memory'"}
+      ]
+    }
+  ]
+}

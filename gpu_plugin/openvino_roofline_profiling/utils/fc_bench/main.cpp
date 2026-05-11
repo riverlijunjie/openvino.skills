@@ -1,7 +1,7 @@
 /**
- * FC INT4 Benchmark — Qwen3-8B FullyConnected with INT4 weight compression
+ * FC Benchmark — FullyConnected with compressed (INT4/INT8) or plain FP16 weights
  *
- * Usage: ./fc_bench <M> <K> <N> [group_size=128] [iters=100] [warmup=10] [num_bufs=8] [precision=u4|u8] [flush_mb=64]
+ * Usage: ./fc_bench <M> <K> <N> [group_size=128] [iters=100] [warmup=10] [num_bufs=8] [precision=u4|u8|f16] [flush_mb=64]
  *   - Run separately for each (M,K,N) per SKILL.md requirement
  *   - Multiple input tensors rotate to avoid L3 reuse of activations
  *   - Between every infer, a large Relu on a `flush_mb`-MB USM_DEVICE buffer is
@@ -93,6 +93,28 @@ static std::shared_ptr<ov::Model> build_fc_deq_model(int M, int K, int N,
     return std::make_shared<Model>(OutputVector{matmul}, ParameterVector{input}, "fc_int4");
 }
 
+// Plain FP16 MatMul model — no weight compression, used when FC_QKV/FC_O are uncompressed.
+// Builds: Input(f16,[M,K]) × Constant(f16,[N,K]) → MatMul → Result
+static std::shared_ptr<ov::Model> build_fc_f16_model(int M, int K, int N) {
+    size_t sM = static_cast<size_t>(M);
+    size_t sK = static_cast<size_t>(K);
+    size_t sN = static_cast<size_t>(N);
+
+    auto input = std::make_shared<op::v0::Parameter>(element::f16, Shape{sM, sK});
+    input->set_friendly_name("input");
+
+    std::mt19937 rng(42);
+    std::vector<ov::float16> w_data(sN * sK);
+    for (auto& v : w_data) v = ov::float16(float(rng() % 200 - 100) / 1000.0f);
+    auto weights = op::v0::Constant::create(element::f16, Shape{sN, sK}, w_data.data());
+    weights->set_friendly_name("weights_f16");
+
+    auto matmul = std::make_shared<op::v0::MatMul>(input, weights, false, true);
+    matmul->set_friendly_name("fc_matmul");
+
+    return std::make_shared<Model>(OutputVector{matmul}, ParameterVector{input}, "fc_f16");
+}
+
 // L2/L3 cache flush model: Parameter(f16,[N]) -> Relu -> Result.
 // Running it reads+writes 2*N*2 bytes of VRAM, evicting any smaller cached data
 // (weights, scales) that the FC under test just loaded into on-die caches.
@@ -107,7 +129,7 @@ static std::shared_ptr<ov::Model> build_flush_model(size_t n_elems) {
 int main(int argc, char* argv[]) {
     if (argc < 4) {
         std::cerr << "Usage: " << argv[0]
-                  << " <M> <K> <N> [group_size=128] [iters=100] [warmup=10] [num_bufs=8] [precision=u4|u8] [flush_mb=64]"
+                  << " <M> <K> <N> [group_size=128] [iters=100] [warmup=10] [num_bufs=8] [precision=u4|u8|f16] [flush_mb=64]"
                   << std::endl;
         return 1;
     }
@@ -119,26 +141,37 @@ int main(int argc, char* argv[]) {
     int iters      = argc > 5 ? std::atoi(argv[5]) : 100;
     int warmup     = argc > 6 ? std::atoi(argv[6]) : 10;
     int num_bufs   = argc > 7 ? std::atoi(argv[7]) : 8;
-    bool u8_weights = (argc > 8) && std::string(argv[8]) == "u8";
+    std::string precision_str = (argc > 8) ? std::string(argv[8]) : "u4";
+    bool u8_weights  = (precision_str == "u8");
+    bool f16_weights = (precision_str == "f16");
     int flush_mb   = argc > 9 ? std::atoi(argv[9]) : 64;
 
-    std::cout << "=== FC Benchmark (precision=" << (u8_weights ? "u8" : "u4") << ") ===" << std::endl;
+    std::cout << "=== FC Benchmark (precision=" << precision_str << ") ===" << std::endl;
     std::cout << "M=" << M << " K=" << K << " N=" << N
               << " group_size=" << group_size
               << " iters=" << iters << " warmup=" << warmup
               << " bufs=" << num_bufs
               << " flush_mb=" << flush_mb << std::endl;
 
-    auto model = build_fc_deq_model(M, K, N, group_size, u8_weights);
+    std::shared_ptr<ov::Model> model;
+    if (f16_weights) {
+        model = build_fc_f16_model(M, K, N);
+    } else {
+        model = build_fc_deq_model(M, K, N, group_size, u8_weights);
+    }
 
     Core core;
     ov::AnyMap props;
-    if (M > 1) {
-        props[ov::hint::dynamic_quantization_group_size.name()] = group_size;
-        std::cout << "Dynamic quantization: ON (group_size=" << group_size << ")" << std::endl;
+    if (!f16_weights) {
+        if (M > 1) {
+            props[ov::hint::dynamic_quantization_group_size.name()] = group_size;
+            std::cout << "Dynamic quantization: ON (group_size=" << group_size << ")" << std::endl;
+        } else {
+            props[ov::hint::dynamic_quantization_group_size.name()] = 0;
+            std::cout << "Dynamic quantization: OFF (decode mode, group_size=0)" << std::endl;
+        }
     } else {
-        props[ov::hint::dynamic_quantization_group_size.name()] = 0;
-        std::cout << "Dynamic quantization: OFF (decode mode, group_size=0)" << std::endl;
+        std::cout << "F16 plain MatMul: no dynamic quantization." << std::endl;
     }
     auto compiled = core.compile_model(model, "GPU", props);
 
@@ -201,8 +234,15 @@ int main(int argc, char* argv[]) {
 
     int n_groups = K / group_size;
     double flops = 2.0 * M * K * N;
-    double weight_bytes = u8_weights ? double(N) * K * 1.0 : double(N) * K * 0.5;
-    double scale_bytes  = double(N) * n_groups * 2;
+    double weight_bytes;
+    double scale_bytes;
+    if (f16_weights) {
+        weight_bytes = double(N) * K * 2;  // FP16 = 2 bytes/element, no compression
+        scale_bytes  = 0.0;
+    } else {
+        weight_bytes = u8_weights ? double(N) * K * 1.0 : double(N) * K * 0.5;
+        scale_bytes  = double(N) * n_groups * 2;
+    }
     double io_bytes     = double(M) * K * 2 + double(M) * N * 2;
     double total_bytes  = weight_bytes + scale_bytes + io_bytes;
 

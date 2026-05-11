@@ -1,0 +1,45 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: /home/intel/river/clintercept-3.0.6-Linux/bin/libOpenCL.so
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(supported)
+    clock(high_resolution_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept config file: clintercept.conf
+Trying to load dispatch from: ./real_libOpenCL.so
+Couldn't load library: ./real_libOpenCL.so
+Trying to load dispatch from: /usr/lib/x86_64-linux-gnu/libOpenCL.so.1
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+=== Small Ops Benchmark ===
+Multiply M=2048 H=9728 iters=800 warmup=30 bufs=8
+Input tensors allocated in USM_DEVICE (VRAM) via RemoteContext.
+Median_us: 1169.35
+Min_us: 1148.21
+Avg_us: 1169.79
+BW_GBs: 102.226
+TotalBytes: 1.19538e+08
+Total Enqueues: 833
+
+
+Device Performance Timing Results for Intel(R) Graphics (32CUs, 2450MHz):
+
+Total Time (ns): 943645500
+
+                                Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+                   clEnqueueMemFillINTEL( H ),      3,       1652812,    0.18%,        550937,        545104,        554479
+eltwise_simple_vload8_6809563276314981861_0_0,    830,     941992688,   99.82%,       1134930,       1115416,       1565729
+CLIntercept is shutting down...
+... shutdown complete.

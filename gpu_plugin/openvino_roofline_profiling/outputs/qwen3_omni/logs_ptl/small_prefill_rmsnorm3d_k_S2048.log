@@ -1,0 +1,46 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: C:\Users\Local_Admin\Downloads\clintercept-3.0.6-win64\Release\opencl.dll
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(NOT supported)
+    clock(steady_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept registry key: SOFTWARE\INTEL\IGFX\CLINTERCEPT
+Trying to load dispatch from: real_opencl.dll
+Couldn't get exported function pointer to: clGetGLContextInfoKHR
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+Total Enqueues: 0
+
+=== Small Ops Benchmark ===
+RMSNorm3D M=2048 NH=8 HD=128 iters=800 warmup=30 bufs=8
+Input tensors allocated in USM_DEVICE (VRAM) via RemoteContext.
+Median_us: 152.5
+Min_us: 147.7
+Avg_us: 153.179
+BW_GBs: 55.0089
+TotalBytes: 8.38886e+06
+Total Enqueues: 832
+
+
+Device Performance Timing Results for Intel(R) Arc(TM) B390 GPU (96CUs, 2400MHz):
+
+Total Time (ns): 77901526
+
+                           Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+              clEnqueueMemFillINTEL( H ),      2,         73957,    0.09%,         36978,         26041,         47916
+rms_gpu_bfyx_opt_8966662666071072858_0_0,    830,      77827569,   99.91%,         93768,         91562,        147708
+CLIntercept is shutting down...
+... shutdown complete.

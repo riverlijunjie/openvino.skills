@@ -25,8 +25,8 @@ endif()
 
 # SDPA bench: ov::op::v13::ScaledDotProductAttention (uncompressed attention).
 # Use this when the model's attention is NOT converted to PagedAttention, or
-# when you want to compare SDPA vs PA roofline on the same shapes. KV-cache
-# compression is NOT modelled here (use pa_bench for INT8 KV).
+# when comparing SDPA vs PA roofline on the same shapes. KV-cache compression
+# is NOT modelled here (use pa_bench for INT8 KV).
 add_executable(sdpa_bench sdpa_bench/main.cpp)
 target_link_libraries(sdpa_bench PRIVATE openvino::runtime)
 
@@ -49,5 +49,17 @@ target_link_libraries(gdn_bench PRIVATE openvino::runtime)
 if(OV_SRC_DIR)
     target_include_directories(gdn_bench PRIVATE
         "${OV_SRC_DIR}/src/core/dev_api"
+    )
+endif()
+
+# VLSDPA bench: variable-length SDPA via ov::op::internal::VLSDPA → GPU plugin's
+# CM-only cm_sdpa_vlen kernel. Used for ViT-style block-diagonal attention
+# (Qwen2-VL / Qwen2.5-VL). Requires Xe2/Xe3 GPU + CM-JIT support at runtime;
+# OV_SRC_DIR is needed for the internal ov_ops header.
+add_executable(vlsdpa_bench vlsdpa_bench/main.cpp)
+target_link_libraries(vlsdpa_bench PRIVATE openvino::runtime)
+if(OV_SRC_DIR)
+    target_include_directories(vlsdpa_bench PRIVATE
+        "${OV_SRC_DIR}/src/common/transformations/include"
     )
 endif()

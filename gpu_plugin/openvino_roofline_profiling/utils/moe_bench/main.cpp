@@ -161,6 +161,18 @@ static std::shared_ptr<Node> build_grouped_u4_shared_weight(size_t N_out, size_t
     return std::make_shared<op::v0::Convert>(resh, element::f32);
 }
 
+// Plain FP16 shared-expert weight: 2D [N_out, K_in] constant (no compression).
+// Used when the actual model shared expert has uncompressed FP16 weights.
+// FuseMOESharedExpert uses any_input() for weights so this pattern still fuses.
+static std::shared_ptr<Node> build_f16_shared_weight(size_t N_out, size_t K_in, std::mt19937& rng) {
+    std::vector<ov::float16> w_data(N_out * K_in);
+    for (auto& v : w_data) v = ov::float16(float(rng() % 200 - 100) / 1000.0f);
+    auto w_const = op::v0::Constant::create(element::f16, Shape{N_out, K_in}, w_data.data());
+    w_const->set_friendly_name("shared_f16_weight");
+    // Convert to f32 to be compatible with the f32-activation MoE graph.
+    return std::make_shared<op::v0::Convert>(w_const, element::f32);
+}
+
 // Canonical softmax-routing subgraph (minus experts) — returns {unsqueeze_routing_weights, topk_indices}.
 // Mirrors build_softmax_routing_subgraph() from common_test_utils.
 static std::pair<Output<Node>, Output<Node>>
@@ -201,8 +213,9 @@ build_softmax_routing(const Output<Node>& router_logits, size_t NE, size_t topk)
 // end-to-end so that the weight-decompression chain naturally terminates in Convert(f32)
 // — a requirement of the GPU plugin's ConvertMOEToMOECompressed matcher.
 // SI = shared_expert_intermediate_size (0 disables the shared-expert branch).
+// shared_f16 = true → use uncompressed FP16 weights for shared expert instead of u4-grouped.
 static std::shared_ptr<Model> build_moe_model(size_t B, size_t S, size_t H, size_t I, size_t NE, size_t TK, int gs,
-                                              size_t SI) {
+                                              size_t SI, bool shared_f16 = false) {
     using namespace ov::op;
     std::mt19937 rng(42);
 
@@ -269,9 +282,18 @@ static std::shared_ptr<Model> build_moe_model(size_t B, size_t S, size_t H, size
     // which mirrors the real model layout (shared expert runs on every token).
     std::shared_ptr<Node> output_node = final_r;
     if (SI > 0) {
-        auto sh_gate_w = build_grouped_u4_shared_weight(SI, H, gs, rng);   // logical [SI, H]
-        auto sh_up_w   = build_grouped_u4_shared_weight(SI, H, gs, rng);   // logical [SI, H]
-        auto sh_down_w = build_grouped_u4_shared_weight(H, SI, gs, rng);   // logical [H, SI]
+        std::shared_ptr<Node> sh_gate_w, sh_up_w, sh_down_w;
+        if (shared_f16) {
+            // Uncompressed FP16 shared expert weights
+            sh_gate_w = build_f16_shared_weight(SI, H, rng);   // logical [SI, H]
+            sh_up_w   = build_f16_shared_weight(SI, H, rng);   // logical [SI, H]
+            sh_down_w = build_f16_shared_weight(H, SI, rng);   // logical [H, SI]
+        } else {
+            // INT4-grouped shared expert weights (default)
+            sh_gate_w = build_grouped_u4_shared_weight(SI, H, gs, rng);   // logical [SI, H]
+            sh_up_w   = build_grouped_u4_shared_weight(SI, H, gs, rng);   // logical [SI, H]
+            sh_down_w = build_grouped_u4_shared_weight(H, SI, gs, rng);   // logical [H, SI]
+        }
 
         auto sh_gate_mm = std::make_shared<v0::MatMul>(experts_reshape, sh_gate_w, false, true);
         sh_gate_mm->set_friendly_name("SharedGateMatMul");
@@ -307,10 +329,12 @@ static std::shared_ptr<Model> build_flush_model(size_t n_elems) {
 int main(int argc, char** argv) {
     if (argc < 7) {
         std::cerr <<
-          "usage: moe_bench <B> <S> <H> <I> <NE> <TK> [group_size=128] [iters=100] [warmup=10] [num_bufs=4] [flush_mb=64] [shared_I=0]\n"
-          "  shared_I = shared_expert_intermediate_size (0 disables; e.g. 512 for Qwen3.5-MoE)\n"
-          "example (Qwen3-Coder-30B decode):              moe_bench 1 1 2048 768 128 8 128 200 20 4 64 0\n"
-          "example (Qwen3.5-MoE-35B decode w/ shared):    moe_bench 1 1 2048 512 256 8 128 200 20 4 64 512\n";
+          "usage: moe_bench <B> <S> <H> <I> <NE> <TK> [group_size=128] [iters=100] [warmup=10] [num_bufs=4] [flush_mb=64] [shared_I=0] [shared_quant=u4|f16]\n"
+          "  shared_I     = shared_expert_intermediate_size (0 disables; e.g. 512 for Qwen3.5-MoE)\n"
+          "  shared_quant = weight type for shared expert: u4 (default) or f16 (uncompressed)\n"
+          "example (Qwen3-Coder-30B decode):                       moe_bench 1 1 2048 768 128 8 128 200 20 4 64 0\n"
+          "example (Qwen3.5-MoE-35B decode, shared expert INT4):   moe_bench 1 1 2048 512 256 8 128 200 20 4 64 512 u4\n"
+          "example (Qwen3.5-MoE-35B decode, shared expert FP16):   moe_bench 1 1 2048 512 256 8 128 200 20 4 64 512 f16\n";
         return 1;
     }
     size_t B  = std::stoul(argv[1]);
@@ -319,25 +343,27 @@ int main(int argc, char** argv) {
     size_t I  = std::stoul(argv[4]);
     size_t NE = std::stoul(argv[5]);
     size_t TK = std::stoul(argv[6]);
-    int gs       = (argc > 7)  ? std::stoi(argv[7])  : 128;
-    int iters    = (argc > 8)  ? std::stoi(argv[8])  : 100;
-    int warmup   = (argc > 9)  ? std::stoi(argv[9])  : 10;
-    int num_bufs = (argc > 10) ? std::stoi(argv[10]) : 4;
-    int flush_mb = (argc > 11) ? std::stoi(argv[11]) : 64;
-    size_t SI    = (argc > 12) ? std::stoul(argv[12]) : 0;
+    int gs           = (argc > 7)  ? std::stoi(argv[7])  : 128;
+    int iters        = (argc > 8)  ? std::stoi(argv[8])  : 100;
+    int warmup       = (argc > 9)  ? std::stoi(argv[9])  : 10;
+    int num_bufs     = (argc > 10) ? std::stoi(argv[10]) : 4;
+    int flush_mb     = (argc > 11) ? std::stoi(argv[11]) : 64;
+    size_t SI        = (argc > 12) ? std::stoul(argv[12]) : 0;
+    bool shared_f16  = (argc > 13) && std::string(argv[13]) == "f16";
 
     std::cout << "MoE bench: B=" << B << " S=" << S << " H=" << H << " I=" << I
               << " NE=" << NE << " TK=" << TK << " g=" << gs
               << " iters=" << iters << " warm=" << warmup
               << " bufs=" << num_bufs << " flush=" << flush_mb << "MB"
               << " shared_I=" << SI << (SI > 0 ? " [shared expert ENABLED]" : " [no shared expert]")
+              << (SI > 0 ? (shared_f16 ? " shared_quant=f16" : " shared_quant=u4") : "")
               << std::endl;
 
     Core core;
     std::shared_ptr<ov::Model> model;
     ov::CompiledModel compiled;
     try {
-        model = build_moe_model(B, S, H, I, NE, TK, gs, SI);
+        model = build_moe_model(B, S, H, I, NE, TK, gs, SI, shared_f16);
         // Dump the pre-compile model so we can inspect what the plugin pipeline sees
         // (FuseMOESharedExpert pattern requires plain v0::MatMul gate/up/down feeding an Add over MOE).
         try { ov::serialize(model, "/tmp/moe_bench_input.xml", "/tmp/moe_bench_input.bin"); } catch (...) {}

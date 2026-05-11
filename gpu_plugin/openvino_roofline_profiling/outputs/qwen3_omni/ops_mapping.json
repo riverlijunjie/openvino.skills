@@ -1,0 +1,47 @@
+{
+  "model": "qwen3_omni_thinker_text",
+  "platform": "PTL (Intel Arc B390 96CUs @ 2400 MHz, treated as PTL Xe2)",
+  "arch": {
+    "hidden_size": 4096,
+    "num_hidden_layers": 32,
+    "num_attention_heads": 32,
+    "num_key_value_heads": 32,
+    "head_dim": 128,
+    "intermediate_size": 22016,
+    "vocab_size": 151936,
+    "hidden_act": "silu",
+    "tie_word_embeddings": false,
+    "moe": false,
+    "comment": "qwen3_omni Thinker text uses Qwen3VLTextDecoderLayer (dense), not the inherited MoE block; modular_qwen3_omni.py deletes num_experts in __init__."
+  },
+  "weight_compression": {
+    "matmul": "INT4 group_size=128, fp16 act, dequant to fp16 (decode) / dequant to int8 (prefill XMX)",
+    "lm_head": "INT8 group_size=128, fp16 act",
+    "kv_cache": "INT8 quant, K [num_blocks, num_kv_heads, head_size, block_size=16], V [num_blocks, num_kv_heads, block_size=16, head_size]"
+  },
+  "sdpa": "PagedAttention (opencl + micro_kernel), kv_cache_update + pa kernels",
+  "tokens": {
+    "prefill": [1024, 2048, 4096, 8192],
+    "decode_kv": [1024, 2048, 4096, 8192]
+  },
+  "kernels_per_inference": {
+    "fc_q_proj":   {"M_prefill": "S",  "M_decode": 1, "K": 4096, "N": 4096,   "calls_per_token_set": 32, "weights": "i4_g128"},
+    "fc_k_proj":   {"M_prefill": "S",  "M_decode": 1, "K": 4096, "N": 4096,   "calls_per_token_set": 32, "weights": "i4_g128"},
+    "fc_v_proj":   {"M_prefill": "S",  "M_decode": 1, "K": 4096, "N": 4096,   "calls_per_token_set": 32, "weights": "i4_g128"},
+    "fc_o_proj":   {"M_prefill": "S",  "M_decode": 1, "K": 4096, "N": 4096,   "calls_per_token_set": 32, "weights": "i4_g128"},
+    "fc_gate":     {"M_prefill": "S",  "M_decode": 1, "K": 4096, "N": 22016,  "calls_per_token_set": 32, "weights": "i4_g128"},
+    "fc_up":       {"M_prefill": "S",  "M_decode": 1, "K": 4096, "N": 22016,  "calls_per_token_set": 32, "weights": "i4_g128"},
+    "fc_down":     {"M_prefill": "S",  "M_decode": 1, "K": 22016,"N": 4096,   "calls_per_token_set": 32, "weights": "i4_g128"},
+    "fc_lm_head":  {"M_prefill": 1,    "M_decode": 1, "K": 4096, "N": 151936, "calls_per_token_set": 1,  "weights": "i8_g128",
+                    "comment": "lm_head only runs on the last token in prefill (single-row) and once per decode step"},
+    "pa_attn":     {"NH": 32, "NKV": 32, "HD": 128, "calls_per_token_set": 32, "kv_dtype": "i8",
+                    "comment": "PagedAttention opencl impl. MHA (NKV=NH=32). Use PA_NH/PA_NKV/PA_HD env."},
+    "rmsnorm_4096":{"H": 4096, "calls_per_token_set": 65, "comment": "input_layernorm + post_attention_layernorm per layer (2*32) + final norm (1)"},
+    "rmsnorm3d_q": {"NH": 32, "HD": 128, "calls_per_token_set": 32, "comment": "q_norm (Qwen3 introduces qk_norm)"},
+    "rmsnorm3d_k": {"NH": 32, "HD": 128, "calls_per_token_set": 32, "comment": "k_norm"},
+    "rope":        {"NH_q": 32, "NH_k": 32, "HD": 128, "calls_per_token_set": 64, "comment": "applied separately to q and k"},
+    "swiglu_swish":{"H": 22016, "calls_per_token_set": 32, "comment": "SwiGLU: silu(gate); typically fused into fc_gate, profiled standalone for visibility"},
+    "swiglu_mul":  {"H": 22016, "calls_per_token_set": 32, "comment": "gate * up; typically fused"},
+    "residual_add":{"H": 4096,  "calls_per_token_set": 64, "comment": "two residuals per layer"}
+  }
+}

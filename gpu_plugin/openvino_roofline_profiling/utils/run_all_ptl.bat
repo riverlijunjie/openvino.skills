@@ -67,6 +67,20 @@ for %%S in (1024 2048 4096 8192) do (
     %CLILOADER% %BENCH_DIR%\pa_bench.exe prefill %%S 0 %PA_PRE_ITERS% %PA_PRE_WARM% %BUFS% i8 > "%RESULTS_DIR%\pa_prefill_S%%S_i8.log" 2>&1
 )
 
+REM Optional SDPA sweep -- set RUN_SDPA=1 to enable. Used when attention is NOT
+REM converted to PagedAttention, or to compare SDPA vs PA on the same shapes.
+REM KV-cache compression is NOT modelled here.
+if "%RUN_SDPA%"=="1" (
+    echo ===== SDPA DECODE =====
+    for %%K in (1024 2048 4096 8192) do (
+        %CLILOADER% %BENCH_DIR%\sdpa_bench.exe decode 1 %%K %PA_DEC_ITERS% %PA_DEC_WARM% %BUFS% 0 > "%RESULTS_DIR%\sdpa_decode_kv%%K.log" 2>&1
+    )
+    echo ===== SDPA PREFILL (causal) =====
+    for %%S in (1024 2048 4096 8192) do (
+        %CLILOADER% %BENCH_DIR%\sdpa_bench.exe prefill %%S %%S %PA_PRE_ITERS% %PA_PRE_WARM% %BUFS% 1 > "%RESULTS_DIR%\sdpa_prefill_S%%S.log" 2>&1
+    )
+)
+
 set BUFS=8
 
 echo ===== SMALL OPS DECODE =====

@@ -39,7 +39,12 @@ openvino_roofline_profiling/
 ├── models/
 │   ├── TEMPLATE/                # onboarding templates for a new HF/OpenVINO model
 │   ├── qwen3_moe/
-│   └── qwen3_5_moe/
+│   ├── qwen3_5_moe/
+│   ├── qwen3_8b/
+│   ├── qwen3_next/
+│   ├── qwen3_omni/
+│   ├── vlsdpa/
+│   └── llama3_1_8b_instruct/
 ├── outputs/
 │   ├── <model>/                 # logs, parsed metrics, tables, summaries
 │   └── ...
@@ -47,18 +52,22 @@ openvino_roofline_profiling/
     ├── CMakeLists.txt
     ├── platforms.json           # platform registry and calibrated peaks
     ├── hw_probe/                # generic hardware probes
-   ├── parse_logs.py            # cliloader log → structured JSON
-   ├── build_db.py              # structured JSON → shared SQLite DB
-   ├── build_model_report.py    # generic report engine driven by per-model config
-   ├── build_kernel_tables.py   # generic kernel-table engine driven by per-model config
-   ├── build_postprocess_pipeline.py # one-shot post-parse pipeline driver
+    ├── template/                # report templates (SUMMARY_TEMPLATE.md, README.md)
+    ├── parse_logs.py            # cliloader log → structured JSON
+    ├── parse_cm_pa_logs.py      # CM PA log parser for roofline tables
+    ├── build_db.py              # structured JSON → shared SQLite DB
+    ├── build_model_report.py    # generic report engine driven by per-model config
+    ├── build_kernel_tables.py   # generic kernel-table engine driven by per-model config
+    ├── build_postprocess_pipeline.py # one-shot post-parse pipeline driver
     ├── roofline_report.py       # shared aggregation helper(s)
-    ├── fc_bench/
-    ├── pa_bench/
-    ├── sdpa_bench/
-    ├── moe_bench/
-    ├── gdn_bench/
-    └── small_ops_bench/
+    ├── ov_verbose_weight_analyze.py # weight analysis from GPU verbose logs
+    ├── fc_bench/                # FC/MatMul (u4/u8/f16 precision)
+    ├── pa_bench/                # PagedAttention (ocl/cm modes)
+    ├── sdpa_bench/              # SDPA (uncompressed)
+    ├── vlsdpa_bench/            # Variable-length SDPA (CM kernel, ViT models)
+    ├── moe_bench/               # MoE 3GEMM (shared expert u4/f16)
+    ├── gdn_bench/               # GDN/linear-attention
+    └── small_ops_bench/         # RMSNorm/RoPE/eltwise/dyn-quant
 ```
 
 ## Architecture of the tool
@@ -226,10 +235,11 @@ The micro-benches should follow these rules regardless of GPU or model:
 
 | Bench | Covers | Notes |
 |---|---|---|
-| `fc_bench` | FC/QKV/O/MLP/LM head-like projection | dense and quantized matrix paths |
-| `pa_bench` | PagedAttention (with INT8 KV) | canonical attention roofline; matches the deployed PA path |
+| `fc_bench` | FC/QKV/O/MLP/LM head-like projection | dense and quantized matrix paths; supports `u4` (INT4), `u8` (INT8), and `f16` (plain FP16 MatMul) precision modes |
+| `pa_bench` | PagedAttention (with INT8 KV) | canonical attention roofline; supports `ocl` (OpenCL+micro_kernel, default) and `cm` (XAttention CM kernel) implementation modes |
 | `sdpa_bench` | `ov::op::v13::ScaledDotProductAttention` (uncompressed Q/K/V) | optional comparison against PA on identical shapes; do **not** use as the deployed roofline when the model runs PA |
-| `moe_bench` | routed/shared expert MoE | profile fused expert path rather than three disconnected GEMMs |
+| `vlsdpa_bench` | Variable-length SDPA via `ov::op::internal::VLSDPA` | CM-only cm_sdpa_vlen kernel for ViT-style block-diagonal attention (Qwen2-VL / Qwen2.5-VL); requires Xe2/Xe3 GPU + CM-JIT support |
+| `moe_bench` | routed/shared expert MoE | profile fused expert path; supports both INT4-grouped and uncompressed FP16 shared expert weights |
 | `gdn_bench` | GDN / linear-attention/state kernels | template for non-SDPA sequence blocks |
 | `small_ops_bench` | norm/rope/eltwise/dyn-quant | catch the “small but everywhere” family |
 

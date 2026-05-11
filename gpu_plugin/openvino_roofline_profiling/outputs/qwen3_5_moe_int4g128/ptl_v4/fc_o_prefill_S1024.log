@@ -1,0 +1,56 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: C:\Users\Local_Admin\Downloads\clintercept-3.0.6-win64\Release\opencl.dll
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(NOT supported)
+    clock(steady_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept registry key: SOFTWARE\INTEL\IGFX\CLINTERCEPT
+Trying to load dispatch from: real_opencl.dll
+Couldn't get exported function pointer to: clGetGLContextInfoKHR
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+Total Enqueues: 0
+
+=== FC Benchmark (precision=u4) ===
+M=1024 K=4096 N=2048 group_size=128 iters=200 warmup=20 bufs=4 flush_mb=32
+Dynamic quantization: ON (group_size=128)
+Input tensors allocated in USM_DEVICE (VRAM) via RemoteContext.
+L2/L3 flush kernel: 32 MB f16 Relu between every FC infer.
+Median_ms: 0.4253
+Min_ms: 0.4057
+Avg_ms: 0.429519
+GFLOPS: 40394.7
+BW_GBs: 39.7561
+AI: 1016.06
+WeightBytes: 4.1943e+06
+TotalBytes: 1.69083e+07
+TotalFLOPs: 1.71799e+10
+Total Enqueues: 890
+
+
+Device Performance Timing Results for Intel(R) Arc(TM) B390 GPU (96CUs, 2400MHz):
+
+Total Time (ns): 203528883
+
+                                   Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+          activation_opt_8800612436721346785_0_0,    221,     124346576,   61.10%,        562654,        546770,        866041
+                      clEnqueueMemFillINTEL( D ),      3,         34686,    0.02%,         11562,          3020,         25625
+                      clEnqueueMemFillINTEL( H ),      5,        862393,    0.42%,        172478,          8541,        395625
+dynamic_quantize_gpu_opt_4276305079436250453_0_0,    220,      19837722,    9.75%,         90171,         83854,        207291
+                                     gemm_kernel,    220,      58421986,   28.70%,        265554,        250416,        329062
+           reorder_data_17535196316214898668_0_0,      1,         25520,    0.01%,         25520,         25520,         25520
+CLIntercept is shutting down...
+... shutdown complete.

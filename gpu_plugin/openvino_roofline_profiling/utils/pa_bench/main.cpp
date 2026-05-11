@@ -1,10 +1,19 @@
 /**
  * PA Benchmark — Qwen3-8B PagedAttention with FP16/INT8 KV cache
  *
- * Usage: ./pa_bench <mode> <S_q> <S_kv> [iters] [warmup] [num_bufs] [kv_type]
+ * Usage: ./pa_bench <mode> <S_q> <S_kv> [iters] [warmup] [num_bufs] [kv_type] [impl]
  *   mode: "decode" (S_q=1) or "prefill" (S_q=S, S_kv=0)
  *   kv_type: "f16" (default) or "i8"
- *   Run separately for each input size per SKILL.md requirement
+ *   impl: "ocl" (default) or "cm"
+ *     - ocl: standard OCL/micro-kernel PA path (block_size=16)
+ *     - cm:  XAttention CM kernel path (block_size=256). Requires Xe2/Xe3
+ *            (BMG, PTL, LNL, etc.) with CM-JIT support. Enables the XAttention
+ *            transformations pipeline by exposing xattention_threshold/
+ *            xattention_block_size/xattention_stride as named dynamic
+ *            Parameters (matching SDPAToPagedAttention's contract — see
+ *            src/plugins/intel_gpu/src/plugin/transformations_pipeline.cpp
+ *            use_xattention detection).
+ *   Run separately for each input size per SKILL.md requirement.
  *
  * Uses OpenVINO's built-in PagedAttentionExtension op directly (not decomposed
  * gemm+softmax+gemm), so the GPU plugin exercises its native PA kernels.
@@ -55,7 +64,7 @@ static constexpr int BLOCK_SIZE = 16;  // KV cache block size
  *  [12] max_context_len:    scalar, i32
  *  [13..27] optional:       0-shaped constants
  */
-static std::shared_ptr<ov::Model> build_pa_model(int num_blocks) {
+static std::shared_ptr<ov::Model> build_pa_model(int num_blocks, bool use_cm, int block_size_for_context) {
     // query dim[1] MUST be static (NH*HD) — GPU plugin reads it to compute heads_num
     auto query       = std::make_shared<op::v0::Parameter>(element::f16,
                            PartialShape{Dimension::dynamic(), int64_t(NH * HD)});
@@ -90,7 +99,7 @@ static std::shared_ptr<ov::Model> build_pa_model(int num_blocks) {
     auto scale          = op::v0::Constant::create(element::f32, Shape{}, {scale_val});
     auto sliding_window = op::v0::Constant::create(element::i32, Shape{}, {0});
     auto alibi_slopes   = op::v0::Constant::create(element::f32, Shape{0}, {});
-    int total_context = num_blocks * BLOCK_SIZE;
+    int total_context = num_blocks * block_size_for_context;
     auto max_context_len = op::v0::Constant::create(element::i32, Shape{}, {total_context});
 
     // Optional inputs (13..27) — constants to satisfy the 28-input requirement
@@ -98,9 +107,33 @@ static std::shared_ptr<ov::Model> build_pa_model(int num_blocks) {
     auto rot_blk_idx   = op::v0::Constant::create(element::i32, Shape{0}, std::vector<int32_t>{});
     auto rot_deltas    = op::v0::Constant::create(element::i32, Shape{0}, std::vector<int32_t>{});
     auto rot_trig_lut  = op::v0::Constant::create(element::f32, Shape{0}, std::vector<float>{});
-    auto xattn_thresh  = op::v0::Constant::create(element::f32, Shape{0}, std::vector<float>{});
-    auto xattn_blk_sz  = op::v0::Constant::create(element::i32, Shape{}, {64});
-    auto xattn_stride  = op::v0::Constant::create(element::i32, Shape{}, {8});
+
+    // XAttention inputs: when use_cm=true, expose them as named dynamic Parameters so the
+    // GPU plugin's transformations_pipeline detects "xattention_block_size" by friendly_name
+    // and switches to XAttention path (block_size=256, CM-PA validate_impl returns true).
+    // Otherwise emit zero-shaped constants (legacy OCL path).
+    std::shared_ptr<ov::Node> xattn_thresh, xattn_blk_sz, xattn_stride;
+    std::shared_ptr<op::v0::Parameter> xattn_thresh_param, xattn_blk_sz_param, xattn_stride_param;
+    if (use_cm) {
+        // PagedAttentionExtension validates these per-input ranks (see
+        // src/core/src/op/paged_attention.cpp): xattention_threshold=rank 1,
+        // xattention_block_size=rank 0, xattention_stride=rank 0. Use named
+        // dynamic Parameters so the GPU plugin's transformations_pipeline
+        // detects use_xattention=true via friendly_name lookup.
+        xattn_thresh_param = std::make_shared<op::v0::Parameter>(element::f32, PartialShape{Dimension::dynamic()});
+        xattn_blk_sz_param = std::make_shared<op::v0::Parameter>(element::i32, PartialShape{});
+        xattn_stride_param = std::make_shared<op::v0::Parameter>(element::i32, PartialShape{});
+        xattn_thresh_param->set_friendly_name("xattention_threshold");
+        xattn_blk_sz_param->set_friendly_name("xattention_block_size");
+        xattn_stride_param->set_friendly_name("xattention_stride");
+        xattn_thresh = xattn_thresh_param;
+        xattn_blk_sz = xattn_blk_sz_param;
+        xattn_stride = xattn_stride_param;
+    } else {
+        xattn_thresh = op::v0::Constant::create(element::f32, Shape{0}, std::vector<float>{});
+        xattn_blk_sz = op::v0::Constant::create(element::i32, Shape{}, {64});
+        xattn_stride = op::v0::Constant::create(element::i32, Shape{}, {8});
+    }
     auto sinks         = op::v0::Constant::create(element::f16, Shape{0}, std::vector<ov::float16>{});
     auto arkv_start    = op::v0::Constant::create(element::i32, Shape{}, {0});
     auto arkv_evict    = op::v0::Constant::create(element::i32, Shape{0}, std::vector<int32_t>{});
@@ -128,7 +161,11 @@ static std::shared_ptr<ov::Model> build_pa_model(int num_blocks) {
     std::shared_ptr<ov::op::PagedAttentionExtension> pa;
     try {
         pa = std::make_shared<ov::op::PagedAttentionExtension>(pa_inputs_28);
-    } catch (const std::exception&) {
+    } catch (const std::exception& e) {
+        // Older OV (<2026-03-25) used a 26-input PagedAttentionExtension. Fall back
+        // only after surfacing the original failure so contract drift is visible.
+        std::cerr << "[PA_BENCH WARN] 28-input PagedAttentionExtension failed: "
+                  << e.what() << " \u2014 retrying with 26 inputs (legacy contract)" << std::endl;
         ov::OutputVector pa_inputs_26(pa_inputs_28.begin(), pa_inputs_28.begin() + 26);
         pa = std::make_shared<ov::op::PagedAttentionExtension>(pa_inputs_26);
     }
@@ -144,11 +181,14 @@ static std::shared_ptr<ov::Model> build_pa_model(int num_blocks) {
     // which makes has_scores_output() return true and:
     //   1) adds paged_attention_opt__scores_calculation kernel
     //   2) DISABLES sdpa_micro__prefill (via supports_micro_sdpa() check)
-    return std::make_shared<Model>(
-        OutputVector{result0},
-        ParameterVector{query, key, value, key_cache, value_cache,
-                        past_lens, subseq_begins, block_indices, block_idx_begins},
-        "pa_bench");
+    ParameterVector params{query, key, value, key_cache, value_cache,
+                           past_lens, subseq_begins, block_indices, block_idx_begins};
+    if (use_cm) {
+        params.push_back(xattn_thresh_param);
+        params.push_back(xattn_blk_sz_param);
+        params.push_back(xattn_stride_param);
+    }
+    return std::make_shared<Model>(OutputVector{result0}, params, "pa_bench");
 }
 
 static void fill_f16(Tensor& t, std::mt19937& rng) {
@@ -167,7 +207,7 @@ int main(int argc, char* argv[]) {
     try {
     if (argc < 4) {
         std::cerr << "Usage: " << argv[0] << " <mode:decode|prefill> <S_q> <S_kv>"
-                  << " [iters=100] [warmup=10] [num_bufs=4] [kv_type=f16|i8]" << std::endl;
+                  << " [iters=100] [warmup=10] [num_bufs=4] [kv_type=f16|i8] [impl=ocl|cm]" << std::endl;
         return 1;
     }
 
@@ -176,8 +216,45 @@ int main(int argc, char* argv[]) {
     int S_kv = std::atoi(argv[3]);
     int iters    = argc > 4 ? std::atoi(argv[4]) : 100;
     int warmup   = argc > 5 ? std::atoi(argv[5]) : 10;
-    int num_bufs = argc > 6 ? std::atoi(argv[6]) : 4;
+    int num_bufs_cli = argc > 6 ? std::atoi(argv[6]) : 0;  // 0 = auto-size
     bool use_i8  = (argc > 7 && std::string(argv[7]) == "i8");
+    bool use_cm  = (argc > 8 && std::string(argv[8]) == "cm");
+
+    // Auto-size num_bufs so the rotating-buffer set comfortably exceeds the GPU
+    // last-level cache, defeating cross-iteration cache reuse that would
+    // otherwise inflate achieved-BW figures past the DRAM peak.
+    //
+    // History: previous code assumed Xe3 L3=18 MB and capped num_bufs at 8. On
+    // PTL 12Xe / Arc B390 the LLC reported by clinfo is 16 MiB, and per-buf KV
+    // for KV=8192 INT8 is exactly 16 MiB — a stride-(num_bufs) access pattern
+    // with bufs near L3-multiples produces partial cache hits that inflate
+    // measured PA BW above DRAM peak (e.g. CM PA decode KV=8192 reported 187
+    // GB/s on a 97 GB/s DRAM). We now target a much larger working set.
+    //
+    // Default target = 256 MiB (>= 8x any current Intel iGPU LLC). Override via
+    // env PA_BENCH_TARGET_MB. The cap is 16 buffers to bound host RAM at very
+    // long context. We size on logical KV (S_q + S_kv tokens), which matches
+    // what the kernel actually streams from DRAM regardless of physical block
+    // size (16 for OCL PA, 256 for CM XAttention).
+    int num_bufs;
+    if (num_bufs_cli > 0) {
+        num_bufs = num_bufs_cli;  // explicit override
+    } else {
+        long long target_mb = 256;  // default: 256 MiB resident KV across all bufs
+        if (const char* e = std::getenv("PA_BENCH_TARGET_MB")) {
+            long long v = std::atoll(e);
+            if (v > 0) target_mb = v;
+        }
+        const long long kv_bytes_per_buf =
+            2LL * std::max(1, S_q + S_kv) * NKV * HD * (use_i8 ? 1 : 2);
+        const long long target_resident = target_mb * 1024 * 1024;
+        num_bufs = std::max(2, int((target_resident + kv_bytes_per_buf - 1) /
+                                   std::max<long long>(1, kv_bytes_per_buf)));
+        num_bufs = std::min(num_bufs, 16);
+        std::cout << "[auto-bufs] kv_per_buf=" << (kv_bytes_per_buf / (1024*1024))
+                  << " MiB, target_resident=" << target_mb
+                  << " MiB -> num_bufs=" << num_bufs << std::endl;
+    }
 
     // Optional model-shape overrides via env vars (kept simple to preserve back-compat with
     // existing scripts that pass positional args). Set PA_NH / PA_NKV / PA_HD to e.g. Qwen3.5-MoE
@@ -188,6 +265,16 @@ int main(int argc, char* argv[]) {
 
     // For decode: past_lens = S_kv, new tokens = S_q, total_context = S_kv + S_q
     // For prefill: S_q = S (input_len), S_kv = 0 (no past), total_context = S_q
+    //   Force S_kv=0 for prefill so that:
+    //   1. past_lens[0] = 0 → GPU plugin detects PREFILL stage (not MIXED)
+    //   2. KV cache blocks match S_q (no oversized allocation)
+    //   3. max_context_len = S_q (correct partitioning)
+    if (mode == "prefill") {
+        if (S_kv != 0) {
+            std::cout << "[prefill] Overriding S_kv from " << S_kv << " to 0 (no past context for first-time prefill)" << std::endl;
+            S_kv = 0;
+        }
+    }
     int total_context = S_kv + S_q;
     int num_blocks = (total_context + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
@@ -195,16 +282,33 @@ int main(int argc, char* argv[]) {
     std::cout << "NH=" << NH << " NKV=" << NKV << " HD=" << HD << std::endl;
     std::cout << "Mode=" << mode << " S_q=" << S_q << " S_kv=" << S_kv
               << " blocks=" << num_blocks << " kv_type=" << (use_i8 ? "i8" : "f16")
+              << " impl=" << (use_cm ? "cm" : "ocl")
               << " iters=" << iters << " warmup=" << warmup
               << " bufs=" << num_bufs << std::endl;
 
-    auto model = build_pa_model(num_blocks);
+    // CM XAttention uses a different KV-cache block size internally (block_size_xattn=256)
+    // — see src/plugins/intel_gpu/src/plugin/transformations_pipeline.cpp.
+    // Recompute block count so the cache covers `total_context` tokens.
+    if (use_cm) {
+        const int xattn_block = 256;
+        num_blocks = (total_context + xattn_block - 1) / xattn_block;
+        if (num_blocks < 1) num_blocks = 1;
+    }
+
+    int block_size_for_context = use_cm ? 256 : BLOCK_SIZE;
+    auto model = build_pa_model(num_blocks, use_cm, block_size_for_context);
 
     Core core;
     ov::AnyMap props;
     if (use_i8) {
         props[ov::hint::kv_cache_precision.name()] = ov::element::i8;
     }
+    // Note: GPU_USE_CM is internal-only (cannot be set via string AnyMap from public
+    // API). Its default is true; if your environment exports OV_GPU_USE_CM=0 the
+    // CM PA path will be unreachable and the GPU plugin will throw at compile time.
+    // OCL PA validate_impl() rejects has_xattention=true (see
+    // src/plugins/intel_gpu/src/graph/impls/ocl_v2/sdpa/paged_attention_opt.hpp),
+    // so once XAttention is enabled here CM PA is the only valid candidate.
     auto compiled = core.compile_model(model, "GPU", props);
 
     // Query compiled model for actual KV cache shapes and types
@@ -272,10 +376,15 @@ int main(int argc, char* argv[]) {
             req.set_input_tensor(4, t);
         }
 
-        // past_lens = [S_kv]
+        // past_lens = [past_context_length]:
+        //   decode:  past_lens[0] = S_kv (existing KV tokens before this decode step)
+        //   prefill: past_lens[0] = 0    (first-time prefill: no past context)
+        // When past_lens[0] != 0 AND query_tokens > batch_seqs, the GPU plugin
+        // detects MIXED stage (not PREFILL), causing it to dispatch
+        // sdpa_micro__generate instead of sdpa_micro__prefill.
         {
             auto t = Tensor(element::i32, Shape{1});
-            t.data<int32_t>()[0] = S_kv;
+            t.data<int32_t>()[0] = (mode == "prefill") ? 0 : S_kv;
             req.set_input_tensor(5, t);
         }
         // subsequence_begins = [0, S_q]
@@ -298,6 +407,37 @@ int main(int argc, char* argv[]) {
             t.data<int32_t>()[0] = 0;
             t.data<int32_t>()[1] = num_blocks;
             req.set_input_tensor(8, t);
+        }
+
+        // Optional XAttention inputs (only present when use_cm=true). Indexes 9..11 in
+        // the order they were appended to ParameterVector in build_pa_model. Each is
+        // a scalar (rank-0) tensor.
+        if (use_cm) {
+            // xattention_threshold (rank 1, f32): set to 1.0 so bypass_xattn() returns
+            // true (see src/plugins/intel_gpu/src/graph/impls/cm/paged_attention_gen.cpp
+            // bypass_xattn() — bypass = xattn_thresh >= 1.0). This skips the XAttention
+            // block-selection pipeline (xattn_estimate_gemmqk / find_block / post_proc)
+            // and runs the plain CM pa_multi_token_1 kernel during prefill. Without this
+            // bypass, the CM XAttention GEMMQK kernel asserts N >= M for cold prefill
+            // (paged_attention_gen.cpp:673) and prefill cannot complete on CM. This
+            // matches the user-facing CM-PA contract: threshold=1.0 -> dense CM PA.
+            {
+                auto t = Tensor(element::f32, Shape{1});
+                t.data<float>()[0] = 1.0f;
+                req.set_input_tensor(9, t);
+            }
+            // xattention_block_size (rank 0, i32): selection block size (matches test 128)
+            {
+                auto t = Tensor(element::i32, Shape{});
+                t.data<int32_t>()[0] = 128;
+                req.set_input_tensor(10, t);
+            }
+            // xattention_stride (rank 0, i32): stride (matches test 16)
+            {
+                auto t = Tensor(element::i32, Shape{});
+                t.data<int32_t>()[0] = 16;
+                req.set_input_tensor(11, t);
+            }
         }
 
         reqs.push_back(std::move(req));
@@ -323,18 +463,40 @@ int main(int argc, char* argv[]) {
     double min_lat = latencies.front();
     double avg = std::accumulate(latencies.begin(), latencies.end(), 0.0) / latencies.size();
 
-    // FLOPs: QK(2*NH*Sq*Skv_total*HD) + AV(2*NH*Sq*Skv_total*HD) + softmax(~25*NH*Sq*Skv_total)
+    // FLOPs: QK(2*NH*attn_pairs*HD) + AV(2*NH*attn_pairs*HD) + softmax(~25*NH*attn_pairs)
+    // For prefill with causal mask, each query i attends to tokens 0..i, so
+    // effective attention pairs = S*(S+1)/2 (triangular). For decode (S_q=1),
+    // the single query attends to all S_kv_total tokens (no masking effect).
     double S_kv_total = double(total_context);
-    double qk_flops = 2.0 * NH * S_q * S_kv_total * HD;
-    double av_flops = 2.0 * NH * S_q * S_kv_total * HD;
-    double sm_flops = 25.0 * NH * S_q * S_kv_total;
+    double attn_pairs;  // effective (query, key) pairs computed
+    if (mode == "prefill") {
+        // Causal: sum_{i=0}^{Sq-1} (i+1) = Sq*(Sq+1)/2
+        attn_pairs = double(S_q) * (double(S_q) + 1.0) / 2.0;
+    } else {
+        // Decode: single query attends to all past + current tokens
+        attn_pairs = double(S_q) * S_kv_total;
+    }
+    double qk_flops = 2.0 * NH * attn_pairs * HD;
+    double av_flops = 2.0 * NH * attn_pairs * HD;
+    double sm_flops = 25.0 * NH * attn_pairs;
     double flops = qk_flops + av_flops + sm_flops;
 
-    // Bytes: Q(f16) + K_new(f16) + V_new(f16) + K_cache + V_cache + output(f16)
+    // Bytes: Q(f16) + K_new(f16) + V_new(f16) + K_cache + V_cache + output(f16).
+    // Use *logical* past_lens KV bytes (S_kv tokens for decode, S_q for prefill);
+    // this matches what the kernel actually streams from DRAM for the attention
+    // compute, regardless of the underlying physical block_size (16 for OCL,
+    // 256 for the CM XAttention path). For INT8 KV we add the FP16 group scales
+    // (one per group of HD=128 elements per (NKV-head, token)).
     int kv_elem_size = use_i8 ? 1 : 2;
     double q_bytes      = double(S_q) * NH * HD * 2;
     double kv_new_bytes = double(S_q) * NKV * HD * 2 * 2;  // K+V new tokens
-    double kv_cache_bytes = double(num_blocks) * BLOCK_SIZE * NKV * HD * kv_elem_size * 2;  // K+V cache
+    double kv_logical_tokens = double(total_context);
+    double kv_cache_bytes = 2.0 * kv_logical_tokens * NKV * HD * kv_elem_size;  // K+V logical
+    if (use_i8) {
+        // INT8 group-128 scale: 1 fp16 per group of HD=128 per (NKV head, token), per K and V.
+        const int groups_per_token = std::max(1, HD / 128);
+        kv_cache_bytes += 2.0 * kv_logical_tokens * NKV * groups_per_token * 2;
+    }
     double out_bytes    = double(S_q) * NH * HD * 2;
     double total_bytes  = q_bytes + kv_new_bytes + kv_cache_bytes + out_bytes;
 
