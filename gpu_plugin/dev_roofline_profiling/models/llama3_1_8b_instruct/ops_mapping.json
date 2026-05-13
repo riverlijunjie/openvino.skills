@@ -1,0 +1,30 @@
+{
+  "model": "meta-llama/Llama-3.1-8B-Instruct (dense decoder, GQA, SwiGLU)",
+  "config": {
+    "vocab_size": 128256,
+    "hidden_size": 4096,
+    "intermediate_size": 14336,
+    "num_hidden_layers": 32,
+    "num_attention_heads": 32,
+    "num_key_value_heads": 8,
+    "head_dim": 128,
+    "weight_quant_body": "INT4 g=128 (asymmetric)",
+    "weight_quant_lm_head": "INT8 g=128",
+    "kv_cache_quant": "INT8",
+    "activation_dtype": "FP16"
+  },
+  "ops": {
+    "qkv_fused":            { "shape": "FC(M, 4096, 6144)",   "weight": "INT4 g=128", "calls_per_decode": 32, "note": "QKV concat: NH*HD + 2*NKV*HD = (32+8+8)*128" },
+    "o_proj":               { "shape": "FC(M, 4096, 4096)",   "weight": "INT4 g=128", "calls_per_decode": 32 },
+    "mlp_gate":             { "shape": "FC(M, 4096, 14336)",  "weight": "INT4 g=128", "calls_per_decode": 32 },
+    "mlp_up":               { "shape": "FC(M, 4096, 14336)",  "weight": "INT4 g=128", "calls_per_decode": 32 },
+    "mlp_down":             { "shape": "FC(M, 14336, 4096)",  "weight": "INT4 g=128", "calls_per_decode": 32 },
+    "paged_attention":      { "config": "NH=32, NKV=8, HD=128, GQA=4, kv_int8", "calls_per_decode": 32 },
+    "lm_head":              { "shape": "FC(1, 4096, 128256)", "weight": "INT8 g=128", "calls_per_decode": 1 },
+    "small_ops_per_layer":  ["rmsnorm_x2 (H=4096)", "rope_q (NH=32, HD=128)", "rope_k (NKV=8, HD=128)", "swish (I=14336)", "multiply (I=14336)", "add_x2 (H=4096)"]
+  },
+  "notes": [
+    "Llama-3.1-8B uses plain SDPA→PA path with no Q/K-norm (unlike Qwen3-8B).",
+    "RoPE base=500000 with NTK-by-parts scaling (factor=8). Roofline impact is identical to standard rope."
+  ]
+}

@@ -1,0 +1,127 @@
+{
+  "variables": {
+    "NL": "cfg['num_hidden_layers']",
+    "H": "cfg['hidden_size']",
+    "NH": "cfg['num_attention_heads']",
+    "NKV": "cfg['num_key_value_heads']",
+    "HD": "cfg['head_dim']",
+    "I_MOE": "cfg['moe_intermediate_size']",
+    "NE": "cfg['num_experts']",
+    "TK": "cfg['num_experts_per_tok']",
+    "VOCAB": "cfg['vocab_size']"
+  },
+  "decode_table": {
+    "title": "f'## DECODE per-op (kv={DECODE_KV}, {platform_name})'",
+    "subtitle": "platform_desc",
+    "variables": {
+      "DECODE_KV": "4096"
+    },
+    "rows": [
+      {
+        "name": "f'moe_3gemm fused (TK={TK}, NE={NE}, I={I_MOE})'",
+        "log": "'moe_decode_M1'",
+        "calls": "NL",
+        "bytes": "TK*((3*H*I_MOE)//2 + 3*(H//128)*I_MOE*2 + (3*(H//128)*I_MOE)//2) + (H + TK*I_MOE*2)*2 + 2*H",
+        "flops": "TK*3*H*I_MOE*2"
+      },
+      {
+        "name": "'lm_head (INT8 g=128)'",
+        "log": "'lm_head_decode_M1'",
+        "calls": "1",
+        "bytes": "fc_bytes_int8(1, H, VOCAB, 128)",
+        "flops": "fc_flops(1, H, VOCAB)"
+      },
+      {
+        "name": "'fc_qkv (INT4 g=128)'",
+        "log": "'fc_qkv_decode_M1'",
+        "calls": "NL",
+        "bytes": "fc_bytes_int4(1, H, 5120, 128)",
+        "flops": "fc_flops(1, H, 5120)"
+      },
+      {
+        "name": "'fc_o (INT4 g=128)'",
+        "log": "'fc_o_decode_M1'",
+        "calls": "NL",
+        "bytes": "fc_bytes_int4(1, 4096, H, 128)",
+        "flops": "fc_flops(1, 4096, H)"
+      },
+      {
+        "name": "f'pa_decode (kv={DECODE_KV})'",
+        "log": "f'pa_decode_kv{DECODE_KV}'",
+        "calls": "NL",
+        "bytes": "2*NKV*HD*DECODE_KV",
+        "flops": "2*NH*HD*DECODE_KV*2"
+      },
+      {
+        "name": "'rmsnorm (H=2048)'",
+        "log": "'so_rmsnorm_h2048_decode'",
+        "calls": "2*NL",
+        "bytes": "H*2*2",
+        "flops": "H"
+      },
+      {
+        "name": "'add (residual)'",
+        "log": "'so_add_decode'",
+        "calls": "2*NL",
+        "bytes": "H*2*3",
+        "flops": "H"
+      },
+      {
+        "name": "'rope_q'",
+        "log": "'so_rope_q_decode'",
+        "calls": "NL",
+        "bytes": "NH*HD*4",
+        "flops": "NH*HD*10"
+      },
+      {
+        "name": "'rope_k'",
+        "log": "'so_rope_k_decode'",
+        "calls": "NL",
+        "bytes": "NKV*HD*4",
+        "flops": "NKV*HD*10"
+      },
+      {
+        "name": "'q_norm'",
+        "log": "'so_rmsnorm3d_qnorm_decode'",
+        "calls": "NL",
+        "bytes": "NH*HD*4",
+        "flops": "NH*HD"
+      },
+      {
+        "name": "'k_norm'",
+        "log": "'so_rmsnorm3d_knorm_decode'",
+        "calls": "NL",
+        "bytes": "NKV*HD*4",
+        "flops": "NKV*HD"
+      }
+    ]
+  },
+  "sweeps": [
+    {
+      "name": "prefill_table",
+      "title": "f'## PREFILL per-layer kernel time (ms, {platform_name})'",
+      "axis_name": "S",
+      "axis_values": [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072],
+      "row_variables": {
+        "moe": "metric_ms(f'moe_prefill_S{S}')",
+        "pa": "metric_ms(f'pa_prefill_S{S}')",
+        "fcq": "metric_ms(f'fc_qkv_prefill_S{S}')",
+        "fco": "metric_ms(f'fc_o_prefill_S{S}')",
+        "lm": "metric_ms('lm_head_decode_M1')"
+      },
+      "skip_if": "moe == 0",
+      "columns": [
+        {"header": "S", "expr": "S", "fmt": "d"},
+        {"header": "MoE/layer", "expr": "moe", "fmt": ".3f"},
+        {"header": "PA/layer", "expr": "pa", "fmt": ".3f"},
+        {"header": "fc_qkv/layer", "expr": "fcq", "fmt": ".3f"},
+        {"header": "fc_o/layer", "expr": "fco", "fmt": ".3f"}
+      ],
+      "total_expr": "NL*(moe + pa + fcq + fco) + lm",
+      "total_header": "total est (ms)",
+      "total_fmt": ".2f",
+      "save_key": "prefill_total_ms",
+      "save_expr": "total"
+    }
+  ]
+}

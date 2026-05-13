@@ -66,3 +66,4 @@ make ov_gpu_unit_tests -j$(nproc)
 - `reference.md` — Complete file listing of all MOE source files
 - `moe_shared_expert.md` — Shared expert operator and GenAI integration details
 - `qwen3_moe_i4_sym.md` - Performance analysis and optimization details for Qwen3-30B MoE with i4 symmetric quantization
+- `remote_machine.md` — Instructions for setting up remote machine access for testing

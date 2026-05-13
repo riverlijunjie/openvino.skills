@@ -1,0 +1,59 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: C:\Users\Local_Admin\Downloads\clintercept-3.0.6-win64\Release\opencl.dll
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(NOT supported)
+    clock(steady_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept registry key: SOFTWARE\INTEL\IGFX\CLINTERCEPT
+Trying to load dispatch from: real_opencl.dll
+Couldn't get exported function pointer to: clGetGLContextInfoKHR
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+Total Enqueues: 0
+
+=== PA Benchmark ===
+NH=32 NKV=8 HD=128
+Mode=decode S_q=1 S_kv=1024 blocks=65 kv_type=i8 iters=5000 warmup=200 bufs=4
+[1;30mGPU_Debug: [1;34mexecution_config.cpp:[1;35m233:[1;36moperator (): [0m[Warning] BY_CHANNEL quant mode is not supported for cache rotation yet. Switching to BY_TOKEN mode.
+[1;30mGPU_Debug: [1;34mexecution_config.cpp:[1;35m233:[1;36moperator (): [0m[Warning] BY_CHANNEL quant mode is not supported for cache rotation yet. Switching to BY_TOKEN mode.
+KV cache key type=i8 shape=[?,8,128,20]
+KV cache val type=i8 shape=[?,8,16,132]
+Resolved KC shape: [65,8,128,20]
+Median_ms: 0.3433
+Min_ms: 0.3165
+Avg_ms: 0.348858
+GFLOPS: 51.3067
+BW_GBs: 6.26391
+AI: 8.19085
+TotalFLOPs: 1.76136e+07
+TotalBytes: 2.1504e+06
+Total Enqueues: 66301
+
+
+Device Performance Timing Results for Intel(R) Arc(TM) B390 GPU (96CUs, 2400MHz):
+
+Total Time (ns): 674077480
+
+                                                          Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+                                             clEnqueueMemFillINTEL( H ),      1,          3229,    0.00%,          3229,          3229,          3229
+                                           clEnqueueMemcpyINTEL( HtoH ),   3900,       5856051,    0.87%,          1501,           989,          2864
+                                           clEnqueueMemcpyINTEL( MtoD ),  36400,     355560489,   52.75%,          9768,           937,         57552
+                                           clEnqueueMemcpyINTEL( MtoH ),  10400,      10397040,    1.54%,           999,           937,          8125
+                       pa_kv_cache_update_ref__10292547650165516455__sa,   5200,      19806796,    2.94%,          3808,          3333,         12812
+             paged_attention_opt__single_token_10292547650165516455__sa,   5200,     266320419,   39.51%,         51215,         46979,        295208
+paged_attention_opt__single_token_finalization_10292547650165516455__sa,   5200,      16133456,    2.39%,          3102,          2916,         10520
+CLIntercept is shutting down...
+... shutdown complete.

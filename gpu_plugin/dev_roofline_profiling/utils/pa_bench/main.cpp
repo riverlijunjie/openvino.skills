@@ -64,7 +64,7 @@ static constexpr int BLOCK_SIZE = 16;  // KV cache block size
  *  [12] max_context_len:    scalar, i32
  *  [13..27] optional:       0-shaped constants
  */
-static std::shared_ptr<ov::Model> build_pa_model(int num_blocks, bool use_cm, int block_size_for_context) {
+static std::shared_ptr<ov::Model> build_pa_model(int num_blocks, bool use_cm, int block_size_for_context, int sliding_window_size = 0) {
     // query dim[1] MUST be static (NH*HD) — GPU plugin reads it to compute heads_num
     auto query       = std::make_shared<op::v0::Parameter>(element::f16,
                            PartialShape{Dimension::dynamic(), int64_t(NH * HD)});
@@ -97,7 +97,7 @@ static std::shared_ptr<ov::Model> build_pa_model(int num_blocks, bool use_cm, in
     // Fixed constants for required inputs
     float scale_val = 1.0f / std::sqrt(float(HD));
     auto scale          = op::v0::Constant::create(element::f32, Shape{}, {scale_val});
-    auto sliding_window = op::v0::Constant::create(element::i32, Shape{}, {0});
+    auto sliding_window = op::v0::Constant::create(element::i32, Shape{}, {sliding_window_size});
     auto alibi_slopes   = op::v0::Constant::create(element::f32, Shape{0}, {});
     int total_context = num_blocks * block_size_for_context;
     auto max_context_len = op::v0::Constant::create(element::i32, Shape{}, {total_context});
@@ -263,6 +263,12 @@ int main(int argc, char* argv[]) {
     if (const char* e = std::getenv("PA_NKV")) NKV = std::atoi(e);
     if (const char* e = std::getenv("PA_HD"))  HD  = std::atoi(e);
 
+    // Sliding window size: 0 = disabled (full attention). When > 0, the GPU
+    // plugin's PA kernel masks out KV tokens outside the window, reducing both
+    // compute and memory traffic for sliding-window attention layers.
+    int sliding_window_size = 0;
+    if (const char* e = std::getenv("PA_SW"))  sliding_window_size = std::atoi(e);
+
     // For decode: past_lens = S_kv, new tokens = S_q, total_context = S_kv + S_q
     // For prefill: S_q = S (input_len), S_kv = 0 (no past), total_context = S_q
     //   Force S_kv=0 for prefill so that:
@@ -279,7 +285,8 @@ int main(int argc, char* argv[]) {
     int num_blocks = (total_context + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
     std::cout << "=== PA Benchmark ===" << std::endl;
-    std::cout << "NH=" << NH << " NKV=" << NKV << " HD=" << HD << std::endl;
+    std::cout << "NH=" << NH << " NKV=" << NKV << " HD=" << HD
+              << " SW=" << sliding_window_size << std::endl;
     std::cout << "Mode=" << mode << " S_q=" << S_q << " S_kv=" << S_kv
               << " blocks=" << num_blocks << " kv_type=" << (use_i8 ? "i8" : "f16")
               << " impl=" << (use_cm ? "cm" : "ocl")
@@ -296,7 +303,7 @@ int main(int argc, char* argv[]) {
     }
 
     int block_size_for_context = use_cm ? 256 : BLOCK_SIZE;
-    auto model = build_pa_model(num_blocks, use_cm, block_size_for_context);
+    auto model = build_pa_model(num_blocks, use_cm, block_size_for_context, sliding_window_size);
 
     Core core;
     ov::AnyMap props;

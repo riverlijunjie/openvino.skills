@@ -1,0 +1,66 @@
+== fc_qkv_decode_M1 == ./fc_bench 1 4096 6144 128 8000 500 8 u4 64
+== fc_o_decode_M1 == ./fc_bench 1 4096 4096 128 8000 500 8 u4 64
+== fc_gate_decode_M1 == ./fc_bench 1 4096 12288 128 4000 300 8 u4 64
+== fc_up_decode_M1 == ./fc_bench 1 4096 12288 128 4000 300 8 u4 64
+== fc_down_decode_M1 == ./fc_bench 1 12288 4096 128 4000 300 8 u4 64
+== lm_head_decode_M1 == ./fc_bench 1 4096 151936 128 1000 100 8 u8 64
+== fc_qkv_prefill_S1024 == ./fc_bench 1024 4096 6144 128 30 5 4 u4 64
+== fc_o_prefill_S1024 == ./fc_bench 1024 4096 4096 128 30 5 4 u4 64
+== fc_gate_prefill_S1024 == ./fc_bench 1024 4096 12288 128 30 5 4 u4 64
+== fc_up_prefill_S1024 == ./fc_bench 1024 4096 12288 128 30 5 4 u4 64
+== fc_down_prefill_S1024 == ./fc_bench 1024 12288 4096 128 30 5 4 u4 64
+== fc_qkv_prefill_S2048 == ./fc_bench 2048 4096 6144 128 30 5 4 u4 64
+== fc_o_prefill_S2048 == ./fc_bench 2048 4096 4096 128 30 5 4 u4 64
+== fc_gate_prefill_S2048 == ./fc_bench 2048 4096 12288 128 30 5 4 u4 64
+== fc_up_prefill_S2048 == ./fc_bench 2048 4096 12288 128 30 5 4 u4 64
+== fc_down_prefill_S2048 == ./fc_bench 2048 12288 4096 128 30 5 4 u4 64
+== fc_qkv_prefill_S4096 == ./fc_bench 4096 4096 6144 128 30 5 4 u4 64
+== fc_o_prefill_S4096 == ./fc_bench 4096 4096 4096 128 30 5 4 u4 64
+== fc_gate_prefill_S4096 == ./fc_bench 4096 4096 12288 128 30 5 4 u4 64
+== fc_up_prefill_S4096 == ./fc_bench 4096 4096 12288 128 30 5 4 u4 64
+== fc_down_prefill_S4096 == ./fc_bench 4096 12288 4096 128 30 5 4 u4 64
+== fc_qkv_prefill_S8192 == ./fc_bench 8192 4096 6144 128 30 5 4 u4 64
+== fc_o_prefill_S8192 == ./fc_bench 8192 4096 4096 128 30 5 4 u4 64
+== fc_gate_prefill_S8192 == ./fc_bench 8192 4096 12288 128 30 5 4 u4 64
+== fc_up_prefill_S8192 == ./fc_bench 8192 4096 12288 128 30 5 4 u4 64
+== fc_down_prefill_S8192 == ./fc_bench 8192 12288 4096 128 30 5 4 u4 64
+== fc_qkv_prefill_S16384 == ./fc_bench 16384 4096 6144 128 30 5 4 u4 64
+== fc_o_prefill_S16384 == ./fc_bench 16384 4096 4096 128 30 5 4 u4 64
+== fc_gate_prefill_S16384 == ./fc_bench 16384 4096 12288 128 30 5 4 u4 64
+== fc_up_prefill_S16384 == ./fc_bench 16384 4096 12288 128 30 5 4 u4 64
+== fc_down_prefill_S16384 == ./fc_bench 16384 12288 4096 128 30 5 4 u4 64
+== fc_qkv_prefill_S32768 == ./fc_bench 32768 4096 6144 128 30 5 4 u4 64
+== fc_o_prefill_S32768 == ./fc_bench 32768 4096 4096 128 30 5 4 u4 64
+== fc_gate_prefill_S32768 == ./fc_bench 32768 4096 12288 128 30 5 4 u4 64
+== fc_up_prefill_S32768 == ./fc_bench 32768 4096 12288 128 30 5 4 u4 64
+== fc_down_prefill_S32768 == ./fc_bench 32768 12288 4096 128 30 5 4 u4 64
+== pa_decode_kv1024 == ./pa_bench decode 1 1024 10000 300 4 i8
+== pa_decode_kv2048 == ./pa_bench decode 1 2048 10000 300 4 i8
+== pa_decode_kv4096 == ./pa_bench decode 1 4096 10000 300 4 i8
+== pa_decode_kv8192 == ./pa_bench decode 1 8192 10000 300 4 i8
+== pa_decode_kv16384 == ./pa_bench decode 1 16384 10000 300 4 i8
+== pa_decode_kv32768 == ./pa_bench decode 1 32768 10000 300 4 i8
+== pa_decode_kv65536 == ./pa_bench decode 1 65536 10000 300 4 i8
+== pa_decode_kv131072 == ./pa_bench decode 1 131072 10000 300 4 i8
+== pa_prefill_S1024 == ./pa_bench prefill 1024 0 30 5 2 i8
+== pa_prefill_S2048 == ./pa_bench prefill 2048 0 30 5 2 i8
+== pa_prefill_S4096 == ./pa_bench prefill 4096 0 30 5 2 i8
+== pa_prefill_S8192 == ./pa_bench prefill 8192 0 30 5 2 i8
+== pa_prefill_S16384 == ./pa_bench prefill 16384 0 30 5 2 i8
+== pa_prefill_S32768 == ./pa_bench prefill 32768 0 30 5 2 i8
+== so_rmsnorm_h4096_decode == ./small_ops_bench rmsnorm 1 4096 --iters 50000 --warmup 500 --bufs 8
+== so_rmsnorm3d_qnorm_decode == ./small_ops_bench rmsnorm3d 1 32 128 --iters 50000 --warmup 500 --bufs 8
+== so_rmsnorm3d_knorm_decode == ./small_ops_bench rmsnorm3d 1 8 128 --iters 50000 --warmup 500 --bufs 8
+== so_rope_q_decode == ./small_ops_bench rope 1 32 128 --iters 50000 --warmup 500 --bufs 8
+== so_rope_k_decode == ./small_ops_bench rope 1 8 128 --iters 50000 --warmup 500 --bufs 8
+== so_add_decode == ./small_ops_bench add 1 4096 --iters 50000 --warmup 500 --bufs 8
+== so_swish_decode == ./small_ops_bench swish 1 12288 --iters 50000 --warmup 500 --bufs 8
+== so_multiply_decode == ./small_ops_bench multiply 1 12288 --iters 50000 --warmup 500 --bufs 8
+== so_rmsnorm_h4096_prefill_S1024 == ./small_ops_bench rmsnorm 1024 4096 --iters 500 --warmup 50 --bufs 4
+== so_rope_q_prefill_S1024 == ./small_ops_bench rope 1024 32 128 --iters 500 --warmup 50 --bufs 4
+== so_rmsnorm_h4096_prefill_S2048 == ./small_ops_bench rmsnorm 2048 4096 --iters 500 --warmup 50 --bufs 4
+== so_rope_q_prefill_S2048 == ./small_ops_bench rope 2048 32 128 --iters 500 --warmup 50 --bufs 4
+== so_rmsnorm_h4096_prefill_S4096 == ./small_ops_bench rmsnorm 4096 4096 --iters 500 --warmup 50 --bufs 4
+== so_rope_q_prefill_S4096 == ./small_ops_bench rope 4096 32 128 --iters 500 --warmup 50 --bufs 4
+== so_rmsnorm_h4096_prefill_S8192 == ./small_ops_bench rmsnorm 8192 4096 --iters 500 --warmup 50 --bufs 4
+== so_rope_q_prefill_S8192 == ./small_ops_bench rope 8192 32 128 --iters 500 --warmup 50 --bufs 4

@@ -1,0 +1,108 @@
+{
+  "model": "google/gemma-4-26b-a4b-it (gemma4_moe)",
+  "config": {
+    "vocab_size": 262144,
+    "hidden_size": 2816,
+    "intermediate_size": 2112,
+    "num_hidden_layers": 30,
+    "num_sliding_attention_layers": 25,
+    "num_full_attention_layers": 5,
+    "layer_pattern": "sliding_attention × 5 then full_attention × 1, repeated (5:1 ratio)",
+    "num_attention_heads": 16,
+    "num_key_value_heads_sliding": 8,
+    "num_global_key_value_heads": 2,
+    "head_dim_sliding": 256,
+    "head_dim_full": 512,
+    "attention_k_eq_v": true,
+    "sliding_window": 1024,
+    "num_experts": 128,
+    "top_k_experts": 8,
+    "moe_intermediate_size": 704,
+    "hidden_activation": "gelu_pytorch_tanh",
+    "enable_moe_block": true,
+    "parallel_dense_mlp": true,
+    "tie_word_embeddings": true,
+    "weight_quant_body": "INT4 g=64 (704 and 2112 not divisible by 128; H=2816/128=22 OK for some FCs)",
+    "weight_quant_lm_head": "INT8 g=128",
+    "kv_cache_quant": "INT8",
+    "activation_dtype": "FP16"
+  },
+  "notes": [
+    "Gemma4 MoE uses 'parallel dense + sparse MoE' architecture: dense MLP and MoE run in parallel on same input, outputs combined after separate post-layernorms.",
+    "Unlike Qwen3.5-MoE, there is NO shared expert. Dense MLP serves a similar role.",
+    "Full attention layers use attention_k_eq_v=true: V=K, no separate V projection.",
+    "Full attention uses global_head_dim=512, partial_rotary_factor=0.25 (128 out of 512 dims rotated).",
+    "Sliding attention uses head_dim=256 with sliding_window=1024.",
+    "MoE expert activation is gelu_pytorch_tanh (GEGLU), not SiLU (SwiGLU).",
+    "MoE expert weights use INT4 g=64 (I_MOE=704, 704%128!=0). Dense MLP gate/up use g=128 (K=2816), down uses g=64 (K=2112).",
+    "LM_Head is tied with embeddings (tie_word_embeddings=true), uses INT8 g=128."
+  ],
+  "ops": {
+    "qkv_fused_sliding_attn": {
+      "shape": "FC(M, 2816, 8192)",
+      "weight": "INT4 g=128",
+      "calls_per_decode": 25,
+      "note": "Q=16*256=4096, K=8*256=2048, V=8*256=2048 -> 8192; 25 sliding-attn layers"
+    },
+    "o_proj_sliding_attn": {
+      "shape": "FC(M, 4096, 2816)",
+      "weight": "INT4 g=128",
+      "calls_per_decode": 25,
+      "note": "NH*HD=16*256=4096 -> H=2816; 25 sliding-attn layers"
+    },
+    "qkv_fused_full_attn": {
+      "shape": "FC(M, 2816, 9216)",
+      "weight": "INT4 g=128",
+      "calls_per_decode": 5,
+      "note": "Q=16*512=8192, K=2*512=1024, no V (k_eq_v) -> 9216; 5 full-attn layers"
+    },
+    "o_proj_full_attn": {
+      "shape": "FC(M, 8192, 2816)",
+      "weight": "INT4 g=128",
+      "calls_per_decode": 5,
+      "note": "NH*global_HD=16*512=8192 -> H=2816; 5 full-attn layers"
+    },
+    "paged_attention_sliding": {
+      "config": "NH=16, NKV=8, HD=256, GQA=2, kv_int8, sliding_window=1024",
+      "calls_per_decode": 25,
+      "note": "Sliding window limits KV length to max 1024 tokens for decode"
+    },
+    "paged_attention_full": {
+      "config": "NH=16, NKV=2, HD=512, GQA=8, kv_int8",
+      "calls_per_decode": 5,
+      "note": "Full attention without sliding window, V=K due to k_eq_v"
+    },
+    "dense_mlp_gate_up": {
+      "shape": "FC(M, 2816, 4224)",
+      "weight": "INT4 g=128",
+      "calls_per_decode": 30,
+      "note": "gate(2112) + up(2112) = 4224; GEGLU pattern; all 30 layers"
+    },
+    "dense_mlp_down": {
+      "shape": "FC(M, 2112, 2816)",
+      "weight": "INT4 g=128",
+      "calls_per_decode": 30,
+      "note": "down projection; all 30 layers"
+    },
+    "moe_3gemm_fused": {
+      "config": "H=2816, I=704, NE=128, TK=8, no_shared_expert",
+      "calls_per_decode": 30,
+      "note": "128 experts, top_k=8, moe_intermediate_size=704, GEGLU activation, no shared expert"
+    },
+    "lm_head": {
+      "shape": "FC(1, 2816, 262144)",
+      "weight": "INT8 g=128",
+      "calls_per_decode": 1,
+      "note": "tied with embeddings; only decode single token"
+    },
+    "small_ops_per_layer": [
+      "rmsnorm (input_layernorm, post_attention_layernorm, pre_feedforward_layernorm, post_feedforward_layernorm, post_feedforward_layernorm_1, post_feedforward_layernorm_2, pre_feedforward_layernorm_2) x7 per MoE layer",
+      "q_norm (sliding: dim=256, full: dim=512)",
+      "k_norm (sliding: dim=256, full: dim=512)",
+      "v_norm (sliding only: dim=256)",
+      "rope_q (sliding and full attention)",
+      "rope_k (sliding and full attention)",
+      "add (residual connections x2 per layer)"
+    ]
+  }
+}

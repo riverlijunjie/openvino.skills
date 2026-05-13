@@ -1,0 +1,26 @@
+{
+  "model": "Qwen/Qwen3-8B (dense decoder, GQA, SwiGLU)",
+  "config": {
+    "vocab_size": 151936,
+    "hidden_size": 4096,
+    "intermediate_size": 12288,
+    "num_hidden_layers": 36,
+    "num_attention_heads": 32,
+    "num_key_value_heads": 8,
+    "head_dim": 128,
+    "weight_quant_body": "INT4 g=128 (asymmetric)",
+    "weight_quant_lm_head": "INT8 g=128",
+    "kv_cache_quant": "INT8",
+    "activation_dtype": "FP16"
+  },
+  "ops": {
+    "qkv_fused":            { "shape": "FC(M, 4096, 6144)",   "weight": "INT4 g=128", "calls_per_decode": 36, "note": "QKV concat: NH*HD + 2*NKV*HD = (32+8+8)*128" },
+    "o_proj":               { "shape": "FC(M, 4096, 4096)",   "weight": "INT4 g=128", "calls_per_decode": 36 },
+    "mlp_gate":             { "shape": "FC(M, 4096, 12288)",  "weight": "INT4 g=128", "calls_per_decode": 36 },
+    "mlp_up":               { "shape": "FC(M, 4096, 12288)",  "weight": "INT4 g=128", "calls_per_decode": 36 },
+    "mlp_down":             { "shape": "FC(M, 12288, 4096)",  "weight": "INT4 g=128", "calls_per_decode": 36 },
+    "paged_attention":      { "config": "NH=32, NKV=8, HD=128, GQA=4, kv_int8", "calls_per_decode": 36 },
+    "lm_head":              { "shape": "FC(1, 4096, 151936)", "weight": "INT8 g=128", "calls_per_decode": 1 },
+    "small_ops_per_layer":  ["rmsnorm_x2 (H=4096)", "q_norm (NH=32, HD=128)", "k_norm (NKV=8, HD=128)", "rope_q", "rope_k", "swish (I=12288)", "multiply (I=12288)", "add_x2 (H=4096)"]
+  }
+}

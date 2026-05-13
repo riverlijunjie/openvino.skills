@@ -1,0 +1,42 @@
+{
+  "variables": {
+    "NL": "cfg['num_hidden_layers']",
+    "H": "cfg['hidden_size']",
+    "VOCAB": "cfg['vocab_size']"
+  },
+  "decode_table": {
+    "title": "f'## DECODE per-op ({platform_name})'",
+    "subtitle": "platform_desc",
+    "variables": {},
+    "rows": [
+      {
+        "name": "'lm_head'",
+        "log": "'lm_head_decode_M1'",
+        "calls": "1",
+        "bytes": "fc_bytes_int8(1, H, VOCAB, 128)",
+        "flops": "fc_flops(1, H, VOCAB)"
+      }
+    ]
+  },
+  "sweeps": [
+    {
+      "name": "prefill_table",
+      "title": "f'## PREFILL summary ({platform_name})'",
+      "axis_name": "S",
+      "axis_values": [1024, 2048, 4096, 8192],
+      "row_variables": {
+        "example_ms": "metric_ms(f'example_prefill_S{S}')"
+      },
+      "skip_if": "example_ms == 0",
+      "columns": [
+        {"header": "S", "expr": "S", "fmt": "d"},
+        {"header": "example/layer", "expr": "example_ms", "fmt": ".3f"}
+      ],
+      "total_expr": "NL * example_ms",
+      "total_header": "total ms",
+      "total_fmt": ".2f",
+      "save_key": "prefill_total_ms",
+      "save_expr": "total"
+    }
+  ]
+}

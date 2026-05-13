@@ -1,0 +1,221 @@
+{
+  "platform": "PTL",
+  "platform_desc": "PTL (Intel Arc B390 (Panther Lake, iGPU), Xe2; 105 GB/s, FP16 58.982 TFLOPS, INT8 117.964 TOPS)",
+  "decode_total_ms": 44.301803,
+  "decode_rows": [
+    {
+      "name": "fc_down (INT4 g=128)",
+      "log": "fc_down_decode_M1",
+      "ms": 0.303219,
+      "calls": 32,
+      "total": 9.703008,
+      "ai": 3.844977873139332,
+      "gbs": 100.73205175137441,
+      "tops": 0.00038731251009996076,
+      "eff": 95.93528738226135,
+      "bound": "memory"
+    },
+    {
+      "name": "fc_up (INT4 g=128)",
+      "log": "fc_up_decode_M1",
+      "ms": 0.297365,
+      "calls": 32,
+      "total": 9.51568,
+      "ai": 3.844977873139332,
+      "gbs": 102.71508751870597,
+      "tops": 0.00039493723874699444,
+      "eff": 97.82389287495806,
+      "bound": "memory"
+    },
+    {
+      "name": "fc_gate (INT4 g=128)",
+      "log": "fc_gate_decode_M1",
+      "ms": 0.296427,
+      "calls": 32,
+      "total": 9.485664,
+      "ai": 3.844977873139332,
+      "gbs": 103.04011442952228,
+      "tops": 0.00039618696002725797,
+      "eff": 98.13344231383074,
+      "bound": "memory"
+    },
+    {
+      "name": "lm_head (INT8 g=128)",
+      "log": "lm_head_decode_M1",
+      "ms": 5.087595,
+      "calls": 1,
+      "total": 5.087595,
+      "ai": 1.968254272743927,
+      "gbs": 104.92377321701117,
+      "tops": 0.00020651666494679707,
+      "eff": 99.92740306382017,
+      "bound": "memory"
+    },
+    {
+      "name": "fc_qkv (INT4 g=128)",
+      "log": "fc_qkv_decode_M1",
+      "ms": 0.129178,
+      "calls": 32,
+      "total": 4.133696,
+      "ai": 3.843603378167032,
+      "gbs": 101.37106937713854,
+      "tops": 0.0003896301847063742,
+      "eff": 96.54387559727479,
+      "bound": "memory"
+    },
+    {
+      "name": "pa_decode (kv=2048)",
+      "log": "pa_decode_kv2048",
+      "ms": 0.09189,
+      "calls": 32,
+      "total": 2.94048,
+      "ai": 8.0,
+      "gbs": 45.64483621721624,
+      "tops": 0.0003651586897377299,
+      "eff": 43.47127258782499,
+      "bound": "memory"
+    },
+    {
+      "name": "fc_o (INT4 g=128)",
+      "log": "fc_o_decode_M1",
+      "ms": 0.087696,
+      "calls": 32,
+      "total": 2.806272,
+      "ai": 3.8424015009380863,
+      "gbs": 99.5789089582193,
+      "tops": 0.0003826221492428389,
+      "eff": 94.83705615068504,
+      "bound": "memory"
+    },
+    {
+      "name": "rmsnorm (H=4096)",
+      "log": "so_rmsnorm_h4096_decode",
+      "ms": 0.003139,
+      "calls": 64,
+      "total": 0.200896,
+      "ai": 0.25,
+      "gbs": 5.219496654985664,
+      "tops": 1.304874163746416e-06,
+      "eff": 4.970949195224442,
+      "bound": "memory"
+    },
+    {
+      "name": "add (residual)",
+      "log": "so_add_decode",
+      "ms": 0.00194,
+      "calls": 64,
+      "total": 0.12416,
+      "ai": 0.16666666666666666,
+      "gbs": 12.668041237113401,
+      "tops": 2.111340206185567e-06,
+      "eff": 12.06480117820324,
+      "bound": "memory"
+    },
+    {
+      "name": "mul (gate*up)",
+      "log": "so_multiply_decode",
+      "ms": 0.003027,
+      "calls": 32,
+      "total": 0.096864,
+      "ai": 0.16666666666666666,
+      "gbs": 28.41625371655104,
+      "tops": 4.736042286091841e-06,
+      "eff": 27.063098777667655,
+      "bound": "memory"
+    },
+    {
+      "name": "swish (gate)",
+      "log": "so_swish_decode",
+      "ms": 0.002356,
+      "calls": 32,
+      "total": 0.075392,
+      "ai": 1.0,
+      "gbs": 24.33955857385399,
+      "tops": 2.4339558573853988e-05,
+      "eff": 23.180531975099036,
+      "bound": "memory"
+    },
+    {
+      "name": "rope_q",
+      "log": "so_rope_q_decode",
+      "ms": 0.002151,
+      "calls": 32,
+      "total": 0.068832,
+      "ai": 2.5,
+      "gbs": 7.616922361692236,
+      "tops": 1.904230590423059e-05,
+      "eff": 7.2542117730402245,
+      "bound": "memory"
+    },
+    {
+      "name": "rope_k",
+      "log": "so_rope_k_decode",
+      "ms": 0.001977,
+      "calls": 32,
+      "total": 0.063264,
+      "ai": 2.5,
+      "gbs": 2.0718259989883663,
+      "tops": 5.179564997470915e-06,
+      "eff": 1.9731676180841584,
+      "bound": "memory"
+    }
+  ],
+  "decode_total_ms_by_kv": {
+    "1024": 43.221387,
+    "2048": 44.301803
+  },
+  "sweeps": {
+    "decode_kv_sweep": [
+      {
+        "kv": 1024,
+        "FC/layer (ms)": 1.113885,
+        "PA/layer (ms)": 0.058127,
+        "small/layer (ms)": 0.019669,
+        "FC total (ms)": 35.64432,
+        "PA total (ms)": 1.860064,
+        "small total (ms)": 0.629408,
+        "lm_head (ms)": 5.087595,
+        "decode total (ms)": 43.221387,
+        "tok/s": 23.136693877963705
+      },
+      {
+        "kv": 2048,
+        "FC/layer (ms)": 1.113885,
+        "PA/layer (ms)": 0.09189,
+        "small/layer (ms)": 0.019669,
+        "FC total (ms)": 35.64432,
+        "PA total (ms)": 2.94048,
+        "small total (ms)": 0.629408,
+        "lm_head (ms)": 5.087595,
+        "decode total (ms)": 44.301803,
+        "tok/s": 22.572444737745776
+      }
+    ],
+    "prefill_table": [
+      {
+        "S": 1024,
+        "fc_qkv/layer": 0.824507,
+        "fc_o/layer": 0.630661,
+        "fc_gate/layer": 1.797536,
+        "fc_up/layer": 1.893774,
+        "fc_down/layer": 2.537949,
+        "PA/layer": 0.708721,
+        "total est (ms)": 273.668331
+      },
+      {
+        "S": 2048,
+        "fc_qkv/layer": 1.645978,
+        "fc_o/layer": 1.200386,
+        "fc_gate/layer": 3.481382,
+        "fc_up/layer": 3.415945,
+        "fc_down/layer": 4.972011,
+        "PA/layer": 2.418844,
+        "total est (ms)": 553.393067
+      }
+    ]
+  },
+  "prefill_total_ms": {
+    "1024": 273.668331,
+    "2048": 553.393067
+  }
+}

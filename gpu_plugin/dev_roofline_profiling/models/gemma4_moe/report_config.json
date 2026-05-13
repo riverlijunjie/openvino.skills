@@ -1,0 +1,189 @@
+{
+  "variables": {
+    "NL_SLIDING": "cfg['num_sliding_attention_layers']",
+    "NL_FULL": "cfg['num_full_attention_layers']",
+    "NL_TOTAL": "cfg['num_hidden_layers']",
+    "H": "cfg['hidden_size']",
+    "NH": "cfg['num_attention_heads']",
+    "NKV_SLIDING": "cfg['num_key_value_heads_sliding']",
+    "NKV_FULL": "cfg['num_global_key_value_heads']",
+    "HD_SLIDING": "cfg['head_dim_sliding']",
+    "HD_FULL": "cfg['head_dim_full']",
+    "I_DENSE": "cfg['intermediate_size']",
+    "I_MOE": "cfg['moe_intermediate_size']",
+    "NE": "cfg['num_experts']",
+    "TK": "cfg['top_k_experts']",
+    "VOCAB": "cfg['vocab_size']"
+  },
+  "decode_table": {
+    "title": "f'## DECODE per-op (kv={DECODE_KV}, {platform_name})'",
+    "subtitle": "platform_desc",
+    "variables": {
+      "DECODE_KV": "4096"
+    },
+    "rows": [
+      {
+        "name": "f'moe_3gemm fused (TK={TK}, NE={NE}, I={I_MOE}, no shared)'",
+        "log": "'moe_decode_M1'",
+        "calls": "NL_TOTAL",
+        "bytes": "TK*(3*H*I_MOE//2 + 3*(H//64)*I_MOE*2 + 3*(H//64)*I_MOE//2) + (H + TK*I_MOE*2)*2",
+        "flops": "TK*3*H*I_MOE*2"
+      },
+      {
+        "name": "'dense_mlp_gate (INT4 g=128)'",
+        "log": "'fc_mlp_gate_decode_M1'",
+        "calls": "NL_TOTAL",
+        "bytes": "fc_bytes_int4(1, H, I_DENSE, 128)",
+        "flops": "fc_flops(1, H, I_DENSE)"
+      },
+      {
+        "name": "'dense_mlp_up (INT4 g=128, same shape as gate)'",
+        "log": "'fc_mlp_gate_decode_M1'",
+        "calls": "NL_TOTAL",
+        "bytes": "fc_bytes_int4(1, H, I_DENSE, 128)",
+        "flops": "fc_flops(1, H, I_DENSE)"
+      },
+      {
+        "name": "'dense_mlp_down (INT4 g=64)'",
+        "log": "'fc_mlp_down_decode_M1'",
+        "calls": "NL_TOTAL",
+        "bytes": "fc_bytes_int4(1, I_DENSE, H, 64)",
+        "flops": "fc_flops(1, I_DENSE, H)"
+      },
+      {
+        "name": "'fc_qkv sliding (INT4)'",
+        "log": "'fc_qkv_sliding_decode_M1'",
+        "calls": "NL_SLIDING",
+        "bytes": "fc_bytes_int4(1, H, NH*HD_SLIDING+NKV_SLIDING*HD_SLIDING*2, 128)",
+        "flops": "fc_flops(1, H, NH*HD_SLIDING+NKV_SLIDING*HD_SLIDING*2)"
+      },
+      {
+        "name": "'fc_o sliding (INT4)'",
+        "log": "'fc_o_sliding_decode_M1'",
+        "calls": "NL_SLIDING",
+        "bytes": "fc_bytes_int4(1, NH*HD_SLIDING, H, 128)",
+        "flops": "fc_flops(1, NH*HD_SLIDING, H)"
+      },
+      {
+        "name": "'fc_qkv full (INT4, k_eq_v)'",
+        "log": "'fc_qkv_full_decode_M1'",
+        "calls": "NL_FULL",
+        "bytes": "fc_bytes_int4(1, H, NH*HD_FULL+NKV_FULL*HD_FULL, 128)",
+        "flops": "fc_flops(1, H, NH*HD_FULL+NKV_FULL*HD_FULL)"
+      },
+      {
+        "name": "'fc_o full (INT4)'",
+        "log": "'fc_o_full_decode_M1'",
+        "calls": "NL_FULL",
+        "bytes": "fc_bytes_int4(1, NH*HD_FULL, H, 128)",
+        "flops": "fc_flops(1, NH*HD_FULL, H)"
+      },
+      {
+        "name": "'lm_head (INT8 g=128)'",
+        "log": "'lm_head_decode_M1'",
+        "calls": "1",
+        "bytes": "fc_bytes_int8(1, H, VOCAB, 128)",
+        "flops": "fc_flops(1, H, VOCAB)"
+      },
+      {
+        "name": "f'pa_sliding decode (kv=1024, NH={NH}/NKV={NKV_SLIDING}/HD={HD_SLIDING})'",
+        "log": "'pa_sliding_decode_kv1024'",
+        "calls": "NL_SLIDING",
+        "bytes": "2*NKV_SLIDING*HD_SLIDING*1024",
+        "flops": "2*NH*HD_SLIDING*1024*2"
+      },
+      {
+        "name": "f'pa_full decode (kv={DECODE_KV}, NH={NH}/NKV={NKV_FULL}/HD={HD_FULL})'",
+        "log": "f'pa_full_decode_kv{DECODE_KV}'",
+        "calls": "NL_FULL",
+        "bytes": "2*NKV_FULL*HD_FULL*DECODE_KV",
+        "flops": "2*NH*HD_FULL*DECODE_KV*2"
+      },
+      {
+        "name": "'rmsnorm (H=2816)'",
+        "log": "'so_rmsnorm_h2816_decode'",
+        "calls": "7*NL_TOTAL",
+        "bytes": "H*4",
+        "flops": "H*8"
+      },
+      {
+        "name": "'add (residual)'",
+        "log": "'so_add_h2816_decode'",
+        "calls": "2*NL_TOTAL",
+        "bytes": "H*6",
+        "flops": "H"
+      }
+    ]
+  },
+  "sweeps": [
+    {
+      "name": "decode_totals_by_kv_table",
+      "title": "f'## DECODE total across kv ({platform_name})'",
+      "axis_name": "kv",
+      "axis_values": [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072],
+      "row_variables": {
+        "pa_full_ms": "metric_ms(f'pa_full_decode_kv{kv}')",
+        "pa_sliding_ms": "metric_ms('pa_sliding_decode_kv1024')",
+        "lm_ms": "metric_ms('lm_head_decode_M1')",
+        "moe_ms": "metric_ms('moe_decode_M1')",
+        "fc_mlp_gate_ms": "metric_ms('fc_mlp_gate_decode_M1')",
+        "fc_mlp_down_ms": "metric_ms('fc_mlp_down_decode_M1')",
+        "fc_qkv_s_ms": "metric_ms('fc_qkv_sliding_decode_M1')",
+        "fc_o_s_ms": "metric_ms('fc_o_sliding_decode_M1')",
+        "fc_qkv_f_ms": "metric_ms('fc_qkv_full_decode_M1')",
+        "fc_o_f_ms": "metric_ms('fc_o_full_decode_M1')",
+        "rms_ms": "metric_ms('so_rmsnorm_h2816_decode')",
+        "add_ms": "metric_ms('so_add_h2816_decode')"
+      },
+      "skip_if": "pa_full_ms == 0",
+      "columns": [
+        {"header": "kv", "expr": "kv", "fmt": "d"},
+        {"header": "MoE/L", "expr": "moe_ms", "fmt": ".4f"},
+        {"header": "PA_full/L", "expr": "pa_full_ms", "fmt": ".4f"},
+        {"header": "PA_slide/L", "expr": "pa_sliding_ms", "fmt": ".4f"},
+        {"header": "MLP_gate/L", "expr": "fc_mlp_gate_ms", "fmt": ".4f"},
+        {"header": "lm_head", "expr": "lm_ms", "fmt": ".3f"}
+      ],
+      "total_expr": "NL_TOTAL*(moe_ms + 2*fc_mlp_gate_ms + fc_mlp_down_ms) + NL_SLIDING*(fc_qkv_s_ms + fc_o_s_ms + pa_sliding_ms) + NL_FULL*(fc_qkv_f_ms + fc_o_f_ms + pa_full_ms) + lm_ms + 7*NL_TOTAL*rms_ms + 2*NL_TOTAL*add_ms",
+      "total_header": "total ms",
+      "total_fmt": ".3f",
+      "tokens_expr": "1000/total if total else 0",
+      "tokens_header": "tok/s",
+      "tokens_fmt": ".1f",
+      "save_key": "decode_totals_by_kv",
+      "save_expr": "total"
+    },
+    {
+      "name": "prefill_table",
+      "title": "f'## PREFILL per-S kernel time (ms, {platform_name})'",
+      "axis_name": "S",
+      "axis_values": [1024, 2048, 4096, 8192],
+      "row_variables": {
+        "moe": "metric_ms(f'moe_prefill_S{S}')",
+        "pa_full": "metric_ms(f'pa_full_prefill_S{S}')",
+        "pa_sliding": "metric_ms(f'pa_sliding_prefill_S{S}')",
+        "fc_qkv_s": "metric_ms(f'fc_qkv_sliding_prefill_S{S}')",
+        "fc_o_s": "metric_ms(f'fc_o_sliding_prefill_S{S}')",
+        "fc_qkv_f": "metric_ms(f'fc_qkv_full_prefill_S{S}')",
+        "fc_o_f": "metric_ms(f'fc_o_full_prefill_S{S}')",
+        "fc_gate": "metric_ms(f'fc_mlp_gate_prefill_S{S}')",
+        "fc_down": "metric_ms(f'fc_mlp_down_prefill_S{S}')",
+        "lm": "metric_ms('lm_head_decode_M1')"
+      },
+      "skip_if": "moe == 0",
+      "columns": [
+        {"header": "S", "expr": "S", "fmt": "d"},
+        {"header": "MoE/L", "expr": "moe", "fmt": ".3f"},
+        {"header": "PA_full/L", "expr": "pa_full", "fmt": ".3f"},
+        {"header": "PA_slide/L", "expr": "pa_sliding", "fmt": ".3f"},
+        {"header": "fc_qkv_s/L", "expr": "fc_qkv_s", "fmt": ".3f"},
+        {"header": "fc_gate/L", "expr": "fc_gate", "fmt": ".3f"}
+      ],
+      "total_expr": "NL_TOTAL*(moe + 2*fc_gate + fc_down) + NL_SLIDING*(pa_sliding + fc_qkv_s + fc_o_s) + NL_FULL*(pa_full + fc_qkv_f + fc_o_f) + lm",
+      "total_header": "total est ms",
+      "total_fmt": ".2f",
+      "save_key": "prefill_total_ms",
+      "save_expr": "total"
+    }
+  ]
+}

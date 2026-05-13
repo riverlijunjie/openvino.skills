@@ -1,0 +1,202 @@
+{
+  "variables": {
+    "NL": "cfg['num_hidden_layers']",
+    "H": "cfg['hidden_size']",
+    "I": "cfg['intermediate_size']",
+    "NH": "cfg['num_attention_heads']",
+    "NKV": "cfg['num_key_value_heads']",
+    "HD": "cfg['head_dim']",
+    "VOCAB": "cfg['vocab_size']",
+    "QKV_N": "(NH + 2*NKV) * HD"
+  },
+  "decode_table": {
+    "title": "f'## DECODE per-op (kv={DECODE_KV}, {platform_name})'",
+    "subtitle": "platform_desc",
+    "variables": {
+      "DECODE_KV": "4096"
+    },
+    "rows": [
+      {
+        "name": "'lm_head (INT8 g=128)'",
+        "log": "'lm_head_decode_M1'",
+        "calls": "1",
+        "bytes": "fc_bytes_int8(1, H, VOCAB, 128)",
+        "flops": "fc_flops(1, H, VOCAB)"
+      },
+      {
+        "name": "'fc_qkv (INT4 g=128)'",
+        "log": "'fc_qkv_decode_M1'",
+        "calls": "NL",
+        "bytes": "fc_bytes_int4(1, H, QKV_N, 128)",
+        "flops": "fc_flops(1, H, QKV_N)"
+      },
+      {
+        "name": "'fc_o (INT4 g=128)'",
+        "log": "'fc_o_decode_M1'",
+        "calls": "NL",
+        "bytes": "fc_bytes_int4(1, NH*HD, H, 128)",
+        "flops": "fc_flops(1, NH*HD, H)"
+      },
+      {
+        "name": "'fc_gate (INT4 g=128)'",
+        "log": "'fc_gate_decode_M1'",
+        "calls": "NL",
+        "bytes": "fc_bytes_int4(1, H, I, 128)",
+        "flops": "fc_flops(1, H, I)"
+      },
+      {
+        "name": "'fc_up (INT4 g=128)'",
+        "log": "'fc_up_decode_M1'",
+        "calls": "NL",
+        "bytes": "fc_bytes_int4(1, H, I, 128)",
+        "flops": "fc_flops(1, H, I)"
+      },
+      {
+        "name": "'fc_down (INT4 g=128)'",
+        "log": "'fc_down_decode_M1'",
+        "calls": "NL",
+        "bytes": "fc_bytes_int4(1, I, H, 128)",
+        "flops": "fc_flops(1, I, H)"
+      },
+      {
+        "name": "f'pa_decode (kv={DECODE_KV})'",
+        "log": "f'pa_decode_kv{DECODE_KV}'",
+        "calls": "NL",
+        "bytes": "2*NKV*HD*DECODE_KV",
+        "flops": "2*NH*HD*DECODE_KV*2"
+      },
+      {
+        "name": "'rmsnorm (H=4096)'",
+        "log": "'so_rmsnorm_h4096_decode'",
+        "calls": "2*NL",
+        "bytes": "H*4",
+        "flops": "H"
+      },
+      {
+        "name": "'add (residual)'",
+        "log": "'so_add_decode'",
+        "calls": "2*NL",
+        "bytes": "H*6",
+        "flops": "H"
+      },
+      {
+        "name": "'rope_q'",
+        "log": "'so_rope_q_decode'",
+        "calls": "NL",
+        "bytes": "NH*HD*4",
+        "flops": "NH*HD*10"
+      },
+      {
+        "name": "'rope_k'",
+        "log": "'so_rope_k_decode'",
+        "calls": "NL",
+        "bytes": "NKV*HD*4",
+        "flops": "NKV*HD*10"
+      },
+      {
+        "name": "'q_norm'",
+        "log": "'so_rmsnorm3d_qnorm_decode'",
+        "calls": "NL",
+        "bytes": "NH*HD*4",
+        "flops": "NH*HD"
+      },
+      {
+        "name": "'k_norm'",
+        "log": "'so_rmsnorm3d_knorm_decode'",
+        "calls": "NL",
+        "bytes": "NKV*HD*4",
+        "flops": "NKV*HD"
+      },
+      {
+        "name": "'swish (gate)'",
+        "log": "'so_swish_decode'",
+        "calls": "NL",
+        "bytes": "I*4",
+        "flops": "I*4"
+      },
+      {
+        "name": "'mul (gate*up)'",
+        "log": "'so_multiply_decode'",
+        "calls": "NL",
+        "bytes": "I*6",
+        "flops": "I"
+      }
+    ]
+  },
+  "sweeps": [
+    {
+      "name": "decode_kv_sweep",
+      "title": "f'## DECODE per-kv-size totals (M=1, {platform_name})'",
+      "axis_name": "kv",
+      "axis_values": [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072],
+      "row_variables": {
+        "fcq":   "metric_ms('fc_qkv_decode_M1')",
+        "fco":   "metric_ms('fc_o_decode_M1')",
+        "fcg":   "metric_ms('fc_gate_decode_M1')",
+        "fcu":   "metric_ms('fc_up_decode_M1')",
+        "fcd":   "metric_ms('fc_down_decode_M1')",
+        "lm":    "metric_ms('lm_head_decode_M1')",
+        "pa":    "metric_ms(f'pa_decode_kv{kv}')",
+        "rms":   "metric_ms('so_rmsnorm_h4096_decode')",
+        "qn":    "metric_ms('so_rmsnorm3d_qnorm_decode')",
+        "kn":    "metric_ms('so_rmsnorm3d_knorm_decode')",
+        "rq":    "metric_ms('so_rope_q_decode')",
+        "rk":    "metric_ms('so_rope_k_decode')",
+        "ad":    "metric_ms('so_add_decode')",
+        "sw":    "metric_ms('so_swish_decode')",
+        "mu":    "metric_ms('so_multiply_decode')",
+        "fc_layer":   "fcq + fco + fcg + fcu + fcd",
+        "small_layer":"2*rms + qn + kn + rq + rk + 2*ad + sw + mu"
+      },
+      "skip_if": "fcq == 0",
+      "columns": [
+        {"header": "kv", "expr": "kv", "fmt": "d"},
+        {"header": "FC/layer (ms)",      "expr": "fc_layer",       "fmt": ".4f"},
+        {"header": "PA/layer (ms)",      "expr": "pa",             "fmt": ".4f"},
+        {"header": "small/layer (ms)",   "expr": "small_layer",    "fmt": ".4f"},
+        {"header": "FC total (ms)",      "expr": "NL*fc_layer",    "fmt": ".3f"},
+        {"header": "PA total (ms)",      "expr": "NL*pa",          "fmt": ".3f"},
+        {"header": "small total (ms)",   "expr": "NL*small_layer", "fmt": ".3f"},
+        {"header": "lm_head (ms)",       "expr": "lm",             "fmt": ".3f"}
+      ],
+      "total_expr": "NL*(fc_layer + pa + small_layer) + lm",
+      "total_header": "decode total (ms)",
+      "total_fmt": ".3f",
+      "tokens_expr": "1000 / max(NL*(fc_layer + pa + small_layer) + lm, 1e-6)",
+      "tokens_header": "tok/s",
+      "tokens_fmt": ".1f",
+      "save_key": "decode_total_ms_by_kv",
+      "save_expr": "total"
+    },
+    {
+      "name": "prefill_table",
+      "title": "f'## PREFILL per-layer kernel time (ms, {platform_name})'",
+      "axis_name": "S",
+      "axis_values": [1024, 2048, 4096, 8192, 16384, 32768],
+      "row_variables": {
+        "fcq": "metric_ms(f'fc_qkv_prefill_S{S}')",
+        "fco": "metric_ms(f'fc_o_prefill_S{S}')",
+        "fcg": "metric_ms(f'fc_gate_prefill_S{S}')",
+        "fcu": "metric_ms(f'fc_up_prefill_S{S}')",
+        "fcd": "metric_ms(f'fc_down_prefill_S{S}')",
+        "pa":  "metric_ms(f'pa_prefill_S{S}')",
+        "lm":  "metric_ms('lm_head_decode_M1')"
+      },
+      "skip_if": "fcq == 0",
+      "columns": [
+        {"header": "S", "expr": "S", "fmt": "d"},
+        {"header": "fc_qkv/layer", "expr": "fcq", "fmt": ".3f"},
+        {"header": "fc_o/layer",   "expr": "fco", "fmt": ".3f"},
+        {"header": "fc_gate/layer","expr": "fcg", "fmt": ".3f"},
+        {"header": "fc_up/layer",  "expr": "fcu", "fmt": ".3f"},
+        {"header": "fc_down/layer","expr": "fcd", "fmt": ".3f"},
+        {"header": "PA/layer",     "expr": "pa",  "fmt": ".3f"}
+      ],
+      "total_expr": "NL*(fcq + fco + fcg + fcu + fcd + pa) + lm",
+      "total_header": "total est (ms)",
+      "total_fmt": ".2f",
+      "save_key": "prefill_total_ms",
+      "save_expr": "total"
+    }
+  ]
+}

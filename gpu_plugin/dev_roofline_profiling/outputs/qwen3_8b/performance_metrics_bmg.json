@@ -1,0 +1,367 @@
+{
+  "platform": "BMG",
+  "platform_desc": "BMG (Intel Arc B580 (Battlemage, dGPU), Xe2; 453 GB/s, FP16 116.736 TFLOPS, INT8 233.472 TOPS)",
+  "decode_total_ms": 12.789252000000001,
+  "decode_rows": [
+    {
+      "name": "fc_down (INT4 g=128)",
+      "log": "fc_down_decode_M1",
+      "ms": 0.086395,
+      "calls": 36,
+      "total": 3.11022,
+      "ai": 3.8448060075093866,
+      "gbs": 303.045685514208,
+      "tops": 0.0011651518722148274,
+      "eff": 66.89750232101723,
+      "bound": "memory"
+    },
+    {
+      "name": "fc_up (INT4 g=128)",
+      "log": "fc_up_decode_M1",
+      "ms": 0.06327,
+      "calls": 36,
+      "total": 2.2777200000000004,
+      "ai": 3.8448060075093866,
+      "gbs": 413.8079974711553,
+      "tops": 0.001591011474632527,
+      "eff": 91.34834381261707,
+      "bound": "memory"
+    },
+    {
+      "name": "fc_gate (INT4 g=128)",
+      "log": "fc_gate_decode_M1",
+      "ms": 0.063245,
+      "calls": 36,
+      "total": 2.27682,
+      "ai": 3.8448060075093866,
+      "gbs": 413.971570875168,
+      "tops": 0.001591640382638944,
+      "eff": 91.38445273182518,
+      "bound": "memory"
+    },
+    {
+      "name": "lm_head (INT8 g=128)",
+      "log": "lm_head_decode_M1",
+      "ms": 1.40688,
+      "calls": 1,
+      "total": 1.40688,
+      "ai": 1.9682589804220665,
+      "gbs": 449.4809962470147,
+      "tops": 0.0008846950073922438,
+      "eff": 99.22317797947345,
+      "bound": "memory"
+    },
+    {
+      "name": "fc_qkv (INT4 g=128)",
+      "log": "fc_qkv_decode_M1",
+      "ms": 0.034721,
+      "calls": 36,
+      "total": 1.249956,
+      "ai": 3.843603378167032,
+      "gbs": 377.14674116528903,
+      "tops": 0.001449602488407592,
+      "eff": 83.25535125061569,
+      "bound": "memory"
+    },
+    {
+      "name": "pa_decode (kv=4096)",
+      "log": "pa_decode_kv4096",
+      "ms": 0.032079,
+      "calls": 36,
+      "total": 1.1548440000000002,
+      "ai": 8.0,
+      "gbs": 261.4984257614015,
+      "tops": 0.0020919874060912123,
+      "eff": 57.72592180163388,
+      "bound": "memory"
+    },
+    {
+      "name": "fc_o (INT4 g=128)",
+      "log": "fc_o_decode_M1",
+      "ms": 0.023799,
+      "calls": 36,
+      "total": 0.8567640000000001,
+      "ai": 3.8424015009380863,
+      "gbs": 366.93440900878187,
+      "tops": 0.001409909323921173,
+      "eff": 81.00097329112182,
+      "bound": "memory"
+    },
+    {
+      "name": "rmsnorm (H=4096)",
+      "log": "so_rmsnorm_h4096_decode",
+      "ms": 0.001631,
+      "calls": 72,
+      "total": 0.11743200000000001,
+      "ai": 0.25,
+      "gbs": 10.0453709380748,
+      "tops": 2.5113427345187003e-06,
+      "eff": 2.2175211783829583,
+      "bound": "memory"
+    },
+    {
+      "name": "add (residual)",
+      "log": "so_add_decode",
+      "ms": 0.000992,
+      "calls": 72,
+      "total": 0.071424,
+      "ai": 0.16666666666666666,
+      "gbs": 24.774193548387096,
+      "tops": 4.1290322580645165e-06,
+      "eff": 5.468916898098697,
+      "bound": "memory"
+    },
+    {
+      "name": "rope_q",
+      "log": "so_rope_q_decode",
+      "ms": 0.001462,
+      "calls": 36,
+      "total": 0.052632,
+      "ai": 2.5,
+      "gbs": 11.20656634746922,
+      "tops": 2.801641586867305e-05,
+      "eff": 2.473855705843095,
+      "bound": "memory"
+    },
+    {
+      "name": "rope_k",
+      "log": "so_rope_k_decode",
+      "ms": 0.001319,
+      "calls": 36,
+      "total": 0.047484000000000005,
+      "ai": 2.5,
+      "gbs": 3.10538286580743,
+      "tops": 7.763457164518574e-06,
+      "eff": 0.6855149814144437,
+      "bound": "memory"
+    },
+    {
+      "name": "mul (gate*up)",
+      "log": "so_multiply_decode",
+      "ms": 0.001318,
+      "calls": 36,
+      "total": 0.047448,
+      "ai": 0.16666666666666666,
+      "gbs": 55.93930197268589,
+      "tops": 9.32321699544765e-06,
+      "eff": 12.348631782049866,
+      "bound": "memory"
+    },
+    {
+      "name": "q_norm",
+      "log": "so_rmsnorm3d_qnorm_decode",
+      "ms": 0.001243,
+      "calls": 36,
+      "total": 0.044747999999999996,
+      "ai": 0.25,
+      "gbs": 13.181013676588897,
+      "tops": 3.2952534191472246e-06,
+      "eff": 2.9097160433971077,
+      "bound": "memory"
+    },
+    {
+      "name": "k_norm",
+      "log": "so_rmsnorm3d_knorm_decode",
+      "ms": 0.001238,
+      "calls": 36,
+      "total": 0.044567999999999997,
+      "ai": 0.25,
+      "gbs": 3.308562197092084,
+      "tops": 8.271405492730211e-07,
+      "eff": 0.730366930925405,
+      "bound": "memory"
+    },
+    {
+      "name": "swish (gate)",
+      "log": "so_swish_decode",
+      "ms": 0.000842,
+      "calls": 36,
+      "total": 0.030312,
+      "ai": 1.0,
+      "gbs": 58.37529691211402,
+      "tops": 5.837529691211402e-05,
+      "eff": 12.886379009296691,
+      "bound": "memory"
+    }
+  ],
+  "decode_total_ms_by_kv": {
+    "1024": 12.292308,
+    "2048": 12.822011999999999,
+    "4096": 12.789252000000001,
+    "8192": 14.196852,
+    "16384": 18.009792000000004,
+    "32768": 22.953960000000002,
+    "65536": 32.35338,
+    "131072": 51.268536
+  },
+  "sweeps": {
+    "decode_kv_sweep": [
+      {
+        "kv": 1024,
+        "FC/layer (ms)": 0.27143,
+        "PA/layer (ms)": 0.018275,
+        "small/layer (ms)": 0.012668,
+        "FC total (ms)": 9.77148,
+        "PA total (ms)": 0.6578999999999999,
+        "small total (ms)": 0.456048,
+        "lm_head (ms)": 1.40688,
+        "decode total (ms)": 12.292308,
+        "tok/s": 81.3516875756774
+      },
+      {
+        "kv": 2048,
+        "FC/layer (ms)": 0.27143,
+        "PA/layer (ms)": 0.032989,
+        "small/layer (ms)": 0.012668,
+        "FC total (ms)": 9.77148,
+        "PA total (ms)": 1.1876039999999999,
+        "small total (ms)": 0.456048,
+        "lm_head (ms)": 1.40688,
+        "decode total (ms)": 12.822011999999999,
+        "tok/s": 77.99088005844949
+      },
+      {
+        "kv": 4096,
+        "FC/layer (ms)": 0.27143,
+        "PA/layer (ms)": 0.032079,
+        "small/layer (ms)": 0.012668,
+        "FC total (ms)": 9.77148,
+        "PA total (ms)": 1.1548440000000002,
+        "small total (ms)": 0.456048,
+        "lm_head (ms)": 1.40688,
+        "decode total (ms)": 12.789252000000001,
+        "tok/s": 78.19065571622171
+      },
+      {
+        "kv": 8192,
+        "FC/layer (ms)": 0.27143,
+        "PA/layer (ms)": 0.071179,
+        "small/layer (ms)": 0.012668,
+        "FC total (ms)": 9.77148,
+        "PA total (ms)": 2.562444,
+        "small total (ms)": 0.456048,
+        "lm_head (ms)": 1.40688,
+        "decode total (ms)": 14.196852,
+        "tok/s": 70.43815065480713
+      },
+      {
+        "kv": 16384,
+        "FC/layer (ms)": 0.27143,
+        "PA/layer (ms)": 0.177094,
+        "small/layer (ms)": 0.012668,
+        "FC total (ms)": 9.77148,
+        "PA total (ms)": 6.375384,
+        "small total (ms)": 0.456048,
+        "lm_head (ms)": 1.40688,
+        "decode total (ms)": 18.009792000000004,
+        "tok/s": 55.52534976528323
+      },
+      {
+        "kv": 32768,
+        "FC/layer (ms)": 0.27143,
+        "PA/layer (ms)": 0.314432,
+        "small/layer (ms)": 0.012668,
+        "FC total (ms)": 9.77148,
+        "PA total (ms)": 11.319552,
+        "small total (ms)": 0.456048,
+        "lm_head (ms)": 1.40688,
+        "decode total (ms)": 22.953960000000002,
+        "tok/s": 43.56546757073725
+      },
+      {
+        "kv": 65536,
+        "FC/layer (ms)": 0.27143,
+        "PA/layer (ms)": 0.575527,
+        "small/layer (ms)": 0.012668,
+        "FC total (ms)": 9.77148,
+        "PA total (ms)": 20.718972,
+        "small total (ms)": 0.456048,
+        "lm_head (ms)": 1.40688,
+        "decode total (ms)": 32.35338,
+        "tok/s": 30.908671675107822
+      },
+      {
+        "kv": 131072,
+        "FC/layer (ms)": 0.27143,
+        "PA/layer (ms)": 1.100948,
+        "small/layer (ms)": 0.012668,
+        "FC total (ms)": 9.77148,
+        "PA total (ms)": 39.634128000000004,
+        "small total (ms)": 0.456048,
+        "lm_head (ms)": 1.40688,
+        "decode total (ms)": 51.268536,
+        "tok/s": 19.50514054077924
+      }
+    ],
+    "prefill_table": [
+      {
+        "S": 1024,
+        "fc_qkv/layer": 0.392698,
+        "fc_o/layer": 0.273475,
+        "fc_gate/layer": 0.699136,
+        "fc_up/layer": 0.699567,
+        "fc_down/layer": 0.814758,
+        "PA/layer": 0.423558,
+        "total est (ms)": 120.32179199999999
+      },
+      {
+        "S": 2048,
+        "fc_qkv/layer": 0.69524,
+        "fc_o/layer": 0.49726,
+        "fc_gate/layer": 1.303784,
+        "fc_up/layer": 1.302582,
+        "fc_down/layer": 1.52235,
+        "PA/layer": 1.331775,
+        "total est (ms)": 240.914556
+      },
+      {
+        "S": 4096,
+        "fc_qkv/layer": 1.365707,
+        "fc_o/layer": 0.960638,
+        "fc_gate/layer": 2.610115,
+        "fc_up/layer": 2.582749,
+        "fc_down/layer": 2.933085,
+        "PA/layer": 4.922526,
+        "total est (ms)": 554.9004
+      },
+      {
+        "S": 8192,
+        "fc_qkv/layer": 2.689287,
+        "fc_o/layer": 1.89035,
+        "fc_gate/layer": 5.078386,
+        "fc_up/layer": 5.095055,
+        "fc_down/layer": 5.746061,
+        "PA/layer": 18.654377,
+        "total est (ms)": 1410.9334559999998
+      },
+      {
+        "S": 16384,
+        "fc_qkv/layer": 5.334561,
+        "fc_o/layer": 3.744909,
+        "fc_gate/layer": 10.190647,
+        "fc_up/layer": 10.142883,
+        "fc_down/layer": 11.355082,
+        "PA/layer": 73.226698,
+        "total est (ms)": 4105.218959999999
+      },
+      {
+        "S": 32768,
+        "fc_qkv/layer": 10.676915,
+        "fc_o/layer": 7.446275,
+        "fc_gate/layer": 20.255478,
+        "fc_up/layer": 20.299356,
+        "fc_down/layer": 22.730894,
+        "PA/layer": 303.576883,
+        "total est (ms)": 13860.895716
+      }
+    ]
+  },
+  "prefill_total_ms": {
+    "1024": 120.32179199999999,
+    "2048": 240.914556,
+    "4096": 554.9004,
+    "8192": 1410.9334559999998,
+    "16384": 4105.218959999999,
+    "32768": 13860.895716
+  }
+}

@@ -1,0 +1,100 @@
+=== FC Benchmark (precision=u4) ===
+M=16384 K=4096 N=12288 group_size=128 iters=30 warmup=5 bufs=4 flush_mb=64
+Dynamic quantization: ON (group_size=128)
+Input tensors allocated in USM_DEVICE (VRAM) via RemoteContext.
+L2/L3 flush kernel: 64 MB f16 Relu between every FC infer.
+Median_ms: 38.5346
+Min_ms: 38.4165
+Avg_ms: 38.5243
+GFLOPS: 42799.7
+BW_GBs: 14.6057
+AI: 2930.35
+WeightBytes: 2.51658e+07
+TotalBytes: 5.62823e+08
+TotalFLOPs: 1.64927e+12
+Total Enqueues: 223
+
+
+Leak Checking:
+
+No cl_context leaks detected.
+No cl_command_queue leaks detected.
+No cl_mem leaks detected.
+No cl_program leaks detected.
+No cl_kernel leaks detected.
+No cl_event leaks detected.
+No SVM/USM allocation leaks detected.
+
+Host Performance Timing Results:
+
+Total Time (ns): 1717617357
+
+                                                            Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+                                            (chrome trace flush overhead),    168,       2215951,    0.13%,         13190,          1208,         97180
+                                                 (device timing overhead),    168,       1025487,    0.06%,          6104,            25,         20878
+                                                           clBuildProgram,      7,       3721325,    0.22%,        531617,        270303,       1041175
+                                                           clCreateBuffer,      5,        106962,    0.01%,         21392,         16746,         26739
+                                                     clCreateCommandQueue,      1,         14397,    0.00%,         14397,         14397,         14397
+                                       clCreateCommandQueueWithProperties,     14,       1557314,    0.09%,        111236,          1107,       1403310
+                                                          clCreateContext,      2,         48901,    0.00%,         24450,         20824,         28077
+                                                           clCreateKernel,      9,         19110,    0.00%,          2123,           665,          3466
+                                                 clCreateKernelsInProgram,      8,          8673,    0.00%,          1084,           221,          2798
+                                                clCreateProgramWithBinary,      2,         82030,    0.00%,         41015,         17859,         64171
+                                                clCreateProgramWithSource,      5,        137716,    0.01%,         27543,          1778,         56119
+                                                    clDeviceMemAllocINTEL,     13,        252974,    0.01%,         19459,           210,         37054
+                                              clEnqueueMarkerWithWaitList,     35,         73319,    0.00%,          2094,          1454,          6531
+                                               clEnqueueMemFillINTEL( D ),      6,       5831011,    0.34%,        971835,          2237,       3190962
+                                               clEnqueueMemFillINTEL( H ),      2,        126477,    0.01%,         63238,         24368,        102109
+                                             clEnqueueMemcpyINTEL( DtoH ),     71,        445162,    0.03%,          6269,          1633,         25791
+                                   clEnqueueMemcpyINTEL( HtoD; blocking ),      2,       2241914,    0.13%,       1120957,         14605,       2227309
+         clEnqueueNDRangeKernel( activation_opt_1460339482998420630_0_0 ),     36,       1311938,    0.08%,         36442,          2200,        993926
+clEnqueueNDRangeKernel( dynamic_quantize_gpu_opt_662596661101868833_0_0 ),     35,        156063,    0.01%,          4458,          2121,         27759
+                                    clEnqueueNDRangeKernel( gemm_kernel ),     35,      11107790,    0.65%,        317365,          2069,       2887642
+          clEnqueueNDRangeKernel( reorder_data_14432389963530458105_0_0 ),      1,         28515,    0.00%,         28515,         28515,         28515
+                                                                 clFinish,     77,     356685118,   20.77%,       4632274,          1447,      10061381
+                                                                  clFlush,     72,          5296,    0.00%,            73,            43,           254
+                                                    clGetCommandQueueInfo,      4,           213,    0.00%,            53,            25,            78
+                                                         clGetContextInfo,     38,          4442,    0.00%,           116,            88,           337
+                                                           clGetDeviceIDs,      4,          1783,    0.00%,           445,           110,           801
+                                                          clGetDeviceInfo,    153,         17767,    0.00%,           116,            24,           522
+                                 clGetExtensionFunctionAddressForPlatform,     20,         14953,    0.00%,           747,           323,          2838
+                                                       clGetKernelArgInfo,     35,         12427,    0.00%,           355,            28,          6425
+                                                          clGetKernelInfo,     35,          4293,    0.00%,           122,            30,           537
+                                                   clGetMemAllocInfoINTEL,    985,         38777,    0.00%,            39,            23,           237
+                                                         clGetPlatformIDs,      8,      20567486,    1.20%,       2570935,            27,      20567097
+                                                        clGetPlatformInfo,      6,           465,    0.00%,            77,            35,           192
+                                                    clGetProgramBuildInfo,      8,          1724,    0.00%,           215,            33,           494
+                                                         clGetProgramInfo,      4,          1189,    0.00%,           297,           218,           409
+                                                      clHostMemAllocINTEL,     15,     124588056,    7.25%,       8305870,           272,      23925932
+                                                           clMemFreeINTEL,     28,       3472429,    0.20%,        124015,            55,        633442
+                                                    clReleaseCommandQueue,     88,         50789,    0.00%,           577,            37,         12152
+                                                         clReleaseContext,     29,         12542,    0.00%,           432,            22,          5654
+                                                          clReleaseDevice,     33,          2691,    0.00%,            81,            14,           328
+                                                           clReleaseEvent,    258,         75767,    0.00%,           293,            29,          5047
+                                                          clReleaseKernel,     33,        969164,    0.06%,         29368,            22,        446711
+                                                       clReleaseMemObject,    220,       1598902,    0.09%,          7267,            19,        471168
+                                                         clReleaseProgram,     13,         11156,    0.00%,           858,            51,          9597
+                                                     clRetainCommandQueue,     73,          3058,    0.00%,            41,            23,           222
+                                                          clRetainContext,     27,          2817,    0.00%,           104,            23,           429
+                                                           clRetainDevice,     33,          3672,    0.00%,           111,            16,           472
+                                                            clRetainEvent,     72,          1955,    0.00%,            27,            19,            48
+                                                           clRetainKernel,     20,          1400,    0.00%,            70,            21,           202
+                                                        clRetainMemObject,    215,          7446,    0.00%,            34,            21,           294
+                                                          clRetainProgram,      6,           859,    0.00%,           143,            41,           213
+                                                           clSetKernelArg,    843,         42363,    0.00%,            50,            24,          2426
+                                            clSetKernelArgMemPointerINTEL,    394,         17333,    0.00%,            43,            15,           696
+                                                          clWaitForEvents,     87,    1178885996,   68.63%,      13550413,           300,      28323242
+
+Device Performance Timing Results for Intel(R) Arc(TM) B580 Graphics (160CUs, 2900MHz):
+
+Total Time (ns): 1538251377
+
+                                  Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+         activation_opt_1460339482998420630_0_0,     36,       6359464,    0.41%,        176651,        174583,        180937
+                     clEnqueueMemFillINTEL( D ),      6,        878851,    0.06%,        146475,          3229,        655208
+                     clEnqueueMemFillINTEL( H ),      2,      17733228,    1.15%,       8866614,       5922395,      11810833
+                   clEnqueueMemcpyINTEL( DtoH ),     71,    1156407314,   75.18%,      16287426,       4700364,      28205677
+                   clEnqueueMemcpyINTEL( HtoD ),      2,       1802551,    0.12%,        901275,          1770,       1800781
+dynamic_quantize_gpu_opt_662596661101868833_0_0,     35,      21173941,    1.38%,        604969,        597083,        670520
+                                    gemm_kernel,     35,     333826966,   21.70%,       9537913,       9469479,       9900833
+          reorder_data_14432389963530458105_0_0,      1,         69062,    0.00%,         69062,         69062,         69062

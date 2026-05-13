@@ -1,0 +1,85 @@
+{
+  "_comment": "Template for describing a model as canonical operator families for roofline profiling.",
+  "model": {
+    "name": "replace_me",
+    "source": "huggingface|openvino_ir|genai|other",
+    "hf_model_id": "optional/model-id",
+    "architecture": "decoder_only|encoder_decoder|multimodal|other",
+    "notes": [
+      "List model-wide assumptions here: quantization, fusion, KV layout, tied LM head, etc."
+    ]
+  },
+  "platform_agnostic_defaults": {
+    "batch": 1,
+    "token_points": [1024, 2048, 4096, 8192],
+    "modes": ["prefill", "decode"],
+    "dtype_activation": "f16",
+    "dtype_weight": "int4",
+    "compression": "groupwise",
+    "group_size": 128
+  },
+  "ops": [
+    {
+      "op_name": "qkv_proj",
+      "family": "fc",
+      "mode": "decode",
+      "axis_name": "kv",
+      "axis_value": 4096,
+      "calls_per_layer": 1,
+      "calls_per_inference": 32,
+      "shape_signature": {
+        "input": [1, 1, 4096],
+        "weight": [4096, 12288],
+        "output": [1, 1, 12288]
+      },
+      "dtype": {
+        "activation": "f16",
+        "weight_storage": "int4",
+        "weight_compute": "f16"
+      },
+      "fusion_notes": "Bias/activation fused if runtime does so.",
+      "benchmark": "fc_bench",
+      "measured": true,
+      "remarks": "Split by shape if prefill and decode differ materially."
+    },
+    {
+      "op_name": "attention_core",
+      "family": "attention",
+      "mode": "decode",
+      "axis_name": "kv",
+      "axis_value": 4096,
+      "calls_per_layer": 1,
+      "calls_per_inference": 32,
+      "shape_signature": {
+        "num_heads": 32,
+        "num_kv_heads": 8,
+        "head_dim": 128,
+        "block_size": 16
+      },
+      "dtype": {
+        "query": "f16",
+        "kv_cache_storage": "int8",
+        "kv_cache_compute": "f16"
+      },
+      "fusion_notes": "If runtime splits KV update and attention compute, represent them separately.",
+      "benchmark": "pa_bench",
+      "measured": true,
+      "remarks": "Use the OpenVINO kernel family actually executed, not an unfused surrogate."
+    },
+    {
+      "op_name": "custom_or_unsupported_block",
+      "family": "fallback",
+      "mode": "prefill",
+      "axis_name": "S",
+      "axis_value": 4096,
+      "calls_per_layer": 1,
+      "calls_per_inference": 32,
+      "shape_signature": {},
+      "dtype": {},
+      "fusion_notes": "",
+      "benchmark": "none",
+      "measured": false,
+      "remarks": "Use only when no suitable micro-bench exists yet. Label clearly as theoretical or estimated."
+    }
+  ]
+}

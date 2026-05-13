@@ -1,0 +1,54 @@
+{
+  "title": "f'# {model_name} — Per-token-size Kernel Tables'",
+  "variables": {
+    "NL": "cfg['num_hidden_layers']",
+    "H": "cfg['hidden_size']",
+    "I": "cfg['intermediate_size']",
+    "NH": "cfg['num_attention_heads']",
+    "NKV": "cfg['num_key_value_heads']",
+    "HD": "cfg['head_dim']",
+    "VOCAB": "cfg['vocab_size']",
+    "QKV_N": "(NH + 2*NKV) * HD"
+  },
+  "modes": [
+    {
+      "name": "decode",
+      "heading": "'### DECODE — per-kv-size (M=1)'",
+      "axis_name": "kv",
+      "axis_label": "kv",
+      "axis_values": [1024, 2048],
+      "peak_compute": "platform.get('fp16_xmx_tflops', 0) * 1000",
+      "specs": [
+        {"op": "'fc_qkv'",    "log": "'fc_qkv_decode_M1'",  "calls": "NL", "bytes": "fc_bytes_int4(1, H, QKV_N)",       "flops": "fc_flops(1, H, QKV_N)",       "bound": "'memory'"},
+        {"op": "'fc_o'",      "log": "'fc_o_decode_M1'",    "calls": "NL", "bytes": "fc_bytes_int4(1, NH*HD, H)",       "flops": "fc_flops(1, NH*HD, H)",       "bound": "'memory'"},
+        {"op": "'fc_gate'",   "log": "'fc_gate_decode_M1'", "calls": "NL", "bytes": "fc_bytes_int4(1, H, I)",            "flops": "fc_flops(1, H, I)",            "bound": "'memory'"},
+        {"op": "'fc_up'",     "log": "'fc_up_decode_M1'",   "calls": "NL", "bytes": "fc_bytes_int4(1, H, I)",            "flops": "fc_flops(1, H, I)",            "bound": "'memory'"},
+        {"op": "'fc_down'",   "log": "'fc_down_decode_M1'", "calls": "NL", "bytes": "fc_bytes_int4(1, I, H)",            "flops": "fc_flops(1, I, H)",            "bound": "'memory'"},
+        {"op": "'lm_head'",   "log": "'lm_head_decode_M1'", "calls": "1",  "bytes": "fc_bytes_int8(1, H, VOCAB)",        "flops": "fc_flops(1, H, VOCAB)",        "bound": "'memory'"},
+        {"op": "'paged_attention'", "log": "f'pa_decode_kv{kv}'", "calls": "NL", "bytes": "2*NKV*HD*kv", "flops": "2*NH*HD*kv*2", "bound": "'memory'"},
+        {"op": "'rmsnorm'",  "log": "'so_rmsnorm_h4096_decode'",      "calls": "2*NL", "bytes": "H*4",     "flops": "H*8",     "bound": "'memory'"},
+        {"op": "'rope_q'",   "log": "'so_rope_q_decode'",             "calls": "NL",   "bytes": "NH*HD*4", "flops": "NH*HD*10","bound": "'memory'"},
+        {"op": "'rope_k'",   "log": "'so_rope_k_decode'",             "calls": "NL",   "bytes": "NKV*HD*4","flops": "NKV*HD*10","bound": "'memory'"},
+        {"op": "'add'",      "log": "'so_add_decode'",                "calls": "2*NL", "bytes": "H*6",     "flops": "H",       "bound": "'memory'"},
+        {"op": "'swish'",    "log": "'so_swish_decode'",              "calls": "NL",   "bytes": "I*4",     "flops": "I*4",     "bound": "'memory'"},
+        {"op": "'multiply'", "log": "'so_multiply_decode'",           "calls": "NL",   "bytes": "I*6",     "flops": "I",       "bound": "'memory'"}
+      ]
+    },
+    {
+      "name": "prefill",
+      "heading": "f\"### PREFILL — per-S-size (compute-bound uses INT8 XMX peak = {platform.get('int8_xmx_tops', 0):.1f} TOPS)\"",
+      "axis_name": "S",
+      "axis_label": "S",
+      "axis_values": [1024, 2048],
+      "peak_compute": "platform.get('int8_xmx_tops', 0) * 1000",
+      "specs": [
+        {"op": "'fc_qkv'",   "log": "f'fc_qkv_prefill_S{S}'",   "calls": "NL", "bytes": "fc_bytes_int8(S, H, QKV_N)",  "flops": "fc_flops(S, H, QKV_N)",  "bound": "'compute'"},
+        {"op": "'fc_o'",     "log": "f'fc_o_prefill_S{S}'",     "calls": "NL", "bytes": "fc_bytes_int8(S, NH*HD, H)",   "flops": "fc_flops(S, NH*HD, H)",   "bound": "'compute'"},
+        {"op": "'fc_gate'",  "log": "f'fc_gate_prefill_S{S}'",  "calls": "NL", "bytes": "fc_bytes_int8(S, H, I)",       "flops": "fc_flops(S, H, I)",       "bound": "'compute'"},
+        {"op": "'fc_up'",    "log": "f'fc_up_prefill_S{S}'",    "calls": "NL", "bytes": "fc_bytes_int8(S, H, I)",       "flops": "fc_flops(S, H, I)",       "bound": "'compute'"},
+        {"op": "'fc_down'",  "log": "f'fc_down_prefill_S{S}'",  "calls": "NL", "bytes": "fc_bytes_int8(S, I, H)",       "flops": "fc_flops(S, I, H)",       "bound": "'compute'"},
+        {"op": "'paged_attention'", "log": "f'pa_prefill_S{S}'", "calls": "NL", "bytes": "4*S*NH*HD*2", "flops": "4*S*S*NH*HD", "bound": "'compute'"}
+      ]
+    }
+  ]
+}
