@@ -22,6 +22,7 @@ description: >
         ParetoQ: https://arxiv.org/pdf/2502.02631
         LR-QAT: https://arxiv.org/pdf/2406.06385
                 https://github.com/qualcomm-ai-research/LR-QAT
+        LoRA-QAT: https://github.com/openvinotoolkit/nncf/tree/develop/examples/llm_compression/torch/distillation_qat_with_lora
         ApiQ: https://arxiv.org/pdf/2402.05147
         
     gguf:
@@ -51,4 +52,4 @@ description: >
 ---
 
 ## Related Docs
-
+   - `Kernel design` in `kernel_design_3bit.md`

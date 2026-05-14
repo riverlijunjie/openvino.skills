@@ -1,0 +1,244 @@
+3-Bit GPU Kernel Requirements for OpenVINO
+===========================================
+Document version: May 2026
+Scope: Intel GPU plugin, 3-bit quantized inference (U2 / I4 / U4 weight formats)
+
+
+SECTION 1 — WEIGHT FORMAT AND NNCF ASSIGNMENT
+-----------------------------------------------
+
+1.1  Weight precision is assigned per layer by NNCF during model conversion.
+     Every element within a single weight tensor shares the same data type.
+     U2 and I4/U4 are NEVER mixed within one weight tensor.
+
+1.2  Two weight precisions are used across a 3-bit model:
+
+     Layer type    Data type    Packing              Notes
+     -----------   ----------   ------------------   ---------------------------
+     2-bit layers  U2           4 values per byte    Custom kernel required
+     4-bit layers  I4 or U4     2 values per byte    Handled by existing oneDNN
+
+1.3  Quantization parameters (shared by both weight types):
+
+     Tensor        Data type    Granularity
+     -----------   ----------   -----------
+     Zero-point    U8           Per quantization group
+     Scale         FP16         Per quantization group
+
+1.4  oneDNN does not support U2/I2 weight precision.
+     The minimum supported integer weight type in oneDNN GPU GEMM is S4/U4.
+     U2 layers therefore require a completely custom kernel implementation.
+
+
+SECTION 2 — RUNTIME KERNEL SCHEDULER
+--------------------------------------
+
+2.1  A custom scheduler must be implemented at the GPU primitive level.
+     It inspects weight_dtype for each primitive at execute() time and routes:
+
+       weight_dtype in {U4, I4, U8, S8}  ->  existing oneDNN GEMM/GEMV primitive
+       weight_dtype == U2                ->  custom 3-bit GPU kernel
+
+2.2  The scheduler must cache compiled kernel objects.
+     Re-JIT across inference requests for the same layer is not acceptable.
+
+2.3  The 4-bit oneDNN path and the U2 custom path run as independent code paths.
+     They share the same operator interface but use different kernel dispatch logic.
+
+
+SECTION 3 — PREFILL STAGE KERNEL REQUIREMENTS (GEMM, multiple tokens)
+------------------------------------------------------------------------
+
+The prefill stage is compute-bound above approximately 16 tokens per active expert.
+
+3.1  Dense GEMM — U2-weight layers
+
+     Activation type:     INT8 (with dynamic quantization) or FP16
+     Weight type:         U2  (assigned by NNCF)
+     Output type:         FP16
+     Core computation:    dpas(int8 x int8 -> int32 -> fp16)
+                          [U2 weights must be widened to INT8 before DPAS]
+
+     Kernel implementation options (in order of preference):
+       1. Gemmstone microkernel API  [PREFERRED]
+          - Fuses U2->INT8 unpack into the tile load prologue before DPAS
+          - Best performance and flexibility
+       2. C for Metal (CM)
+          - Full register-level control
+          - Use when Gemmstone hooks are insufficient
+       3. OpenCL + DPAS extension
+          - Portable baseline
+          - Easier to prototype, harder to tune for peak performance
+
+3.2  Dense GEMM — I4/U4-weight layers
+
+     Activation type:     INT8 (with dynamic quantization) or FP16
+     Weight type:         I4 or U4  (assigned by NNCF)
+     Output type:         FP16
+     Core computation:    dpas(int8 x int4 -> int32 -> fp16)
+     Kernel path:         Existing oneDNN WOQ path — no custom work required
+
+3.3  MoE GEMM — U2-weight expert layers
+
+     Activation type:     INT8 (with dynamic quantization) or FP16
+     Weight type:         U2  (assigned by NNCF)
+     Output type:         FP16
+     Core computation:    dpas(int8 x int8 -> int32 -> fp16)
+                          [U2 weights must be widened to INT8 before DPAS]
+
+     Kernel implementation options (in order of preference):
+       1. Micro-GEMM enhancement via Gemmstone API  [PREFERRED]
+          - Extends the existing grouped_micro_gemm path
+          - Fuses U2->INT8 expansion into the tile load phase
+       2. C for Metal (CM)
+          - Required if Gemmstone does not expose sufficient U2 hooks
+
+3.4  MoE GEMM — I4/U4-weight expert layers
+
+     Activation type:     INT8 (with dynamic quantization) or FP16
+     Weight type:         I4 or U4  (assigned by NNCF)
+     Output type:         FP16
+     Core computation:    dpas(int8 x int8 -> int32 -> fp16) via oneDNN
+     Kernel path:         Existing oneDNN grouped_micro_gemm / grouped_matmul
+
+
+SECTION 4 — DECODE STAGE KERNEL REQUIREMENTS (GEMV, single token)
+-------------------------------------------------------------------
+
+The decode stage is memory-bound regardless of expert count or model size.
+Operational intensity: ~4 FLOPs/byte (3-bit GEMV).
+XE2 compute crossover: ~239 FLOPs/byte => 3-bit is 60x below crossover.
+ALU optimizations have negligible impact. Only data-movement optimizations matter.
+
+4.1  Dense GEMV — U2-weight layers
+
+     Activation type:     FP16  (no dynamic quantization in decode)
+     Weight type:         U2    (assigned by NNCF)
+     Output type:         FP16
+     Core computation:    fma(fp16 x fp16 -> fp32 -> fp16) after U2 dequant
+     Performance target:  >= 85% of memory bandwidth roofline
+                            LNL (Xe2): ~100 GB/s -> target >= 85 GB/s
+                            BMG (B580): ~456 GB/s -> target >= 388 GB/s
+
+     Kernel implementation options (in order of preference):
+       1. Gemmstone microkernel API  [PREFERRED]
+       2. OpenCL
+       3. C for Metal (CM)
+
+4.2  Dense GEMV — I4/U4-weight layers
+
+     Activation type:     FP16
+     Weight type:         I4 or U4  (assigned by NNCF)
+     Output type:         FP16
+     Core computation:    fma(fp16 x fp16 -> fp32 -> fp16) after I4/U4 dequant
+     Kernel path:         Existing custom GEMV or oneDNN path — no new kernel required
+
+4.3  MoE GEMV — U2-weight expert layers
+
+     Activation type:     FP16  (no dynamic quantization in decode)
+     Weight type:         U2    (assigned by NNCF)
+     Output type:         FP16
+     Core computation:    fma(fp16 x fp16 -> fp32 -> fp16) after U2 dequant
+     Performance target:  >= 85% of memory bandwidth roofline
+
+     Kernel implementation options (in order of preference):
+       1. Enhanced MoE OpenCL kernel  [PREFERRED]
+          - Extends moe_3gemm_swiglu_mlp.cl with a new U2 dequant code path
+          - Branch selected at JIT time via WEIGHT_COMPRESSION_DT constant
+          - U2 path coexists with existing U4/U8 paths in the same source file
+       2. C for Metal (CM)
+          - Fallback when OpenCL register pressure is unmanageable
+
+4.4  MoE GEMV — I4/U4-weight expert layers
+
+     Activation type:     FP16
+     Weight type:         I4 or U4  (assigned by NNCF)
+     Output type:         FP16
+     Core computation:    fma(fp16 x fp16 -> fp32 -> fp16) after I4/U4 dequant
+     Kernel path:         Existing moe_3gemm_swiglu_mlp.cl (U4/U8 paths)
+
+
+SECTION 5 — U2 WEIGHT ENCODING AND DEQUANT SPECIFICATION
+---------------------------------------------------------
+
+5.1  Packing format:
+       4 U2 values packed per byte, little-endian bit order
+       byte[i] = (val_3 << 6) | (val_2 << 4) | (val_1 << 2) | val_0
+       Unpack: val_k = (byte >> (2 * k)) & 0x3,   k in {0, 1, 2, 3}
+
+5.2  Dequantization formula:
+       w_f16 = (cast_float(u2_val) - zp) * scale
+       where:
+         u2_val : integer in {0, 1, 2, 3}
+         zp     : U8, one value per quantization group
+         scale  : FP16, one value per quantization group
+
+5.3  Quantization group size: typically 128 elements along K dimension.
+
+5.4  Symmetric quantization (zp = 0) is a common case.
+     All ZP-related code must be guarded by a JIT constant (HAS_ZP=0/1)
+     so the compiler can eliminate it entirely for symmetric weights.
+
+5.5  The U2 dequant path is independent of and never combined with I4/U4 dequant.
+     A given weight tensor uses exactly one of these formats.
+
+
+SECTION 6 — JIT CONSTANT REQUIREMENTS
+---------------------------------------
+
+The following JIT compile-time constants must be defined and correctly propagated
+to all 3-bit kernel source files:
+
+     Constant                 Type    Values       Purpose
+     -----------------------  ------  -----------  ----------------------------------------
+     WEIGHT_COMPRESSION_DT    int     0=U4, 1=U8,  Selects dequant macro path
+                                      2=FP16,
+                                      3=U2         (new value to add for U2 support)
+     HAS_ZP                   int     0 or 1       0: compile out all ZP compensation code
+     WEIGHT_IS_SIGNED         int     0 or 1       0: unsigned (U2/U4/U8), 1: signed (I4/S8)
+     GATE_UP_GROUP_SIZE        int     e.g. 128     Scale index stride for gate/up weights
+     DOWN_GROUP_SIZE           int     e.g. 128     Scale index stride for down weights
+     SUBGROUP_SIZE             int     16 or 32     GPU architecture (32 for XE2+)
+     N_BLOCK                  int     4            Output elements per workgroup
+     SUBGROUP_NUM             int     8            Subgroups per workgroup
+     SHARED_EXPERT_ENABLE     int     0 or 1       1: shared expert extra workgroup in dim-0
+
+
+SECTION 7 — HARDWARE TARGETS
+------------------------------
+
+     GPU           Architecture   Subgroup size   HBM BW    Notes
+     -----------   ------------   -------------   --------  ------------------
+     Intel LNL     Xe2            32              ~100 GB/s Primary dev target
+     Intel BMG     Xe2 (B580)     32              ~456 GB/s Performance target
+     Older iGPU    Xe / XeHP      16              varies    Subgroup_size=16 path
+
+     Compute roofline (XE2): DPAS INT8 throughput >> memory bandwidth crossover
+     At 3-bit effective precision: memory-bound in decode, compute-bound in prefill (batch > 16)
+
+
+SECTION 8 — CONSTRAINTS AND NON-GOALS
+---------------------------------------
+
+8.1  Do NOT modify oneDNN source code to add U2 support.
+     U2 must be handled entirely in the custom OpenVINO GPU kernel layer.
+
+8.2  Do NOT fuse gate and up GEMV into a single decode kernel.
+     Empirical data shows this increases register pressure from ~10-12 to ~20-24 GRF,
+     drops occupancy, and causes cache thrashing on two disjoint weight regions.
+     Net result on memory-bound GEMV: slower, not faster.
+
+8.3  Do NOT add a new weight layout for 3-bit (no separate U2 interleaved layout).
+     Prefill and decode share the same weight tensors. A layout change for decode
+     would break prefill and vice versa.
+
+8.4  U2 weight expansion to INT8 must be fused into the GEMM microkernel prologue
+     (Option C per Section 3). Offline expansion (Option A) doubles memory for U2
+     layers and is not acceptable for production use.
+
+8.5  All JIT constants (Section 6) must be set correctly per primitive instance.
+     Incorrect constants will silently produce wrong numerical outputs.
+
+8.6  The grouped GEMM primitive descriptor must not bake in the routing distribution.
+     Use DNNL_ARG_HINT_MAX_GROUP_SIZE as an execute-time argument to avoid
+     recompilation on routing changes across requests.
