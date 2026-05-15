@@ -1,0 +1,141 @@
+{
+  "model": "google/gemma-4-26B-A4B-it (gemma4_moe)",
+  "platform": "PTL 12Xe (Intel Arc B390 96CUs @ 2400 MHz, treated as PTL Xe3)",
+  "config": {
+    "hidden_size": 2816,
+    "num_hidden_layers": 30,
+    "num_attention_heads": 16,
+    "num_key_value_heads": 8,
+    "num_global_key_value_heads": 2,
+    "head_dim": 256,
+    "global_head_dim": 512,
+    "intermediate_size": 2112,
+    "moe_intermediate_size": 704,
+    "num_experts": 128,
+    "top_k_experts": 8,
+    "vocab_size": 262144,
+    "hidden_activation": "gelu_pytorch_tanh",
+    "sliding_window": 1024,
+    "attention_k_eq_v": true,
+    "enable_moe_block": true,
+    "tie_word_embeddings": true,
+    "layer_pattern": "5 sliding + 1 full (25 sliding layers + 5 full layers)",
+    "max_position_embeddings": 262144,
+    "rms_norm_eps": 1e-6,
+    "final_logit_softcapping": 30.0,
+    "weight_quant_body": "INT4 g=128 (asymmetric)",
+    "weight_quant_lm_head": "INT8 g=128",
+    "kv_cache_quant": "INT8",
+    "activation_dtype": "FP16"
+  },
+  "layer_breakdown": {
+    "sliding_attention_layers": 25,
+    "full_attention_layers": 5,
+    "comment": "5:1 pattern — layers 0-4 sliding, 5 full, 6-10 sliding, 11 full, 12-16 sliding, 17 full, 18-22 sliding, 23 full, 24-28 sliding, 29 full"
+  },
+  "attention_shapes": {
+    "sliding": {
+      "NH": 16, "NKV": 8, "HD": 256,
+      "Q_dim": 4096, "KV_dim": 2048,
+      "QKV_fused_N": 8192,
+      "O_K": 4096, "O_N": 2816,
+      "comment": "Q=NH*HD=4096, K=NKV*HD=2048, V=NKV*HD=2048, QKV=Q+K+V=8192"
+    },
+    "full": {
+      "NH": 16, "NKV": 2, "HD": 512,
+      "Q_dim": 8192, "KV_dim": 1024,
+      "QK_fused_N": 9216,
+      "O_K": 8192, "O_N": 2816,
+      "comment": "Q=NH*HD=8192, K=NKV*HD=1024, V=K (attention_k_eq_v=true, no V proj), QK=Q+K=9216"
+    }
+  },
+  "ops": {
+    "fc_qkv_sliding": {
+      "shape": "FC(M, 2816, 8192)",
+      "weight": "INT4 g=128",
+      "calls_per_decode": 25,
+      "comment": "Fused Q(4096)+K(2048)+V(2048) for 25 sliding layers"
+    },
+    "fc_o_sliding": {
+      "shape": "FC(M, 4096, 2816)",
+      "weight": "INT4 g=128",
+      "calls_per_decode": 25,
+      "comment": "Output projection for 25 sliding attention layers"
+    },
+    "fc_qk_full": {
+      "shape": "FC(M, 2816, 9216)",
+      "weight": "INT4 g=128",
+      "calls_per_decode": 5,
+      "comment": "Fused Q(8192)+K(1024) for 5 full layers (V=K, no V proj)"
+    },
+    "fc_o_full": {
+      "shape": "FC(M, 8192, 2816)",
+      "weight": "INT4 g=128",
+      "calls_per_decode": 5,
+      "comment": "Output projection for 5 full attention layers"
+    },
+    "fc_gate_dense": {
+      "shape": "FC(M, 2816, 2112)",
+      "weight": "INT4 g=128",
+      "calls_per_decode": 30,
+      "comment": "Dense MLP gate proj (GEGLU), all 30 layers"
+    },
+    "fc_up_dense": {
+      "shape": "FC(M, 2816, 2112)",
+      "weight": "INT4 g=128",
+      "calls_per_decode": 30,
+      "comment": "Dense MLP up proj (GEGLU), all 30 layers"
+    },
+    "fc_down_dense": {
+      "shape": "FC(M, 2112, 2816)",
+      "weight": "INT4 g=128",
+      "calls_per_decode": 30,
+      "comment": "Dense MLP down proj, all 30 layers"
+    },
+    "moe_3gemm_fused": {
+      "config": "H=2816, I=704, NE=128, TK=8, activation=gelu",
+      "calls_per_decode": 30,
+      "comment": "MoE GEGLU: gate_up(2816->2*704)+down(704->2816), all 30 layers"
+    },
+    "pa_sliding": {
+      "config": "NH=16, NKV=8, HD=256, kv_int8, sliding_window=1024",
+      "calls_per_decode": 25,
+      "comment": "PagedAttention for 25 sliding layers, S_kv capped by sliding_window=1024 for decode"
+    },
+    "pa_full": {
+      "config": "NH=16, NKV=2, HD=512, kv_int8, full_attention",
+      "calls_per_decode": 5,
+      "comment": "PagedAttention for 5 full attention layers, full KV context"
+    },
+    "lm_head": {
+      "shape": "FC(1, 2816, 262144)",
+      "weight": "INT8 g=128",
+      "calls_per_decode": 1,
+      "comment": "LM head (shared with embedding), INT8, single-token only"
+    },
+    "small_ops_per_layer": {
+      "rmsnorm": {"H": 2816, "calls_per_layer": 4, "total_calls": 120, "comment": "input_ln + post_attn_ln + pre_ff_ln + post_ff_ln per layer (MoE layers have extra norms)"},
+      "rmsnorm3d_q_sliding": {"NH": 16, "HD": 256, "calls_per_layer": 1, "total_calls": 25},
+      "rmsnorm3d_k_sliding": {"NH": 8, "HD": 256, "calls_per_layer": 1, "total_calls": 25},
+      "rmsnorm3d_q_full": {"NH": 16, "HD": 512, "calls_per_layer": 1, "total_calls": 5},
+      "rmsnorm3d_k_full": {"NH": 2, "HD": 512, "calls_per_layer": 1, "total_calls": 5},
+      "rope_q_sliding": {"NH": 16, "HD": 256, "calls_per_layer": 1, "total_calls": 25},
+      "rope_k_sliding": {"NH": 8, "HD": 256, "calls_per_layer": 1, "total_calls": 25},
+      "rope_q_full": {"NH": 16, "HD": 512, "calls_per_layer": 1, "total_calls": 5, "comment": "partial_rotary_factor=0.25, only 128 of 512 dims rotated"},
+      "rope_k_full": {"NH": 2, "HD": 512, "calls_per_layer": 1, "total_calls": 5, "comment": "partial_rotary_factor=0.25"},
+      "add": {"H": 2816, "calls_per_layer": 2, "total_calls": 60, "comment": "2 residual adds per layer"},
+      "rmsnorm_final": {"H": 2816, "calls": 1, "comment": "Final RMSNorm before LM head"}
+    }
+  },
+  "tokens": {
+    "prefill": [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072],
+    "decode_kv": [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
+  },
+  "notes": {
+    "dense_mlp_parallel_moe": "Dense MLP and MoE run in parallel for every layer. Both contribute to total latency.",
+    "geglu_activation": "Uses gelu_pytorch_tanh (GEGLU) instead of silu (SwiGLU). MoE bench needs GELU support.",
+    "full_attn_v_eq_k": "Full attention layers use attention_k_eq_v=true: V reuses K projection output, only Q and K projections needed.",
+    "sliding_decode_kv_cap": "For decode with sliding attention, KV length is capped at sliding_window=1024 regardless of total context.",
+    "pa_full_sliding_split": "PA must be profiled separately for sliding (NH=16,NKV=8,HD=256) and full (NH=16,NKV=2,HD=512) configs."
+  }
+}
