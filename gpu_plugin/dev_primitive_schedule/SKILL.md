@@ -20,6 +20,7 @@ When developing primitive scheduler feature, always include:
     - Summarize the optimizations applied and their impact on performance.
     - Include before-and-after performance metrics to demonstrate improvements.
     - Include the ratio to hardware roofline to show efficiency gains.
+    - Add summary into SUMMARY.md for future reference, and keep this SKILL.md as a concise reference for the optimization strategies and implementation details.
 
 6. **How to add a new kernel**:
     - Implement the kernel per requirements: input/output layout and format

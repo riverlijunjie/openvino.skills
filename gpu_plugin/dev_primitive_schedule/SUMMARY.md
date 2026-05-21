@@ -1,7 +1,7 @@
 # Primitive Scheduler — 实现总结与问题解决记录
 
 > **目的**：完整记录 primitive scheduler 的当前实现状态、遇到的所有问题及其解决方案细节，  
-> 以及 W4A16 GEMV OCL kernel 的优化过程和 E2E 验证结果。  
+> 以及 W4A16 GEMV OCL/CM kernel 的优化过程和 E2E 验证结果。  
 > 作为后续工作的延续基础文档。
 
 ---
@@ -15,10 +15,11 @@
 5. [解决方案三：M=1 Decode 合成重试](#5-解决方案三m1-decode-合成重试)
 6. [解决方案四：W4A8 Dynamic Quantization 处理](#6-解决方案四w4a8-dynamic-quantization-处理)
 7. [OCL GEMV Kernel 优化详情](#7-ocl-gemv-kernel-优化详情)
-8. [E2E 验证结果与分析](#8-e2e-验证结果与分析)
-9. [当前未解决问题](#9-当前未解决问题)
-10. [文件清单与代码位置索引](#10-文件清单与代码位置索引)
-11. [详细流程图](#11-详细流程图)
+8. [CM GEMV Kernel 实验](#8-cm-gemv-kernel-实验)
+9. [E2E 验证结果与分析](#9-e2e-验证结果与分析)
+10. [当前未解决问题](#10-当前未解决问题)
+11. [文件清单与代码位置索引](#11-文件清单与代码位置索引)
+12. [详细流程图](#12-详细流程图)
 
 ---
 
@@ -405,7 +406,8 @@ gemm_generate_opt.cl — 双分支设计
 |------|------|------|
 | **UNPACK8_UINT**: 单次 uint 读取 + 位移解包 8 个 INT4 | +15% BW vs uchar4 逐字节读取 | ✅ 已部署 |
 | **双 float8 累加器 (ILP)**: `acc0`, `acc1` 交替使用 | +8% BW，保持 EU 流水线满载 | ✅ 已部署 |
-| **SLM 激活缓存**: WG 内共享 K 向量 | 减少全局内存读取，当多个 subgroup 共享激活时收益大 | ✅ 已部署 |
+| **N-parallel 高 occupancy 分派**: 每个 WI 计算 1 个输出通道，无 barrier/SLM | 最大化 EU occupancy, B580 1280 thread slots 满载 | ✅ 最终部署 |
+| **SLM 激活缓存**: WG 内共享 K 向量 | 减少全局内存读取，当多个 subgroup 共享激活时收益大 | ✅ 曾部署(后被 N-parallel 取代) |
 | **opencl_unroll_hint(4)**: 内层循环 | +5% vs 无提示 | ✅ 已部署 |
 | **Two-pass K-split**: 分 K_SPLIT 个 WG + reduce | +38–74% 小 N 场景 | ⚠ 原型阶段 |
 | **uchar4 vs uint**: 128-bit 读取对比 | uint 更优（减少 transaction） | ✅ 选择 uint |
@@ -467,9 +469,91 @@ Dispatch: global = {ceil(N/WG_SIZE) × WG_SIZE, B, 1}
 
 ---
 
-## 8. E2E 验证结果与分析
+## 8. CM GEMV Kernel 实验
 
-### 8.1 Qwen3-8B Decode 性能
+### 8.1 实验动机
+
+OCL N-parallel GEMV (WG_SIZE=256, VEC_SIZE=8) 达到 16.45ms/token，距 OneDNN baseline (15.0ms) 仍有 ~10% 差距。
+尝试使用 **CM (C for Metal)** 编译器编写同一 GEMV kernel，测试是否能通过 CM 编译器更紧密的 ISA 生成获得性能提升。
+
+CM 是 Intel GPU 上的高级 kernel 语言，通过 `-cmc` flag 编译，可直接访问:
+- LSC (Load/Store Cache) 块读写指令
+- DPAS/XMX 系统阵列指令
+- 更精细的寄存器和线程控制
+
+### 8.2 实现架构
+
+CM kernel 完全复用 OCL 版本的 N-parallel 框架（PrimitiveImplCM = PrimitiveImplOCL），作为新增 impl 注册在 OneDNN 之后、OCL 之前：
+
+```
+Registry 注册顺序:
+  OV_GPU_CREATE_INSTANCE_ONEDNN(...)
+  OV_GPU_CREATE_INSTANCE_CM(cm::FCCompressedGenerateOptCM, ...)   ← 新增
+  OV_GPU_CREATE_INSTANCE_OCL(ocl::FCCompressedGenerateOpt, ...)
+```
+
+**关键设计决策**:
+- CM impl 注册为 `impl_types::ocl`（非 `impl_types::cm`），因为 `evaluate_best_impl_type()` 只理解 onednn/ocl 两种类型
+- `validate_impl()` 增加 `check_cm_jit_support()` + `supports_immad` + `get_use_cm()` 三重门控
+- 运行 CM kernel 需设置环境变量 `CM_FE_DIR` 指向 `libclangFEWrapper.so` 所在目录
+
+**文件清单**:
+
+| 文件 | 用途 |
+|------|------|
+| `impls/cm/fc_compressed_generate_opt.cm` | CM kernel 源码 (W4A16 + W4A8) |
+| `impls/cm/fc_compressed_generate_opt.cpp` | Host 端 Generator + Impl 类 |
+| `impls/cm/fc_compressed_generate_opt.hpp` | ImplementationManager (validate + support_shapes) |
+| `registry/fully_connected_impls.cpp` | 注册 CM impl (`#if OV_GPU_WITH_CM`) |
+
+### 8.3 优化迭代与性能对比
+
+在 B580 上以 Qwen3-8B (INT4) 为基准测试，需预设 `export CM_FE_DIR=/mnt/river`:
+
+| 版本 | WG_SIZE | 内存访问方式 | 2nd token (ms) | FC 分割 | 说明 |
+|------|---------|-------------|----------------|---------|------|
+| **OneDNN baseline** | — | DPAS 系统阵列 | **15.0–15.1** | 181/0 | 参考基准 |
+| OCL N-parallel | 256 | `vload8` + sub-group coalesce | **16.45** | 109/72 | 最优 OCL |
+| CM v1 (scalar) | 16 | 逐元素指针解引用 | **76.27** | 109/72 | 5× 慢于 OneDNN |
+| CM v2 (block_read, CHUNK=32) | 16 | `cm_svm_block_read<uint,16>` + 宽向量 | **29.76** | 109/72 | 2.5× 改进 |
+| CM v3 (block_read, VEC=8) | 64 | `cm_svm_block_read<uint,4>` + 轻量向量 | **46.22** | 109/72 | WG 过大反而更慢 |
+
+#### 关键优化步骤:
+
+**v1 → v2 (scalar → block_read, 2.5× 提升)**:
+- 将逐元素的 `A_row[k+j]` 替换为 `cm_svm_block_read<uint, 16>(...)` 批量读取 32 个 f16
+- 将逐字节的 weight 读取替换为 `cm_svm_block_read<uint, 4>(...)` 批量读取 32 个 nibble
+- 使用 CM 向量运算 `vector<float,32> prod = af * wf` + 层次化归约替代标量循环
+
+**v2 → v3 (测试 WG_SIZE 影响)**:
+- 降低到 VEC_SIZE=8 (vector<float,8>) 以减少寄存器压力
+- 尝试 WG_SIZE=64，但性能反而从 29.76ms 恶化到 46.22ms
+- 原因: CM 编译器 per-thread 寄存器使用远高于 OCL，WG_SIZE=64 导致硬件无法调度足够线程
+
+### 8.4 CM vs OCL 性能差距根因分析
+
+CM kernel 最优结果 (29.76ms) 仍为 OneDNN 的 **2×** 和 OCL 的 **1.8×**，根因:
+
+| 因素 | 影响 | 详细说明 |
+|------|------|---------|
+| **WG_SIZE 被限制在 16** | 主要 | CM 编译器 per-thread 寄存器占用高 → 硬件无法调度 >16 线程/WG。OCL 可达 256 |
+| **无 sub-group coalescing** | 主要 | OCL 的 `vload8` 通过 sub-group 隐式合并跨线程的相邻内存访问。CM 的 `cm_svm_block_read` 是 per-thread 独立 SVM 读取，无法跨线程合并 |
+| **JIT 编译开销** | 附加 | CM JIT 首次编译 ~2.5 分钟（72 层 × ~2s/层），不适合生产环境。OCL JIT < 1s |
+| **Occupancy 差距** | 次要 | B580 有 1280 thread slots，OCL WG=256 可填满 5 个 WG；CM WG=16 需 80 个 WG 才等效 |
+
+### 8.5 结论
+
+**CM 对 GEMV (M=1) memory-bound 场景没有优势**:
+- CM 的核心价值在于 **DPAS/XMX** 指令加速 compute-bound 运算（需 M≥8 的 tile 才能利用系统阵列）
+- 对于 M=1 的 GEMV，瓶颈是内存带宽，不是算力。OCL 的 sub-group 隐式 coalescing 比 CM 的显式 SVM block read 更高效
+- CM kernel 仅适用于有 CM JIT 支持的平台 (`CM_FE_DIR` + `libclangFEWrapper.so`)
+- 后续优化应继续聚焦 OCL kernel 或直接研究 OneDNN GEMV 实现
+
+---
+
+## 9. E2E 验证结果与分析
+
+### 9.1 Qwen3-8B Decode 性能
 
 **配置**: 256 输出 token, 6-token 输入, 3 次迭代 (排除 warmup)
 
@@ -481,7 +565,15 @@ Dispatch: global = {ceil(N/WG_SIZE) × WG_SIZE, B, 1}
 | PROFILING 模式 | 14.32 | 69.81 | −6.7% |
 | N 阈值 ≥6144 (已回退) | 14.26 | 70.14 | −6.5% |
 
-### 8.2 正确性验证
+**补充测试** (2048 token 输入, 32 输出 token, 1 次迭代):
+
+| 配置 | 2nd Token (ms/tok) | 吞吐 (tok/s) | FC 分割 |
+|------|-------------------|-------------|---------|
+| **Baseline (NONE/OneDNN)** | **15.14** | **66.04** | 181/0 |
+| AUTO_HEURISTIC (OCL) | 16.45–16.57 | ~60 | 109/72 |
+| AUTO_HEURISTIC (CM v2 best) | 29.76 | 33.60 | 109/72 |
+
+### 9.2 正确性验证
 
 - ✅ 所有配置输出有效文本 (MD5 校验)
 - ✅ 无 ",,," / "!!!" / "???" 伪影
@@ -489,7 +581,7 @@ Dispatch: global = {ceil(N/WG_SIZE) × WG_SIZE, B, 1}
 - ✅ "Enqueue stage gemm_generate_opt" 确认 kernel 选中
 - ✅ Layer 0 q_proj 的 input/output 对比在容差范围内
 
-### 8.3 E2E 回退根因分析
+### 9.3 E2E 回退根因分析
 
 | 因素 | 贡献 | 说明 |
 |------|------|------|
@@ -501,38 +593,45 @@ Dispatch: global = {ceil(N/WG_SIZE) × WG_SIZE, B, 1}
 
 ---
 
-## 9. 当前未解决问题
+## 10. 当前未解决问题
 
-### 9.1 OCL 尚未超越 OneDNN (SKILL.md 要求未达成)
+### 10.1 OCL/CM 尚未超越 OneDNN (SKILL.md 要求未达成)
 
 **要求**: "OCL implementation has better performance than OneDNN implementation in generate stage"  
-**现状**: OCL 比 OneDNN 慢 ~7%
+**现状**: OCL 比 OneDNN 慢 ~7%，CM 比 OneDNN 慢 ~100%
 
-**后续方案** (按优先级):
+**已排除的方案**:
+
+| 方案 | 结果 | 原因 |
+|------|------|------|
+| **CM GEMV Kernel** | ❌ 29.76ms vs 15.14ms (2× 慢) | CM 无 sub-group coalescing，WG_SIZE 被限制在 16，memory-bound 场景无优势 |
+
+**后续可行方案** (按优先级):
 
 | 方案 | 预期影响 | 复杂度 |
 |------|---------|--------|
+| **研究 OneDNN GEMV 实现**: 分析 OneDNN 的 W4A16 GEMV 具体 ISA 指令，找出其优于 OCL 的关键技术 | 定位精确的差距来源 | 低 |
 | **K-Split 框架集成**: 在 PrimitiveImplOCL 中支持两阶段 dispatch (GEMV + reduce) | 小 N 带宽 +38–74%，可能缩小 E2E 差距但不确定能超过 OneDNN | 中 |
 | **DPAS Kernel**: 使用 `cl_intel_subgroup_matrix_multiply_accumulate` 指令重写 | 理论 2–4× 指令数减少 → 可能超越 OneDNN | 高 |
 | **Dispatch 开销降低**: kernel fusion / persistent kernel | 减少 ~1.4ms/token 开销 | 高 |
 
-### 9.2 Memory 优化 (SKILL.md Phase 2/3 未实现)
+### 10.2 Memory 优化 (SKILL.md Phase 2/3 未实现)
 
 - Hot-Swap Memory Management（仅设计，未编码）
 - Resource Pooling（仅概念验证）
 - Lazy Compilation（未实现）
 - LRU Weights Cache（未实现）
 
-### 9.3 TILE_N 动态选择
+### 10.3 TILE_N 动态选择
 
 当前 JIT 不设置 TILE_N（kernel 默认为 1）。当 N 非常大时，TILE_N=2 可能有收益，  
 但当前测试表明寄存器压力导致性能下降 30%。
 
 ---
 
-## 10. 文件清单与代码位置索引
+## 11. 文件清单与代码位置索引
 
-### 10.1 Production 代码 (13 files, +2143 / −2 lines)
+### 11.1 Production 代码 (13 files + 3 CM files, +2143 / −2 lines)
 
 | 文件 | 行数变化 | 核心作用 |
 |------|---------|---------|
@@ -544,13 +643,16 @@ Dispatch: global = {ceil(N/WG_SIZE) × WG_SIZE, B, 1}
 | `gemm_generate_opt.cpp` | +125 | 非压缩 GEMM JIT 路径 |
 | `gemm_generate_opt.hpp` | +139 | 非压缩 GEMM 验证 |
 | `fully_connected_onednn.hpp` | +5 | `raw_sub_byte_weight_compatible() = true` |
-| `fully_connected_impls.cpp` | +6/−2 | FCCompressedGenerateOpt 注册 (OneDNN 之后, 默认 OCL 之前) |
+| `cm/fc_compressed_generate_opt.cm` | +230 | CM GEMV kernel (W4A16 + W4A8), cm_svm_block_read 向量化加载 |
+| `cm/fc_compressed_generate_opt.cpp` | +214 | CM Generator + PrimitiveImplCM 实现 |
+| `cm/fc_compressed_generate_opt.hpp` | +132 | CM ImplementationManager (cm_jit + immad 门控) |
+| `fully_connected_impls.cpp` | +9/−2 | FCCompressedGenerateOpt 注册 (OneDNN 之后, CM 和 OCL 之前) |
 | `gemm_impls.cpp` | +6 | GEMM OCL impl 注册 |
 | `implementation_manager.hpp` | +9 | 虚方法 `raw_sub_byte_weight_compatible()` |
 | `internal_properties.hpp` | +3 | 属性声明 |
 | `options.inl` | +3 | 选项注册 |
 
-### 10.2 测试代码 (gemv_test/w4a16/ — 24 files)
+### 11.2 测试代码 (gemv_test/w4a16/ — 24 files)
 
 | 文件 | 用途 |
 |------|------|
@@ -561,7 +663,7 @@ Dispatch: global = {ceil(N/WG_SIZE) × WG_SIZE, B, 1}
 | `ksplit_intra_bench.cpp` + `w4a16_ksplit_intra.cl` | Intra-WG K-split (SLM reduce) |
 | 多个 `w4a16_gemv_*.cl` | 各 kernel 变体 (block, f4acc, fullunroll, h16acc, kpar, nounroll, ulong, wg512) |
 
-### 10.3 Git 提交历史
+### 11.3 Git 提交历史
 
 ```
 380023493b Add FCCompressedGenerateOpt OCL W4A8 kernel implementation
@@ -575,14 +677,14 @@ fbfcc26721 Runtime Primitive Implementation Switching Policy
 
 ---
 
-## 11. 详细流程图
+## 12. 详细流程图
 
 > 详细的流程图以 Mermaid 和 SVG 格式保存在同目录下的独立文件中：
 > - `flowchart_enable_multi_impl.md` — enable_multi_impl_mode() 完整流程
 > - `flowchart_runtime_switching.md` — 运行时 impl 切换决策流程
 > - `flowchart_overall_architecture.md` — 整体架构与数据流
 
-### 11.1 enable_multi_impl_mode() 流程 (简化)
+### 12.1 enable_multi_impl_mode() 流程 (简化)
 
 ```
 enable_multi_impl_mode(policy)
@@ -622,7 +724,7 @@ enable_multi_impl_mode(policy)
     └─ add_impl_to_pool(type, alt_impl)
 ```
 
-### 11.2 运行时切换决策流程 (简化)
+### 12.2 运行时切换决策流程 (简化)
 
 ```
 execute()

@@ -1,0 +1,1854 @@
+{
+  "platform": "PTL_12Xe",
+  "platform_desc": "PTL (B390 iGPU, 12 Xe @ 2400 MHz, 110 GB/s, FP16 XMX 58.982 TFLOPS)",
+  "bw": 110.0,
+  "fp16_tflops": 58.9824,
+  "int8_tops": 117.9648,
+  "ridge_f16": 536.2036363636364,
+  "model": "google/gemma-4-26B-A4B-it",
+  "config_summary": "INT4 g=128 body (MoE g=64) + INT8 g=128 LM_head + INT8 KV cache",
+  "decode": {
+    "1024": {
+      "total_ms": 28.161847,
+      "rows": [
+        {
+          "op": "MoE_fused (INT4, TK=8/128)",
+          "kernel": "moe_3gemm+scatter+gather",
+          "single_ms": 0.284642,
+          "calls": 30,
+          "total_ms": 8.53926,
+          "gflops": 334.3086122216679,
+          "gbs": 90.82881654850655,
+          "eff": 82.57165140773323,
+          "bound": "memory"
+        },
+        {
+          "op": "LM_head (INT8)",
+          "kernel": "gemm_kernel",
+          "single_ms": 7.302903,
+          "calls": 1,
+          "total_ms": 7.302903,
+          "gflops": 202.1654961047682,
+          "gbs": 102.73472891533682,
+          "eff": 93.39520810485166,
+          "bound": "memory"
+        },
+        {
+          "op": "DenseMLP_gate+up+down (INT4)",
+          "kernel": "gemm_kernel\u00d73",
+          "single_ms": 0.10472300000000001,
+          "calls": 30,
+          "total_ms": 3.1416900000000005,
+          "gflops": 340.74990212274287,
+          "gbs": 89.90666806718677,
+          "eff": 81.73333460653342,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_QKV_sliding (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.119881,
+          "calls": 25,
+          "total_ms": 2.997025,
+          "gflops": 384.85951902303117,
+          "gbs": 100.15692228126225,
+          "eff": 91.05174752842024,
+          "bound": "memory"
+        },
+        {
+          "op": "PA_sliding (INT8 KV, sw=1024)",
+          "kernel": "paged_attn_single_token",
+          "single_ms": 0.079998,
+          "calls": 25,
+          "total_ms": 1.99995,
+          "gflops": 209.72044301107525,
+          "gbs": 52.43011075276881,
+          "eff": 47.66373704797165,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_O_sliding (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.061597,
+          "calls": 25,
+          "total_ms": 1.539925,
+          "gflops": 374.5096676786207,
+          "gbs": 97.5091644073575,
+          "eff": 88.64469491577954,
+          "bound": "memory"
+        },
+        {
+          "op": "SmallOps (norm/rope/add)",
+          "kernel": "rms/rope/eltwise",
+          "single_ms": 0,
+          "calls": 0,
+          "total_ms": 0.860569,
+          "gflops": 0,
+          "gbs": 0,
+          "eff": 0,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_QK_full (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.13323,
+          "calls": 5,
+          "total_ms": 0.6661499999999999,
+          "gflops": 389.58576897095253,
+          "gbs": 101.38161074832996,
+          "eff": 92.16510068029996,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_O_full (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.116823,
+          "calls": 5,
+          "total_ms": 0.5841149999999999,
+          "gflops": 394.9337373633616,
+          "gbs": 102.77866516011402,
+          "eff": 93.4351501455582,
+          "bound": "memory"
+        },
+        {
+          "op": "PA_full (INT8 KV)",
+          "kernel": "paged_attn_single_token",
+          "single_ms": 0.106052,
+          "calls": 5,
+          "total_ms": 0.53026,
+          "gflops": 316.39603213517904,
+          "gbs": 19.77475200844869,
+          "eff": 17.977047280407902,
+          "bound": "memory"
+        }
+      ]
+    },
+    "2048": {
+      "total_ms": 28.605092,
+      "rows": [
+        {
+          "op": "MoE_fused (INT4, TK=8/128)",
+          "kernel": "moe_3gemm+scatter+gather",
+          "single_ms": 0.284642,
+          "calls": 30,
+          "total_ms": 8.53926,
+          "gflops": 334.3086122216679,
+          "gbs": 90.82881654850655,
+          "eff": 82.57165140773323,
+          "bound": "memory"
+        },
+        {
+          "op": "LM_head (INT8)",
+          "kernel": "gemm_kernel",
+          "single_ms": 7.302903,
+          "calls": 1,
+          "total_ms": 7.302903,
+          "gflops": 202.1654961047682,
+          "gbs": 102.73472891533682,
+          "eff": 93.39520810485166,
+          "bound": "memory"
+        },
+        {
+          "op": "DenseMLP_gate+up+down (INT4)",
+          "kernel": "gemm_kernel\u00d73",
+          "single_ms": 0.10472300000000001,
+          "calls": 30,
+          "total_ms": 3.1416900000000005,
+          "gflops": 340.74990212274287,
+          "gbs": 89.90666806718677,
+          "eff": 81.73333460653342,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_QKV_sliding (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.119881,
+          "calls": 25,
+          "total_ms": 2.997025,
+          "gflops": 384.85951902303117,
+          "gbs": 100.15692228126225,
+          "eff": 91.05174752842024,
+          "bound": "memory"
+        },
+        {
+          "op": "PA_sliding (INT8 KV, sw=1024)",
+          "kernel": "paged_attn_single_token",
+          "single_ms": 0.079998,
+          "calls": 25,
+          "total_ms": 1.99995,
+          "gflops": 209.72044301107525,
+          "gbs": 52.43011075276881,
+          "eff": 47.66373704797165,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_O_sliding (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.061597,
+          "calls": 25,
+          "total_ms": 1.539925,
+          "gflops": 374.5096676786207,
+          "gbs": 97.5091644073575,
+          "eff": 88.64469491577954,
+          "bound": "memory"
+        },
+        {
+          "op": "PA_full (INT8 KV)",
+          "kernel": "paged_attn_single_token",
+          "single_ms": 0.194701,
+          "calls": 5,
+          "total_ms": 0.9735050000000001,
+          "gflops": 344.67652451708,
+          "gbs": 21.5422827823175,
+          "eff": 19.583893438470454,
+          "bound": "memory"
+        },
+        {
+          "op": "SmallOps (norm/rope/add)",
+          "kernel": "rms/rope/eltwise",
+          "single_ms": 0,
+          "calls": 0,
+          "total_ms": 0.860569,
+          "gflops": 0,
+          "gbs": 0,
+          "eff": 0,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_QK_full (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.13323,
+          "calls": 5,
+          "total_ms": 0.6661499999999999,
+          "gflops": 389.58576897095253,
+          "gbs": 101.38161074832996,
+          "eff": 92.16510068029996,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_O_full (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.116823,
+          "calls": 5,
+          "total_ms": 0.5841149999999999,
+          "gflops": 394.9337373633616,
+          "gbs": 102.77866516011402,
+          "eff": 93.4351501455582,
+          "bound": "memory"
+        }
+      ]
+    },
+    "4096": {
+      "total_ms": 28.432252000000002,
+      "rows": [
+        {
+          "op": "MoE_fused (INT4, TK=8/128)",
+          "kernel": "moe_3gemm+scatter+gather",
+          "single_ms": 0.284642,
+          "calls": 30,
+          "total_ms": 8.53926,
+          "gflops": 334.3086122216679,
+          "gbs": 90.82881654850655,
+          "eff": 82.57165140773323,
+          "bound": "memory"
+        },
+        {
+          "op": "LM_head (INT8)",
+          "kernel": "gemm_kernel",
+          "single_ms": 7.302903,
+          "calls": 1,
+          "total_ms": 7.302903,
+          "gflops": 202.1654961047682,
+          "gbs": 102.73472891533682,
+          "eff": 93.39520810485166,
+          "bound": "memory"
+        },
+        {
+          "op": "DenseMLP_gate+up+down (INT4)",
+          "kernel": "gemm_kernel\u00d73",
+          "single_ms": 0.10472300000000001,
+          "calls": 30,
+          "total_ms": 3.1416900000000005,
+          "gflops": 340.74990212274287,
+          "gbs": 89.90666806718677,
+          "eff": 81.73333460653342,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_QKV_sliding (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.119881,
+          "calls": 25,
+          "total_ms": 2.997025,
+          "gflops": 384.85951902303117,
+          "gbs": 100.15692228126225,
+          "eff": 91.05174752842024,
+          "bound": "memory"
+        },
+        {
+          "op": "PA_sliding (INT8 KV, sw=1024)",
+          "kernel": "paged_attn_single_token",
+          "single_ms": 0.079998,
+          "calls": 25,
+          "total_ms": 1.99995,
+          "gflops": 209.72044301107525,
+          "gbs": 52.43011075276881,
+          "eff": 47.66373704797165,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_O_sliding (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.061597,
+          "calls": 25,
+          "total_ms": 1.539925,
+          "gflops": 374.5096676786207,
+          "gbs": 97.5091644073575,
+          "eff": 88.64469491577954,
+          "bound": "memory"
+        },
+        {
+          "op": "SmallOps (norm/rope/add)",
+          "kernel": "rms/rope/eltwise",
+          "single_ms": 0,
+          "calls": 0,
+          "total_ms": 0.860569,
+          "gflops": 0,
+          "gbs": 0,
+          "eff": 0,
+          "bound": "memory"
+        },
+        {
+          "op": "PA_full (INT8 KV)",
+          "kernel": "paged_attn_single_token",
+          "single_ms": 0.160133,
+          "calls": 5,
+          "total_ms": 0.800665,
+          "gflops": 838.1640761117321,
+          "gbs": 52.38525475698326,
+          "eff": 47.622958869984785,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_QK_full (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.13323,
+          "calls": 5,
+          "total_ms": 0.6661499999999999,
+          "gflops": 389.58576897095253,
+          "gbs": 101.38161074832996,
+          "eff": 92.16510068029996,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_O_full (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.116823,
+          "calls": 5,
+          "total_ms": 0.5841149999999999,
+          "gflops": 394.9337373633616,
+          "gbs": 102.77866516011402,
+          "eff": 93.4351501455582,
+          "bound": "memory"
+        }
+      ]
+    },
+    "8192": {
+      "total_ms": 29.151087,
+      "rows": [
+        {
+          "op": "MoE_fused (INT4, TK=8/128)",
+          "kernel": "moe_3gemm+scatter+gather",
+          "single_ms": 0.284642,
+          "calls": 30,
+          "total_ms": 8.53926,
+          "gflops": 334.3086122216679,
+          "gbs": 90.82881654850655,
+          "eff": 82.57165140773323,
+          "bound": "memory"
+        },
+        {
+          "op": "LM_head (INT8)",
+          "kernel": "gemm_kernel",
+          "single_ms": 7.302903,
+          "calls": 1,
+          "total_ms": 7.302903,
+          "gflops": 202.1654961047682,
+          "gbs": 102.73472891533682,
+          "eff": 93.39520810485166,
+          "bound": "memory"
+        },
+        {
+          "op": "DenseMLP_gate+up+down (INT4)",
+          "kernel": "gemm_kernel\u00d73",
+          "single_ms": 0.10472300000000001,
+          "calls": 30,
+          "total_ms": 3.1416900000000005,
+          "gflops": 340.74990212274287,
+          "gbs": 89.90666806718677,
+          "eff": 81.73333460653342,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_QKV_sliding (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.119881,
+          "calls": 25,
+          "total_ms": 2.997025,
+          "gflops": 384.85951902303117,
+          "gbs": 100.15692228126225,
+          "eff": 91.05174752842024,
+          "bound": "memory"
+        },
+        {
+          "op": "PA_sliding (INT8 KV, sw=1024)",
+          "kernel": "paged_attn_single_token",
+          "single_ms": 0.079998,
+          "calls": 25,
+          "total_ms": 1.99995,
+          "gflops": 209.72044301107525,
+          "gbs": 52.43011075276881,
+          "eff": 47.66373704797165,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_O_sliding (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.061597,
+          "calls": 25,
+          "total_ms": 1.539925,
+          "gflops": 374.5096676786207,
+          "gbs": 97.5091644073575,
+          "eff": 88.64469491577954,
+          "bound": "memory"
+        },
+        {
+          "op": "PA_full (INT8 KV)",
+          "kernel": "paged_attn_single_token",
+          "single_ms": 0.3039,
+          "calls": 5,
+          "total_ms": 1.5195,
+          "gflops": 883.3019282658769,
+          "gbs": 55.206370516617305,
+          "eff": 50.187609560561185,
+          "bound": "memory"
+        },
+        {
+          "op": "SmallOps (norm/rope/add)",
+          "kernel": "rms/rope/eltwise",
+          "single_ms": 0,
+          "calls": 0,
+          "total_ms": 0.860569,
+          "gflops": 0,
+          "gbs": 0,
+          "eff": 0,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_QK_full (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.13323,
+          "calls": 5,
+          "total_ms": 0.6661499999999999,
+          "gflops": 389.58576897095253,
+          "gbs": 101.38161074832996,
+          "eff": 92.16510068029996,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_O_full (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.116823,
+          "calls": 5,
+          "total_ms": 0.5841149999999999,
+          "gflops": 394.9337373633616,
+          "gbs": 102.77866516011402,
+          "eff": 93.4351501455582,
+          "bound": "memory"
+        }
+      ]
+    },
+    "16384": {
+      "total_ms": 30.456722,
+      "rows": [
+        {
+          "op": "MoE_fused (INT4, TK=8/128)",
+          "kernel": "moe_3gemm+scatter+gather",
+          "single_ms": 0.284642,
+          "calls": 30,
+          "total_ms": 8.53926,
+          "gflops": 334.3086122216679,
+          "gbs": 90.82881654850655,
+          "eff": 82.57165140773323,
+          "bound": "memory"
+        },
+        {
+          "op": "LM_head (INT8)",
+          "kernel": "gemm_kernel",
+          "single_ms": 7.302903,
+          "calls": 1,
+          "total_ms": 7.302903,
+          "gflops": 202.1654961047682,
+          "gbs": 102.73472891533682,
+          "eff": 93.39520810485166,
+          "bound": "memory"
+        },
+        {
+          "op": "DenseMLP_gate+up+down (INT4)",
+          "kernel": "gemm_kernel\u00d73",
+          "single_ms": 0.10472300000000001,
+          "calls": 30,
+          "total_ms": 3.1416900000000005,
+          "gflops": 340.74990212274287,
+          "gbs": 89.90666806718677,
+          "eff": 81.73333460653342,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_QKV_sliding (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.119881,
+          "calls": 25,
+          "total_ms": 2.997025,
+          "gflops": 384.85951902303117,
+          "gbs": 100.15692228126225,
+          "eff": 91.05174752842024,
+          "bound": "memory"
+        },
+        {
+          "op": "PA_full (INT8 KV)",
+          "kernel": "paged_attn_single_token",
+          "single_ms": 0.565027,
+          "calls": 5,
+          "total_ms": 2.8251349999999995,
+          "gflops": 950.1685972528747,
+          "gbs": 59.38553732830467,
+          "eff": 53.98685211664061,
+          "bound": "memory"
+        },
+        {
+          "op": "PA_sliding (INT8 KV, sw=1024)",
+          "kernel": "paged_attn_single_token",
+          "single_ms": 0.079998,
+          "calls": 25,
+          "total_ms": 1.99995,
+          "gflops": 209.72044301107525,
+          "gbs": 52.43011075276881,
+          "eff": 47.66373704797165,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_O_sliding (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.061597,
+          "calls": 25,
+          "total_ms": 1.539925,
+          "gflops": 374.5096676786207,
+          "gbs": 97.5091644073575,
+          "eff": 88.64469491577954,
+          "bound": "memory"
+        },
+        {
+          "op": "SmallOps (norm/rope/add)",
+          "kernel": "rms/rope/eltwise",
+          "single_ms": 0,
+          "calls": 0,
+          "total_ms": 0.860569,
+          "gflops": 0,
+          "gbs": 0,
+          "eff": 0,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_QK_full (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.13323,
+          "calls": 5,
+          "total_ms": 0.6661499999999999,
+          "gflops": 389.58576897095253,
+          "gbs": 101.38161074832996,
+          "eff": 92.16510068029996,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_O_full (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.116823,
+          "calls": 5,
+          "total_ms": 0.5841149999999999,
+          "gflops": 394.9337373633616,
+          "gbs": 102.77866516011402,
+          "eff": 93.4351501455582,
+          "bound": "memory"
+        }
+      ]
+    },
+    "32768": {
+      "total_ms": 33.086887,
+      "rows": [
+        {
+          "op": "MoE_fused (INT4, TK=8/128)",
+          "kernel": "moe_3gemm+scatter+gather",
+          "single_ms": 0.284642,
+          "calls": 30,
+          "total_ms": 8.53926,
+          "gflops": 334.3086122216679,
+          "gbs": 90.82881654850655,
+          "eff": 82.57165140773323,
+          "bound": "memory"
+        },
+        {
+          "op": "LM_head (INT8)",
+          "kernel": "gemm_kernel",
+          "single_ms": 7.302903,
+          "calls": 1,
+          "total_ms": 7.302903,
+          "gflops": 202.1654961047682,
+          "gbs": 102.73472891533682,
+          "eff": 93.39520810485166,
+          "bound": "memory"
+        },
+        {
+          "op": "PA_full (INT8 KV)",
+          "kernel": "paged_attn_single_token",
+          "single_ms": 1.09106,
+          "calls": 5,
+          "total_ms": 5.455299999999999,
+          "gflops": 984.1272010705186,
+          "gbs": 61.50795006690741,
+          "eff": 55.9163182426431,
+          "bound": "memory"
+        },
+        {
+          "op": "DenseMLP_gate+up+down (INT4)",
+          "kernel": "gemm_kernel\u00d73",
+          "single_ms": 0.10472300000000001,
+          "calls": 30,
+          "total_ms": 3.1416900000000005,
+          "gflops": 340.74990212274287,
+          "gbs": 89.90666806718677,
+          "eff": 81.73333460653342,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_QKV_sliding (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.119881,
+          "calls": 25,
+          "total_ms": 2.997025,
+          "gflops": 384.85951902303117,
+          "gbs": 100.15692228126225,
+          "eff": 91.05174752842024,
+          "bound": "memory"
+        },
+        {
+          "op": "PA_sliding (INT8 KV, sw=1024)",
+          "kernel": "paged_attn_single_token",
+          "single_ms": 0.079998,
+          "calls": 25,
+          "total_ms": 1.99995,
+          "gflops": 209.72044301107525,
+          "gbs": 52.43011075276881,
+          "eff": 47.66373704797165,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_O_sliding (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.061597,
+          "calls": 25,
+          "total_ms": 1.539925,
+          "gflops": 374.5096676786207,
+          "gbs": 97.5091644073575,
+          "eff": 88.64469491577954,
+          "bound": "memory"
+        },
+        {
+          "op": "SmallOps (norm/rope/add)",
+          "kernel": "rms/rope/eltwise",
+          "single_ms": 0,
+          "calls": 0,
+          "total_ms": 0.860569,
+          "gflops": 0,
+          "gbs": 0,
+          "eff": 0,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_QK_full (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.13323,
+          "calls": 5,
+          "total_ms": 0.6661499999999999,
+          "gflops": 389.58576897095253,
+          "gbs": 101.38161074832996,
+          "eff": 92.16510068029996,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_O_full (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.116823,
+          "calls": 5,
+          "total_ms": 0.5841149999999999,
+          "gflops": 394.9337373633616,
+          "gbs": 102.77866516011402,
+          "eff": 93.4351501455582,
+          "bound": "memory"
+        }
+      ]
+    },
+    "65536": {
+      "total_ms": 38.203467,
+      "rows": [
+        {
+          "op": "PA_full (INT8 KV)",
+          "kernel": "paged_attn_single_token",
+          "single_ms": 2.114376,
+          "calls": 5,
+          "total_ms": 10.57188,
+          "gflops": 1015.6583540486648,
+          "gbs": 63.47864712804155,
+          "eff": 57.70786102549232,
+          "bound": "memory"
+        },
+        {
+          "op": "MoE_fused (INT4, TK=8/128)",
+          "kernel": "moe_3gemm+scatter+gather",
+          "single_ms": 0.284642,
+          "calls": 30,
+          "total_ms": 8.53926,
+          "gflops": 334.3086122216679,
+          "gbs": 90.82881654850655,
+          "eff": 82.57165140773323,
+          "bound": "memory"
+        },
+        {
+          "op": "LM_head (INT8)",
+          "kernel": "gemm_kernel",
+          "single_ms": 7.302903,
+          "calls": 1,
+          "total_ms": 7.302903,
+          "gflops": 202.1654961047682,
+          "gbs": 102.73472891533682,
+          "eff": 93.39520810485166,
+          "bound": "memory"
+        },
+        {
+          "op": "DenseMLP_gate+up+down (INT4)",
+          "kernel": "gemm_kernel\u00d73",
+          "single_ms": 0.10472300000000001,
+          "calls": 30,
+          "total_ms": 3.1416900000000005,
+          "gflops": 340.74990212274287,
+          "gbs": 89.90666806718677,
+          "eff": 81.73333460653342,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_QKV_sliding (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.119881,
+          "calls": 25,
+          "total_ms": 2.997025,
+          "gflops": 384.85951902303117,
+          "gbs": 100.15692228126225,
+          "eff": 91.05174752842024,
+          "bound": "memory"
+        },
+        {
+          "op": "PA_sliding (INT8 KV, sw=1024)",
+          "kernel": "paged_attn_single_token",
+          "single_ms": 0.079998,
+          "calls": 25,
+          "total_ms": 1.99995,
+          "gflops": 209.72044301107525,
+          "gbs": 52.43011075276881,
+          "eff": 47.66373704797165,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_O_sliding (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.061597,
+          "calls": 25,
+          "total_ms": 1.539925,
+          "gflops": 374.5096676786207,
+          "gbs": 97.5091644073575,
+          "eff": 88.64469491577954,
+          "bound": "memory"
+        },
+        {
+          "op": "SmallOps (norm/rope/add)",
+          "kernel": "rms/rope/eltwise",
+          "single_ms": 0,
+          "calls": 0,
+          "total_ms": 0.860569,
+          "gflops": 0,
+          "gbs": 0,
+          "eff": 0,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_QK_full (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.13323,
+          "calls": 5,
+          "total_ms": 0.6661499999999999,
+          "gflops": 389.58576897095253,
+          "gbs": 101.38161074832996,
+          "eff": 92.16510068029996,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_O_full (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.116823,
+          "calls": 5,
+          "total_ms": 0.5841149999999999,
+          "gflops": 394.9337373633616,
+          "gbs": 102.77866516011402,
+          "eff": 93.4351501455582,
+          "bound": "memory"
+        }
+      ]
+    },
+    "131072": {
+      "total_ms": 48.586327,
+      "rows": [
+        {
+          "op": "PA_full (INT8 KV)",
+          "kernel": "paged_attn_single_token",
+          "single_ms": 4.190948,
+          "calls": 5,
+          "total_ms": 20.954739999999997,
+          "gflops": 1024.8199920399873,
+          "gbs": 64.0512495024992,
+          "eff": 58.22840863863564,
+          "bound": "memory"
+        },
+        {
+          "op": "MoE_fused (INT4, TK=8/128)",
+          "kernel": "moe_3gemm+scatter+gather",
+          "single_ms": 0.284642,
+          "calls": 30,
+          "total_ms": 8.53926,
+          "gflops": 334.3086122216679,
+          "gbs": 90.82881654850655,
+          "eff": 82.57165140773323,
+          "bound": "memory"
+        },
+        {
+          "op": "LM_head (INT8)",
+          "kernel": "gemm_kernel",
+          "single_ms": 7.302903,
+          "calls": 1,
+          "total_ms": 7.302903,
+          "gflops": 202.1654961047682,
+          "gbs": 102.73472891533682,
+          "eff": 93.39520810485166,
+          "bound": "memory"
+        },
+        {
+          "op": "DenseMLP_gate+up+down (INT4)",
+          "kernel": "gemm_kernel\u00d73",
+          "single_ms": 0.10472300000000001,
+          "calls": 30,
+          "total_ms": 3.1416900000000005,
+          "gflops": 340.74990212274287,
+          "gbs": 89.90666806718677,
+          "eff": 81.73333460653342,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_QKV_sliding (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.119881,
+          "calls": 25,
+          "total_ms": 2.997025,
+          "gflops": 384.85951902303117,
+          "gbs": 100.15692228126225,
+          "eff": 91.05174752842024,
+          "bound": "memory"
+        },
+        {
+          "op": "PA_sliding (INT8 KV, sw=1024)",
+          "kernel": "paged_attn_single_token",
+          "single_ms": 0.079998,
+          "calls": 25,
+          "total_ms": 1.99995,
+          "gflops": 209.72044301107525,
+          "gbs": 52.43011075276881,
+          "eff": 47.66373704797165,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_O_sliding (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.061597,
+          "calls": 25,
+          "total_ms": 1.539925,
+          "gflops": 374.5096676786207,
+          "gbs": 97.5091644073575,
+          "eff": 88.64469491577954,
+          "bound": "memory"
+        },
+        {
+          "op": "SmallOps (norm/rope/add)",
+          "kernel": "rms/rope/eltwise",
+          "single_ms": 0,
+          "calls": 0,
+          "total_ms": 0.860569,
+          "gflops": 0,
+          "gbs": 0,
+          "eff": 0,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_QK_full (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.13323,
+          "calls": 5,
+          "total_ms": 0.6661499999999999,
+          "gflops": 389.58576897095253,
+          "gbs": 101.38161074832996,
+          "eff": 92.16510068029996,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_O_full (INT4)",
+          "kernel": "gemm_kernel",
+          "single_ms": 0.116823,
+          "calls": 5,
+          "total_ms": 0.5841149999999999,
+          "gflops": 394.9337373633616,
+          "gbs": 102.77866516011402,
+          "eff": 93.4351501455582,
+          "bound": "memory"
+        }
+      ]
+    }
+  },
+  "prefill": {
+    "1024": {
+      "total_ms": 481.878867,
+      "rows": [
+        {
+          "op": "MoE_fused (INT4, TK=8/128)",
+          "kernel": "grouped_micro_gemm\u00d73+scatter+gather",
+          "single_ms": 11.250189,
+          "calls": 30,
+          "total_ms": 337.50567,
+          "gflops": 8661.371869219263,
+          "gbs": 38.695718267488665,
+          "eff": 35.177925697716965,
+          "bound": "memory"
+        },
+        {
+          "op": "DenseMLP_gate+up+down (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel\u00d73",
+          "single_ms": 0.936725,
+          "calls": 30,
+          "total_ms": 28.101750000000003,
+          "gflops": 39009.075713790065,
+          "gbs": 42.34258720542315,
+          "eff": 38.49326109583922,
+          "bound": "memory"
+        },
+        {
+          "op": "PA_full (FP16 prefill, causal)",
+          "kernel": "sdpa_micro_prefill",
+          "single_ms": 5.190846,
+          "calls": 5,
+          "total_ms": 25.95423,
+          "gflops": 3309.6472490226065,
+          "gbs": 0.8080193479059098,
+          "eff": 5.611245471568818,
+          "bound": "compute"
+        },
+        {
+          "op": "SmallOps (norm/rope/add)",
+          "kernel": "rms/rope/eltwise",
+          "single_ms": 0,
+          "calls": 0,
+          "total_ms": 23.652528999999998,
+          "gflops": 0,
+          "gbs": 0,
+          "eff": 0,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_QKV_sliding (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 0.793957,
+          "calls": 25,
+          "total_ms": 19.848925,
+          "gflops": 59505.28839219252,
+          "gbs": 43.49011344443086,
+          "eff": 50.4432579822053,
+          "bound": "compute"
+        },
+        {
+          "op": "PA_sliding (FP16 prefill, sw=1024)",
+          "kernel": "sdpa_micro_prefill",
+          "single_ms": 0.770029,
+          "calls": 25,
+          "total_ms": 19.250725,
+          "gflops": 11155.339074242658,
+          "gbs": 10.893885814690096,
+          "eff": 18.912996206059194,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_O_sliding (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 0.459265,
+          "calls": 25,
+          "total_ms": 11.481625,
+          "gflops": 51435.054114726794,
+          "gbs": 43.870584520919294,
+          "eff": 43.60203561971605,
+          "bound": "compute"
+        },
+        {
+          "op": "LM_head (INT8, 1 out tok)",
+          "kernel": "gemm_kernel",
+          "single_ms": 7.302903,
+          "calls": 1,
+          "total_ms": 7.302903,
+          "gflops": 202.1654961047682,
+          "gbs": 102.73472891533682,
+          "eff": 93.39520810485166,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_O_full (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 0.879103,
+          "calls": 5,
+          "total_ms": 4.395515,
+          "gflops": 53741.87126650688,
+          "gbs": 39.277854813372265,
+          "eff": 45.557548748869905,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_QK_full (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 0.876999,
+          "calls": 5,
+          "total_ms": 4.384995,
+          "gflops": 60604.65324133779,
+          "gbs": 43.471593468179556,
+          "eff": 51.37520111197391,
+          "bound": "compute"
+        }
+      ]
+    },
+    "2048": {
+      "total_ms": 805.5700810000001,
+      "rows": [
+        {
+          "op": "MoE_fused (INT4, TK=8/128)",
+          "kernel": "grouped_micro_gemm\u00d73+scatter+gather",
+          "single_ms": 16.271107,
+          "calls": 30,
+          "total_ms": 488.13321,
+          "gflops": 11977.312979135348,
+          "gbs": 28.277532192493112,
+          "eff": 25.70684744772101,
+          "bound": "memory"
+        },
+        {
+          "op": "PA_full (FP16 prefill, causal)",
+          "kernel": "sdpa_micro_prefill",
+          "single_ms": 17.964364,
+          "calls": 5,
+          "total_ms": 89.82182,
+          "gflops": 3825.321995034169,
+          "gbs": 0.46695825134694446,
+          "eff": 6.485531268707562,
+          "bound": "compute"
+        },
+        {
+          "op": "DenseMLP_gate+up+down (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel\u00d73",
+          "single_ms": 1.7858040000000002,
+          "calls": 30,
+          "total_ms": 53.57412000000001,
+          "gflops": 40923.61361941176,
+          "gbs": 39.16498787100935,
+          "eff": 35.60453442819032,
+          "bound": "memory"
+        },
+        {
+          "op": "SmallOps (norm/rope/add)",
+          "kernel": "rms/rope/eltwise",
+          "single_ms": 0,
+          "calls": 0,
+          "total_ms": 49.984848,
+          "gflops": 0,
+          "gbs": 0,
+          "eff": 0,
+          "bound": "memory"
+        },
+        {
+          "op": "FC_QKV_sliding (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 1.553782,
+          "calls": 25,
+          "total_ms": 38.84455,
+          "gflops": 60812.44377396571,
+          "gbs": 36.732092404211144,
+          "eff": 51.551347329004685,
+          "bound": "compute"
+        },
+        {
+          "op": "PA_sliding (FP16 prefill, sw=1024)",
+          "kernel": "sdpa_micro_prefill",
+          "single_ms": 1.540058,
+          "calls": 25,
+          "total_ms": 38.50145,
+          "gflops": 11155.339074242658,
+          "gbs": 5.446942907345048,
+          "eff": 18.912996206059194,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_O_sliding (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 0.898461,
+          "calls": 25,
+          "total_ms": 22.461524999999998,
+          "gflops": 52583.963306142396,
+          "gbs": 38.18084480016384,
+          "eff": 44.57597800881483,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_QK_full (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 1.793236,
+          "calls": 5,
+          "total_ms": 8.96618,
+          "gflops": 59278.555960286314,
+          "gbs": 35.00157257605803,
+          "eff": 50.25105451820061,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_O_full (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 1.595895,
+          "calls": 5,
+          "total_ms": 7.979475000000001,
+          "gflops": 59207.70508836734,
+          "gbs": 35.762793918146244,
+          "eff": 50.19099348989473,
+          "bound": "compute"
+        },
+        {
+          "op": "LM_head (INT8, 1 out tok)",
+          "kernel": "gemm_kernel",
+          "single_ms": 7.302903,
+          "calls": 1,
+          "total_ms": 7.302903,
+          "gflops": 202.1654961047682,
+          "gbs": 102.73472891533682,
+          "eff": 93.39520810485166,
+          "bound": "memory"
+        }
+      ]
+    },
+    "4096": {
+      "total_ms": 1524.166586,
+      "rows": [
+        {
+          "op": "MoE_fused (INT4, TK=8/128)",
+          "kernel": "grouped_micro_gemm\u00d73+scatter+gather",
+          "single_ms": 24.560326,
+          "calls": 30,
+          "total_ms": 736.80978,
+          "gflops": 15869.833409865976,
+          "gbs": 20.751026187518846,
+          "eff": 18.86456926138077,
+          "bound": "memory"
+        },
+        {
+          "op": "PA_full (FP16 prefill, causal)",
+          "kernel": "sdpa_micro_prefill",
+          "single_ms": 66.655089,
+          "calls": 5,
+          "total_ms": 333.275445,
+          "gflops": 4123.884778610077,
+          "gbs": 0.2517019518194627,
+          "eff": 6.991720883873964,
+          "bound": "compute"
+        },
+        {
+          "op": "SmallOps (norm/rope/add)",
+          "kernel": "rms/rope/eltwise",
+          "single_ms": 0,
+          "calls": 0,
+          "total_ms": 110.210528,
+          "gflops": 0,
+          "gbs": 0,
+          "eff": 0,
+          "bound": "memory"
+        },
+        {
+          "op": "DenseMLP_gate+up+down (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel\u00d73",
+          "single_ms": 3.449892,
+          "calls": 30,
+          "total_ms": 103.49676000000001,
+          "gflops": 42367.443906070104,
+          "gbs": 37.82618586320962,
+          "eff": 35.915327204445816,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_QKV_sliding (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 3.182403,
+          "calls": 25,
+          "total_ms": 79.560075,
+          "gflops": 59382.34756063264,
+          "gbs": 32.10229251292184,
+          "eff": 50.339039747986384,
+          "bound": "compute"
+        },
+        {
+          "op": "PA_sliding (FP16 prefill, sw=1024)",
+          "kernel": "sdpa_micro_prefill",
+          "single_ms": 3.080116,
+          "calls": 25,
+          "total_ms": 77.0029,
+          "gflops": 11155.339074242658,
+          "gbs": 2.723471453672524,
+          "eff": 18.912996206059194,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_O_sliding (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 1.713545,
+          "calls": 25,
+          "total_ms": 42.838625,
+          "gflops": 55142.57315214948,
+          "gbs": 36.541527651739514,
+          "eff": 46.74493844956248,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_QK_full (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 3.574858,
+          "calls": 5,
+          "total_ms": 17.87429,
+          "gflops": 59471.140154937624,
+          "gbs": 31.343665119006126,
+          "eff": 50.41431016280926,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_O_full (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 3.159056,
+          "calls": 5,
+          "total_ms": 15.79528,
+          "gflops": 59821.212736969515,
+          "gbs": 32.339544471513,
+          "eff": 50.71107036757534,
+          "bound": "compute"
+        },
+        {
+          "op": "LM_head (INT8, 1 out tok)",
+          "kernel": "gemm_kernel",
+          "single_ms": 7.302903,
+          "calls": 1,
+          "total_ms": 7.302903,
+          "gflops": 202.1654961047682,
+          "gbs": 102.73472891533682,
+          "eff": 93.39520810485166,
+          "bound": "memory"
+        }
+      ]
+    },
+    "8192": {
+      "total_ms": 3546.960877,
+      "rows": [
+        {
+          "op": "PA_full (FP16 prefill, causal)",
+          "kernel": "sdpa_micro_prefill",
+          "single_ms": 299.691951,
+          "calls": 5,
+          "total_ms": 1498.459755,
+          "gflops": 3668.8059993176125,
+          "gbs": 0.11196307370964394,
+          "eff": 6.220170761646885,
+          "bound": "compute"
+        },
+        {
+          "op": "MoE_fused (INT4, TK=8/128)",
+          "kernel": "grouped_micro_gemm\u00d73+scatter+gather",
+          "single_ms": 37.971182,
+          "calls": 30,
+          "total_ms": 1139.13546,
+          "gflops": 20529.689179125373,
+          "gbs": 16.03169477315718,
+          "eff": 17.403233150164603,
+          "bound": "compute"
+        },
+        {
+          "op": "SmallOps (norm/rope/add)",
+          "kernel": "rms/rope/eltwise",
+          "single_ms": 0,
+          "calls": 0,
+          "total_ms": 232.090809,
+          "gflops": 0,
+          "gbs": 0,
+          "eff": 0,
+          "bound": "memory"
+        },
+        {
+          "op": "DenseMLP_gate+up+down (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel\u00d73",
+          "single_ms": 7.001695,
+          "calls": 30,
+          "total_ms": 210.05085,
+          "gflops": 41750.77771653864,
+          "gbs": 35.93512485191086,
+          "eff": 35.39257279844381,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_QKV_sliding (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 6.281561,
+          "calls": 25,
+          "total_ms": 157.039025,
+          "gflops": 60169.29900831975,
+          "gbs": 30.619772378235282,
+          "eff": 51.00614675591342,
+          "bound": "compute"
+        },
+        {
+          "op": "PA_sliding (FP16 prefill, sw=1024)",
+          "kernel": "sdpa_micro_prefill",
+          "single_ms": 6.160232,
+          "calls": 25,
+          "total_ms": 154.0058,
+          "gflops": 11155.339074242658,
+          "gbs": 1.361735726836262,
+          "eff": 18.912996206059194,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_O_sliding (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 3.283441,
+          "calls": 25,
+          "total_ms": 82.08602499999999,
+          "gflops": 57555.03480159991,
+          "gbs": 36.31515108692375,
+          "eff": 48.79000752902554,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_QK_full (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 7.081329,
+          "calls": 5,
+          "total_ms": 35.406645,
+          "gflops": 60045.474840104165,
+          "gbs": 29.74234017371598,
+          "eff": 50.90117970793335,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_O_full (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 6.276721,
+          "calls": 5,
+          "total_ms": 31.383605000000003,
+          "gflops": 60215.6957506953,
+          "gbs": 30.64338338441361,
+          "eff": 51.04547776175207,
+          "bound": "compute"
+        },
+        {
+          "op": "LM_head (INT8, 1 out tok)",
+          "kernel": "gemm_kernel",
+          "single_ms": 7.302903,
+          "calls": 1,
+          "total_ms": 7.302903,
+          "gflops": 202.1654961047682,
+          "gbs": 102.73472891533682,
+          "eff": 93.39520810485166,
+          "bound": "memory"
+        }
+      ]
+    },
+    "16384": {
+      "total_ms": 10518.275711,
+      "rows": [
+        {
+          "op": "PA_full (FP16 prefill, causal)",
+          "kernel": "sdpa_micro_prefill",
+          "single_ms": 1294.209288,
+          "calls": 5,
+          "total_ms": 6471.04644,
+          "gflops": 3398.2498440422255,
+          "gbs": 0.05185317755191384,
+          "eff": 5.761464172434872,
+          "bound": "compute"
+        },
+        {
+          "op": "MoE_fused (INT4, TK=8/128)",
+          "kernel": "grouped_micro_gemm\u00d73+scatter+gather",
+          "single_ms": 73.707804,
+          "calls": 30,
+          "total_ms": 2211.23412,
+          "gflops": 21152.076765819806,
+          "gbs": 10.947596051023307,
+          "eff": 17.9308376446362,
+          "bound": "compute"
+        },
+        {
+          "op": "SmallOps (norm/rope/add)",
+          "kernel": "rms/rope/eltwise",
+          "single_ms": 0,
+          "calls": 0,
+          "total_ms": 464.181618,
+          "gflops": 0,
+          "gbs": 0,
+          "eff": 0,
+          "bound": "memory"
+        },
+        {
+          "op": "DenseMLP_gate+up+down (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel\u00d73",
+          "single_ms": 14.508925,
+          "calls": 30,
+          "total_ms": 435.26775,
+          "gflops": 40296.05385430002,
+          "gbs": 34.036142581204324,
+          "eff": 34.15938810077245,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_QKV_sliding (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 12.813677,
+          "calls": 25,
+          "total_ms": 320.341925,
+          "gflops": 58992.76562816434,
+          "gbs": 29.085721452163963,
+          "eff": 50.008787051869994,
+          "bound": "compute"
+        },
+        {
+          "op": "PA_sliding (FP16 prefill, sw=1024)",
+          "kernel": "sdpa_micro_prefill",
+          "single_ms": 12.320464,
+          "calls": 25,
+          "total_ms": 308.0116,
+          "gflops": 11155.339074242658,
+          "gbs": 0.680867863418131,
+          "eff": 18.912996206059194,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_O_sliding (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 6.768524,
+          "calls": 25,
+          "total_ms": 169.2131,
+          "gflops": 55840.405093931855,
+          "gbs": 34.3479411464006,
+          "eff": 47.336497916269806,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_QK_full (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 13.927246,
+          "calls": 5,
+          "total_ms": 69.63623,
+          "gflops": 61060.422470314654,
+          "gbs": 29.276971484527518,
+          "eff": 51.76156147453703,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_O_full (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 12.408005,
+          "calls": 5,
+          "total_ms": 62.040025,
+          "gflops": 60921.497379796354,
+          "gbs": 30.036661010371933,
+          "eff": 51.64379321610883,
+          "bound": "compute"
+        },
+        {
+          "op": "LM_head (INT8, 1 out tok)",
+          "kernel": "gemm_kernel",
+          "single_ms": 7.302903,
+          "calls": 1,
+          "total_ms": 7.302903,
+          "gflops": 202.1654961047682,
+          "gbs": 102.73472891533682,
+          "eff": 93.39520810485166,
+          "bound": "memory"
+        }
+      ]
+    },
+    "32768": {
+      "total_ms": 35013.387399,
+      "rows": [
+        {
+          "op": "PA_full (FP16 prefill, causal)",
+          "kernel": "sdpa_micro_prefill",
+          "single_ms": 5327.04979,
+          "calls": 5,
+          "total_ms": 26635.24895,
+          "gflops": 3302.4256836195254,
+          "gbs": 0.02519550845046635,
+          "eff": 5.5990018778814115,
+          "bound": "compute"
+        },
+        {
+          "op": "MoE_fused (INT4, TK=8/128)",
+          "kernel": "grouped_micro_gemm\u00d73+scatter+gather",
+          "single_ms": 154.959,
+          "calls": 30,
+          "total_ms": 4648.77,
+          "gflops": 20122.395323253248,
+          "gbs": 7.765182996792699,
+          "eff": 17.0579658705421,
+          "bound": "compute"
+        },
+        {
+          "op": "SmallOps (norm/rope/add)",
+          "kernel": "rms/rope/eltwise",
+          "single_ms": 0,
+          "calls": 0,
+          "total_ms": 928.363236,
+          "gflops": 0,
+          "gbs": 0,
+          "eff": 0,
+          "bound": "memory"
+        },
+        {
+          "op": "DenseMLP_gate+up+down (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel\u00d73",
+          "single_ms": 30.772523,
+          "calls": 30,
+          "total_ms": 923.17569,
+          "gflops": 37998.34177834557,
+          "gbs": 31.790371949677315,
+          "eff": 32.2115934400309,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_QKV_sliding (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 25.362692,
+          "calls": 25,
+          "total_ms": 634.0672999999999,
+          "gflops": 59608.3605081038,
+          "gbs": 28.916693227990155,
+          "eff": 50.5306332974784,
+          "bound": "compute"
+        },
+        {
+          "op": "PA_sliding (FP16 prefill, sw=1024)",
+          "kernel": "sdpa_micro_prefill",
+          "single_ms": 24.640928,
+          "calls": 25,
+          "total_ms": 616.0232,
+          "gflops": 11155.339074242658,
+          "gbs": 0.3404339317090655,
+          "eff": 18.912996206059194,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_O_sliding (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 14.210638,
+          "calls": 25,
+          "total_ms": 355.26595,
+          "gflops": 53193.54726339521,
+          "gbs": 32.2981473456716,
+          "eff": 45.092728732126204,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_QK_full (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 28.091639,
+          "calls": 5,
+          "total_ms": 140.458195,
+          "gflops": 60544.9560709505,
+          "gbs": 28.549852858354047,
+          "eff": 51.32459519360902,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_O_full (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 24.942395,
+          "calls": 5,
+          "total_ms": 124.71197500000001,
+          "gflops": 60612.80354961902,
+          "gbs": 29.403959964550314,
+          "eff": 51.38211021391044,
+          "bound": "compute"
+        },
+        {
+          "op": "LM_head (INT8, 1 out tok)",
+          "kernel": "gemm_kernel",
+          "single_ms": 7.302903,
+          "calls": 1,
+          "total_ms": 7.302903,
+          "gflops": 202.1654961047682,
+          "gbs": 102.73472891533682,
+          "eff": 93.39520810485166,
+          "bound": "memory"
+        }
+      ]
+    },
+    "65536": {
+      "total_ms": 124167.98681,
+      "rows": [
+        {
+          "op": "PA_full (FP16 prefill, causal)",
+          "kernel": "sdpa_micro_prefill",
+          "single_ms": 21276.941267,
+          "calls": 5,
+          "total_ms": 106384.706335,
+          "gflops": 3307.2772676589634,
+          "gbs": 0.012616261549602369,
+          "eff": 5.60722735537883,
+          "bound": "compute"
+        },
+        {
+          "op": "MoE_fused (INT4, TK=8/128)",
+          "kernel": "grouped_micro_gemm\u00d73+scatter+gather",
+          "single_ms": 345.424034,
+          "calls": 30,
+          "total_ms": 10362.72102,
+          "gflops": 18054.02027640034,
+          "gbs": 5.778429557683876,
+          "eff": 15.304582618205039,
+          "bound": "compute"
+        },
+        {
+          "op": "SmallOps (norm/rope/add)",
+          "kernel": "rms/rope/eltwise",
+          "single_ms": 0,
+          "calls": 0,
+          "total_ms": 1856.726472,
+          "gflops": 0,
+          "gbs": 0,
+          "eff": 0,
+          "bound": "memory"
+        },
+        {
+          "op": "DenseMLP_gate+up+down (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel\u00d73",
+          "single_ms": 61.068122,
+          "calls": 30,
+          "total_ms": 1832.04366,
+          "gflops": 38295.09760709523,
+          "gbs": 31.884952610790943,
+          "eff": 32.46315647302859,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_QKV_sliding (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 51.461639,
+          "calls": 25,
+          "total_ms": 1286.540975,
+          "gflops": 58755.55141926203,
+          "gbs": 28.270095944670555,
+          "eff": 49.807698075410656,
+          "bound": "compute"
+        },
+        {
+          "op": "PA_sliding (FP16 prefill, sw=1024)",
+          "kernel": "sdpa_micro_prefill",
+          "single_ms": 49.281856,
+          "calls": 25,
+          "total_ms": 1232.0464,
+          "gflops": 11155.339074242658,
+          "gbs": 0.17021696585453275,
+          "eff": 18.912996206059194,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_O_sliding (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 26.739608,
+          "calls": 25,
+          "total_ms": 668.4902,
+          "gflops": 56538.917406418215,
+          "gbs": 34.105290997534446,
+          "eff": 47.92863414036918,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_QK_full (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 56.535867,
+          "calls": 5,
+          "total_ms": 282.67933500000004,
+          "gflops": 60167.36416958105,
+          "gbs": 28.13331423749104,
+          "eff": 51.004506572792096,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_O_full (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 50.945902,
+          "calls": 5,
+          "total_ms": 254.72950999999998,
+          "gflops": 59350.3472837521,
+          "gbs": 28.5562805817041,
+          "eff": 50.31191277716073,
+          "bound": "compute"
+        },
+        {
+          "op": "LM_head (INT8, 1 out tok)",
+          "kernel": "gemm_kernel",
+          "single_ms": 7.302903,
+          "calls": 1,
+          "total_ms": 7.302903,
+          "gflops": 202.1654961047682,
+          "gbs": 102.73472891533682,
+          "eff": 93.39520810485166,
+          "bound": "memory"
+        }
+      ]
+    },
+    "131072": {
+      "total_ms": 516845.92488199996,
+      "rows": [
+        {
+          "op": "PA_full (FP16 prefill, causal)",
+          "kernel": "sdpa_micro_prefill",
+          "single_ms": 96105.312268,
+          "calls": 5,
+          "total_ms": 480526.56133999996,
+          "gflops": 2928.8180857862753,
+          "gbs": 0.005586277171680976,
+          "eff": 4.965579708160868,
+          "bound": "compute"
+        },
+        {
+          "op": "MoE_fused (INT4, TK=8/128)",
+          "kernel": "grouped_micro_gemm\u00d73+scatter+gather",
+          "single_ms": 717.913482,
+          "calls": 30,
+          "total_ms": 21537.40446,
+          "gflops": 17373.38180756438,
+          "gbs": 4.9887005186510756,
+          "eff": 14.727598239105546,
+          "bound": "compute"
+        },
+        {
+          "op": "SmallOps (norm/rope/add)",
+          "kernel": "rms/rope/eltwise",
+          "single_ms": 0,
+          "calls": 0,
+          "total_ms": 3713.452944,
+          "gflops": 0,
+          "gbs": 0,
+          "eff": 0,
+          "bound": "memory"
+        },
+        {
+          "op": "DenseMLP_gate+up+down (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel\u00d73",
+          "single_ms": 122.69860800000001,
+          "calls": 30,
+          "total_ms": 3680.9582400000004,
+          "gflops": 38119.57985166384,
+          "gbs": 31.66232027668969,
+          "eff": 32.31436822820353,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_QKV_sliding (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 102.070207,
+          "calls": 25,
+          "total_ms": 2551.755175,
+          "gflops": 59246.61201841199,
+          "gbs": 28.388950440749085,
+          "eff": 50.22397530315145,
+          "bound": "compute"
+        },
+        {
+          "op": "PA_sliding (FP16 prefill, sw=1024)",
+          "kernel": "sdpa_micro_prefill",
+          "single_ms": 98.563712,
+          "calls": 25,
+          "total_ms": 2464.0928,
+          "gflops": 11155.339074242658,
+          "gbs": 0.08510848292726637,
+          "eff": 18.912996206059194,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_O_sliding (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 52.822291,
+          "calls": 25,
+          "total_ms": 1320.557275,
+          "gflops": 57242.06427138876,
+          "gbs": 34.41599638304215,
+          "eff": 48.524699123288265,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_QK_full (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 110.754825,
+          "calls": 5,
+          "total_ms": 553.774125,
+          "gflops": 61426.020914790846,
+          "gbs": 28.60010492545133,
+          "eff": 52.0714831159726,
+          "bound": "compute"
+        },
+        {
+          "op": "FC_O_full (INT4\u2192INT8 XMX)",
+          "kernel": "dq+gemm_kernel",
+          "single_ms": 98.013124,
+          "calls": 5,
+          "total_ms": 490.06562,
+          "gflops": 61699.02259995304,
+          "gbs": 29.564061727080546,
+          "eff": 52.30290951195021,
+          "bound": "compute"
+        },
+        {
+          "op": "LM_head (INT8, 1 out tok)",
+          "kernel": "gemm_kernel",
+          "single_ms": 7.302903,
+          "calls": 1,
+          "total_ms": 7.302903,
+          "gflops": 202.1654961047682,
+          "gbs": 102.73472891533682,
+          "eff": 93.39520810485166,
+          "bound": "memory"
+        }
+      ]
+    }
+  }
+}
