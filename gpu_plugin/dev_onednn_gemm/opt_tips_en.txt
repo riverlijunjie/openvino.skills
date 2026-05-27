@@ -1,0 +1,249 @@
+================================================================================
+  OpenCL GEMM Kernel Optimization Tips
+  (Based on oneDNN gemmstone f16 uncompressed-weight path)
+================================================================================
+
+The tips below target f16 activation × f16 weight → f16/f32 output GEMM kernels
+on Intel Xe-HPG / Xe-HPC / Xe2 / Xe3 GPUs.
+Each item reflects strategies actually used in oneDNN and can be used directly
+as practical references for OpenCL kernel optimization.
+
+────────────────────────────────────────────────────────────────────────────────
+[Compute Instructions]
+────────────────────────────────────────────────────────────────────────────────
+
+1. Use DPAS (systolic) for f16×f16→f32 outer-product accumulation
+   - Each DPAS performs repcount×depth MAC operations (typical: repcount=8, depth=8)
+   - exec_size: XeHP/HPG=8, XeHPC/Xe2/Xe3=16
+   - This keeps the core compute path compute-bound instead of ALU-issue-bound
+   - DPAS instructions:
+        - https://github.com/intel/intel-graphics-compiler/blob/6ecd10bc2d721e79d8efec39c62b740bded8aa95/documentation/visa/instructions/DPASW.md
+        - https://registry.khronos.org/OpenCL/extensions/intel/cl_intel_subgroup_matrix_multiply_accumulate.html
+        - https://registry.khronos.org/OpenCL/extensions/intel/cl_intel_subgroups_short.html
+        - https://registry.khronos.org/OpenCL/extensions/intel/
+        - https://registry.khronos.org/OpenCL/extensions/intel/cl_intel_subgroup_split_matrix_multiply_accumulate.html
+        - https://registry.khronos.org/OpenCL/extensions/intel/cl_intel_subgroups.html
+        - https://registry.khronos.org/OpenCL/extensions/intel/cl_intel_unified_shared_memory.html#_using_unified_shared_memory_with_kernels
+
+2. Use f32 accumulators
+   - Even if A/B are f16, keep C accumulators in f32 for better accuracy
+   - Do f32→f16 downcast only once at the end of the k-loop
+   - Benefit: less intermediate rounding error; f32 atomic add is also more portable than f16
+
+3. If hardware has fused EU (XeHP/HPG), consider DPASW
+   - DPASW lets one fused-EU pair share operand B, reducing B register pressure
+   - Not applicable on Xe-HPC and newer (no fused EU)
+
+────────────────────────────────────────────────────────────────────────────────
+[Data Layout / Register Tile]
+────────────────────────────────────────────────────────────────────────────────
+
+4. Choose an appropriate register tile: unrollM × unrollN
+   - Typical values: 32×32 (XeHP), 32×48 (XeHPC), adjusted by GRF budget
+   - Larger tile → higher compute/memory ratio, but also higher GRF pressure
+   - You must fit A tile + B tile + C accumulators + prefetch buffers simultaneously
+
+5. Crosspack = 2 for f16
+   - DPAS expects f16 operands packed in 32-bit lanes, i.e. two consecutive k elements
+   - If global-memory layout does not match, repacking is required
+   - Prefer producing crosspack-friendly layout directly at load time (e.g., Block2D-VNNI)
+
+6. A tile: unrollM × ka_load; B tile: kb_load × unrollN
+   - ka_load / kb_load indicate how many K iterations are loaded per memory transaction
+   - Larger ka_load can improve load coalescing and reduce address overhead
+   - But overly large ka_load increases GRF usage (especially with multi-copy buffers)
+
+────────────────────────────────────────────────────────────────────────────────
+[Memory Access]
+────────────────────────────────────────────────────────────────────────────────
+
+7. Prefer 2D Block Load (intel_subgroup_block_read_*)
+   - XeHPC+ supports 2D Block Load with built-in VNNI reorder:
+     loading B can directly produce crosspack=2 format, avoiding repack instructions
+   - Transpose mode is also supported: row-major B may not need explicit transpose
+   - Requires 16-byte aligned base address; otherwise may fall back to scattered access
+
+8. Use Block Load (1D / 2D) for matrix A when possible
+   - Column-major A (contiguous in M) naturally fits Block Load
+   - For row-major A, consider Block2D-Transpose or cooperative copy into SLM first
+
+9. Set LSC cache hints carefully
+   - Load A/B: L1-cached + L3-cached (default {cc})
+   - Store C: L1-uncached + L3-write-back ({uc,wb}) to avoid polluting L1
+   - Prefetch: L1-streaming or L1-invalidate-after-read ({sc} / {ic})
+   - Xe3p provides independent L2 hints for finer 3-level cache control
+
+10. Guarantee 16-byte alignment
+    - 2D Block Load requires 16B-aligned surface base
+    - If leading dimensions are not multiples of 16B, block-2D may be unavailable
+    - Practical approach: pad LDA/LDB to multiples of 16 during buffer allocation
+
+────────────────────────────────────────────────────────────────────────────────
+[Prefetch Strategy]
+────────────────────────────────────────────────────────────────────────────────
+
+11. Use a three-level prefetch scheme
+    - L1/L2 prefetch: distance = prefetchA/B × unrollK (typically 3~6 k-iterations)
+    - L3 prefetch (Xe2+): longer-distance dedicated prefetch messages, cooperatively distributed
+    - TLB warmup: issue dummy loads for first A/B chunks before k-loop to prefill TLB
+
+12. Tune prefetch distance
+    - Too short → data arrives late, causing compute stalls
+    - Too long → prefetched lines may be evicted too early
+    - Rule of thumb: global→L2 about 3~4 iterations; global→L3 about 6~8 iterations
+
+13. Use cooperative prefetch
+    - Let all WG threads share prefetch work (instead of each thread prefetching only its own slice)
+    - Reduces redundant prefetch and improves bandwidth utilization
+    - Implementation idea: each thread prefetches a different K-slice subset of A/B
+
+────────────────────────────────────────────────────────────────────────────────
+[SLM (Shared Local Memory) Usage]
+────────────────────────────────────────────────────────────────────────────────
+
+14. Use SLM double/triple buffering
+    - While one buffer is consumed by DPAS, another is filled from global memory
+    - Double buffer = ~1 barrier per iteration; triple buffer can hide more barrier cost
+    - SLM buffer size = unrollM × unrollK_SLM × sizeof(f16) (per A/B)
+
+15. Cooperative SLM copy (global → SLM)
+    - WG threads collaboratively move A/B from global memory into SLM
+    - Split modes: by K, by M/N, or linear split
+    - K-split is common: each thread handles a contiguous K segment for best coalescing
+
+16. SLM → Register load
+    - Use block_read from SLM; data can already be in crosspack layout
+    - Watch SLM bank conflicts: avoid adjacent threads targeting the same bank
+    - Add SLM leading-dimension padding (+1 or +4 elements) to mitigate conflicts
+
+17. WAR fence for SLM reuse
+    - XeHPG+ requires fence before reusing/swapping SLM buffers (slmFenceWARWA)
+    - Prevents later writes from overwriting in-flight reads
+
+────────────────────────────────────────────────────────────────────────────────
+[K-loop Pipeline]
+────────────────────────────────────────────────────────────────────────────────
+
+18. Load pipelining (A_copies / B_copies)
+    - Multiple load buffers: DPAS consumes buffer i while loading buffer i+1
+    - Typical 2-deep: one register set computing, one register set loading
+    - 4-deep can hide very high global-memory latency in extreme cases
+
+19. Interleave load/compute/prefetch instructions
+    - Exploit GPU out-of-order scheduling by inserting load/prefetch between DPAS instructions
+    - Keep load units and systolic units busy in parallel
+    - Key fact: DPAS is long-latency (~20 cycles on Xe2), leaving room for memory ops
+
+20. Unroll the K-loop (unrollK)
+    - Reduces loop overhead and address-increment instructions
+    - Typical unrollK = ka_load = 16 or 32 for f16
+    - Too large can bloat code size and hurt i-cache behavior
+
+────────────────────────────────────────────────────────────────────────────────
+[WG Scheduling / Parallelization]
+────────────────────────────────────────────────────────────────────────────────
+
+21. Choose workgroup shape carefully
+    - WG has wg[M] × wg[N] threads, each computing an unrollM × unrollN C tile
+    - Total WG tile = wg[M]*unrollM × wg[N]*unrollN
+    - Try to fit WG tile working set into L2 resident set (A panel + B panel)
+
+22. Walk order: Boustrophedon / Nested-Linear
+    - Default row-major dispatch often has weak L2 reuse
+    - Boustrophedon (snake pattern): neighboring WGs share A panel, improving L2 hit rate
+    - Nested-Linear: iterate inner panel first, then move to next panel
+    - Especially effective for decode-like GEMM (large N, small M)
+
+23. Persistent threads
+    - A single WG processes multiple tiles (via global atomic tile counter)
+    - Reduces repeated launch/prolog overhead
+    - Residual hot data in L1/L2 from previous tile can be reused directly
+
+24. Stream-K (split K across multiple WGs)
+    - If M×N work is insufficient to fill GPU, split K across WGs
+    - Each WG computes partial K and merges with atomic add
+    - Useful for decode stage (M=1~8, large N, large K)
+
+25. Named barriers (per row/col)
+    - Synchronize only the thread subset that actually interacts
+    - Example: SLM A sync only across M-direction threads, B only across N-direction threads
+    - Reduces unnecessary waiting
+
+────────────────────────────────────────────────────────────────────────────────
+[C Matrix Writeback]
+────────────────────────────────────────────────────────────────────────────────
+
+26. Delayed f32→f16 cast + vectorized store
+    - Convert f32→f16 once after accumulation, then use block_write to store
+    - Alternative: use block_write_us (unsigned short) for f16 output
+    - Merge tiny scattered writes; keep C stores block-aligned whenever possible
+
+27. Atomic C update for K-parallel modes
+    - When K is split across WGs, C requires atomic accumulation
+    - f32 atomic add: available on XeHP+ (stateless A64 model)
+    - f16 atomic add: native only on Xe3p; otherwise use CAS loop or f32 temporary path
+
+28. 2D Block Store for C (XeHPC+)
+    - Block2D can also write C and reduce explicit row/col-tail mask handling
+    - block2DCRemainder mode can still auto-fallback to scattered for tail tiles
+
+────────────────────────────────────────────────────────────────────────────────
+[Tail / Remainder Handling]
+────────────────────────────────────────────────────────────────────────────────
+
+29. Dual-mask system (rowMask + colMask)
+    - One load/store instruction handles both row and column tails
+    - Reduces branches and special-case code in tail processing
+    - block-2D also supports descriptor-based remainder handling
+
+30. Descriptor-based remainder
+    - Handle boundaries by changing block_2d width/height descriptor fields
+    - Zero extra ALU overhead (compared with mask-register predication)
+    - Applicable only to block-2D access types
+
+────────────────────────────────────────────────────────────────────────────────
+[Register Allocation]
+────────────────────────────────────────────────────────────────────────────────
+
+31. Bank-aware GRF allocation
+    - Avoid placing A/B operands and accumulators in the same GRF bank (bank conflict)
+    - Practical rule: place A in even bank, B in odd bank, C accumulators flexible
+    - In OpenCL: use register-allocation attributes (if available) or manual register-pressure shaping
+
+32. Choosing GRF count: 128 vs 256
+    - 256 GRF → larger tiles and higher compute density, but occupancy drops to ~4 threads/EU
+    - 128 GRF → smaller tiles, but ~8 threads/EU can hide latency better
+    - For bandwidth-bound cases (small K), prefer 128; for compute-bound cases (large K), prefer 256
+
+────────────────────────────────────────────────────────────────────────────────
+[Misc]
+────────────────────────────────────────────────────────────────────────────────
+
+33. TLB warmup for large matrices
+    - Issue one dummy load per A/B page before entering k-loop
+    - Prefills TLB and avoids page-walk stalls in main loop
+    - Usually helps once A/B footprint exceeds ~256KB
+
+34. Boustrophedon internal FMA ordering (fmaBoustrophedon)
+    - Arrange DPAS/FMA order in snake pattern: one pass forward, next pass reverse
+    - Improves register locality (neighboring DPAS reuses source registers)
+    - Reduces RAW stalls
+
+35. cLoadAhead (C preload)
+    - If beta ≠ 0, preload current C tile in advance
+    - Overlap C-load latency with tail part of k-loop DPAS
+    - Then directly compute fma(alpha, acc, beta, C_old) and write back
+
+36. Avoid unnecessary repack
+    - If A/B are already in DPAS-friendly memory layout (packed, crosspack=2):
+      load directly to GRF via block-load without extra SLM copy + repack
+    - Quick check: isPacked(A.layout) && alignment >= 16
+
+37. Kernel catalog / auto-tuning mindset
+    - Use different tile/strategy combinations for different (M,N,K) ranges
+    - Small M (decode): smaller unrollM, larger unrollN, possibly no-SLM, Stream-K
+    - Large M (prefill): larger unrollM, SLM double buffer, Boustrophedon walk
+
+================================================================================
+  End of Tips
+================================================================================

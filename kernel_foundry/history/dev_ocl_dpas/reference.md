@@ -1,0 +1,7 @@
+    - https://github.com/intel/intel-graphics-compiler/blob/6ecd10bc2d721e79d8efec39c62b740bded8aa95/documentation/visa/instructions/DPASW.md
+    - https://registry.khronos.org/OpenCL/extensions/intel/cl_intel_subgroups_short.html
+    - https://registry.khronos.org/OpenCL/extensions/intel/
+    - https://registry.khronos.org/OpenCL/extensions/intel/cl_intel_subgroup_matrix_multiply_accumulate.html
+    - https://registry.khronos.org/OpenCL/extensions/intel/cl_intel_subgroup_split_matrix_multiply_accumulate.html
+    - https://registry.khronos.org/OpenCL/extensions/intel/cl_intel_subgroups.html
+    - https://registry.khronos.org/OpenCL/extensions/intel/cl_intel_unified_shared_memory.html#_using_unified_shared_memory_with_kernels

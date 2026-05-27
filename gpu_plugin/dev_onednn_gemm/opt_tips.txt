@@ -1,0 +1,239 @@
+================================================================================
+  OpenCL GEMM Kernel 优化 Tips（基于 oneDNN gemmstone f16 未压缩权重路径）
+================================================================================
+
+以下条目针对 f16 激活 × f16 权重 → f16/f32 输出的 GEMM kernel，
+在 Intel Xe-HPG / Xe-HPC / Xe2 / Xe3 GPU 上的最佳实践。
+每一条都是 oneDNN 实际使用的策略，可直接用于 OpenCL kernel 设计参考。
+
+────────────────────────────────────────────────────────────────────────────────
+[计算指令]
+────────────────────────────────────────────────────────────────────────────────
+
+1. 使用 DPAS (systolic) 做 f16×f16→f32 外积累加
+   - 每条 DPAS 做 repcount×depth 次 MAC (典型: repcount=8, depth=8)
+   - exec_size: XeHP/HPG=8, XeHPC/Xe2/Xe3=16
+   - 使核心计算完全 compute-bound 而不是 ALU-issue-bound
+
+2. 用 f32 累加器 (accumulator)
+   - 即使 A/B 是 f16，C accumulator 应为 f32 以保证精度
+   - 最终 k-loop 结束后才做一次 f32→f16 downcast 写出
+   - 好处: 减少中间舍入误差；f32 atomic add 也比 f16 兼容性更好
+
+3. 如果 HW 有 fused EU (XeHP/HPG)，考虑 DPASW
+   - DPASW 让一对 fused EU 共享 B 操作数，B 寄存器压力减半
+   - Xe-HPC 及之后不再有 fused EU，不适用
+
+────────────────────────────────────────────────────────────────────────────────
+[数据布局 / 寄存器 Tile]
+────────────────────────────────────────────────────────────────────────────────
+
+4. 选择合适的 register tile: unrollM × unrollN
+   - 典型值: 32×32 (XeHP), 32×48 (XeHPC), 根据 GRF 数量调整
+   - tile 越大 → 计算/访存比越高，但 GRF 压力越大
+   - 必须同时存下 A tile + B tile + C accumulator + prefetch buffer
+
+5. Crosspack = 2 for f16
+   - DPAS 要求 f16 操作数按 32-bit lane 存放，即 2 个连续 k 元素打包
+   - 如果数据从 global memory 不是这种布局，需要 repack
+   - 尽量让 load 出来的数据天然满足 crosspack 格式 (用 Block2D-VNNI)
+
+6. A tile: unrollM × ka_load; B tile: kb_load × unrollN
+   - ka_load / kb_load 是一次从 memory 取多少 K 迭代的量
+   - 更大的 ka_load → 更好的 load 合并 / 更少的 address 计算
+   - 但 ka_load 太大会占用过多 GRF (尤其是 multi-copy buffer 时)
+
+────────────────────────────────────────────────────────────────────────────────
+[内存访问]
+────────────────────────────────────────────────────────────────────────────────
+
+7. 优先使用 2D Block Load (intel_subgroup_block_read_*)
+   - XeHPC+ 支持 2D Block Load with built-in VNNI 重排:
+     读 B 矩阵时直接输出 crosspack=2 格式，省掉 repack 指令
+   - 也支持 transpose 模式: row-major B 不需要先转置
+   - 要求 base address 16-byte aligned; 否则降级到 scattered
+
+8. 对 A 矩阵使用 Block Load (1D / 2D)
+   - Column-major A (M维连续) 配 Block Load 最自然
+   - Row-major A 考虑 Block2D-Transpose 或先 cooperative copy 到 SLM
+
+9. 合理设置 LSC cache hints
+   - Load A/B: L1-cached + L3-cached (默认 {cc})
+   - Store C: L1-uncached + L3-write-back ({uc,wb}) —— 避免 C 污染 L1
+   - Prefetch: L1-streaming 或 L1-invalidate-after-read ({sc} / {ic})
+   - Xe3p 有独立 L2 hint，可三级分别控制
+
+10. 保证 16-byte alignment
+    - 2D Block Load 要求 surface base 16B 对齐
+    - 如果 leading dimension 不是 16B 的倍数，block-2D 无法使用
+    - 实践: 在 buffer allocation 阶段 pad LDA/LDB 到 16 的倍数
+
+────────────────────────────────────────────────────────────────────────────────
+[Prefetch 策略]
+────────────────────────────────────────────────────────────────────────────────
+
+11. 三层 prefetch 架构
+    - L1/L2 prefetch: 距离 = prefetchA/B × unrollK (通常 3~6 个 k-iteration)
+    - L3 prefetch (Xe2+): 更大距离, 专用 prefetch 消息, cooperative 分担
+    - TLB warmup: k-loop 开始前对 A/B 的第一块发无用 load, 预填 TLB
+
+12. Prefetch 距离调优
+    - 太小 → 数据到达晚, compute stall
+    - 太大 → prefetch 过早被 evict, 白费带宽
+    - 经验值: global→L2 约 3-4 iterations; global→L3 约 6-8 iterations
+
+13. Cooperative prefetch
+    - WG 内所有线程分担 prefetch 工作 (而不是每个线程 prefetch 自己那片)
+    - 减少冗余 prefetch、提升带宽利用率
+    - 实现: 每线程 prefetch A/B 的不同 K-slice 子集
+
+────────────────────────────────────────────────────────────────────────────────
+[SLM (Shared Local Memory) 使用]
+────────────────────────────────────────────────────────────────────────────────
+
+14. 双缓冲 / 三缓冲 SLM
+    - 当一个 buffer 正在被 DPAS 消费时，另一个 buffer 正在从 global load
+    - 双缓冲 = 1 barrier/iteration; 三缓冲可进一步隐藏 barrier 开销
+    - SLM buffer size = unrollM × unrollK_SLM × sizeof(f16) (per A/B)
+
+15. Cooperative SLM copy (global → SLM)
+    - WG 内线程协作把 A/B 数据从 global memory 搬到 SLM
+    - 切分方式: 沿 K 切 (K-split), 沿 M/N 切, 或线性切
+    - K-split 最常见: 每线程负责一段 K 的连续搬运，最大化合并访问
+
+16. SLM → Register load
+    - 从 SLM 读时用 block_read，数据已经是 crosspack 格式
+    - SLM bank conflict 注意: 避免相邻线程访问相同 bank
+    - 通过 padding SLM LD (+1 或 +4 elements) 消除 bank conflict
+
+17. WAR fence (SLM reuse)
+    - XeHPG+ 在 SLM buffer 切换前需要 fence (slmFenceWARWA)
+    - 防止后续写覆盖还在飞行中的读
+
+────────────────────────────────────────────────────────────────────────────────
+[K-loop 流水线]
+────────────────────────────────────────────────────────────────────────────────
+
+18. Load pipelining (A_copies / B_copies)
+    - 多份 load buffer: 当前 DPAS 用第 i 份, load 第 i+1 份
+    - 典型 2-deep: 一组寄存器计算, 一组寄存器加载
+    - 4-deep 极端情况用于隐藏很高的 global latency
+
+19. Interleave load/compute/prefetch 指令
+    - 利用 GPU 乱序调度: 在相邻 DPAS 之间插入 load/prefetch 指令
+    - 让 load unit 和 systolic unit 并行工作
+    - 关键: DPAS 自身是长延迟指令 (~20 cycles on Xe2), 期间 load pipe 空闲
+
+20. 展开 K-loop (unrollK)
+    - 减少 loop overhead 和 address increment 指令
+    - 典型 unrollK = ka_load = 16 或 32 for f16
+    - 太大则 code size 膨胀, i-cache miss
+
+────────────────────────────────────────────────────────────────────────────────
+[WG 调度 / 并行化]
+────────────────────────────────────────────────────────────────────────────────
+
+21. Workgroup 尺寸选择
+    - wg[M] × wg[N] 线程, 每线程做 unrollM × unrollN 的 C-tile
+    - 总 WG-tile = wg[M]*unrollM × wg[N]*unrollN
+    - 尽量让 WG-tile 匹配 L2 resident set (A-panel + B-panel)
+
+22. Walk order: Boustrophedon / Nested-Linear
+    - 默认 row-major dispatch L2 cache 重用差
+    - Boustrophedon (蛇形): 相邻 WG 共享 A-panel, L2 hit rate 高
+    - Nested-Linear: 先遍历内层 panel, 再移到下一 panel
+    - 对大 N 小 M 的 decode GEMM 尤其有效
+
+23. Persistent threads (持久线程)
+    - 一个 WG 处理多个 tile (通过 global atomic tile-counter)
+    - 省掉反复 launch 的 prolog 开销
+    - 前一个 tile 残留的 L1/L2 热数据可直接复用
+
+24. Stream-K (K 维度拆分到多 WG)
+    - 当 M×N 工作量不够填满 GPU 时, 把 K 也拆给不同 WG
+    - 每个 WG 做部分 K, 最后用 atomic add 汇总
+    - 适合 decode 阶段 (M=1~8, N 很大, K 很大)
+
+25. Named barriers (per row/col)
+    - 只同步需要交互的线程子集, 而非整个 WG
+    - 例: SLM A 只在 M 方向的线程间同步, B 只在 N 方向同步
+    - 减少不必要的等待
+
+────────────────────────────────────────────────────────────────────────────────
+[C 矩阵写回]
+────────────────────────────────────────────────────────────────────────────────
+
+26. Delayed f32→f16 cast + vectorized store
+    - 累加完成后一次性 f32→f16 转换, 然后用 block_write 写出
+    - 或: 用 block_write_us (unsigned short) 写 f16
+    - 合并小尺寸的零散写: 确保 C store 也是 block aligned
+
+27. Atomic C update for k-parallel
+    - 当 K 被拆分给多个 WG 时, C 需要原子加
+    - f32 atomic add: XeHP+ 支持 (stateless A64 model)
+    - f16 atomic add: 仅 Xe3p 原生支持; 其他 HW 需要 CAS loop 或 f32 temp
+
+28. 2D Block Store for C (XeHPC+)
+    - Block2D 也可用于写 C, 不需要处理 row/col remainder 的 mask
+    - 但 block2DCRemainder 模式可以在 tail tile 自动切换到 scattered
+
+────────────────────────────────────────────────────────────────────────────────
+[Tail / Remainder 处理]
+────────────────────────────────────────────────────────────────────────────────
+
+29. 双 mask 系统 (rowMask + colMask)
+    - 一条 load/store 指令同时处理行尾和列尾
+    - 减少 tail 处理的分支和代码路径
+    - block-2D 自带 remainder 支持 (descriptor-based)
+
+30. Descriptor-based remainder
+    - 修改 block_2d 的 width/height 描述符来处理边界
+    - 零额外指令开销 (vs. 用 mask register 做 predication)
+    - 只适用于 block-2D access type
+
+────────────────────────────────────────────────────────────────────────────────
+[寄存器分配]
+────────────────────────────────────────────────────────────────────────────────
+
+31. Bank-aware GRF allocation
+    - 避免 A/B operand 和 accumulator 在同一 GRF bank → bank conflict
+    - 实践: A regs 放 even bank, B regs 放 odd bank, C acc 随意
+    - 在 OpenCL 中: 通过 __attribute__((register_allocation())) 或手动调位
+
+32. GRF 数量选择: 128 vs 256
+    - 256 GRF → 大 tile, 高计算密度, 但 occupancy 降为 4 threads/EU
+    - 128 GRF → 小 tile, 但 8 threads/EU 隐藏 latency 更好
+    - 对于 bandwidth-bound (小 K) 选 128; compute-bound (大 K) 选 256
+
+────────────────────────────────────────────────────────────────────────────────
+[其他]
+────────────────────────────────────────────────────────────────────────────────
+
+33. TLB warmup (大矩阵)
+    - 在 k-loop 之前对 A/B 各页发一次 dummy load
+    - 预热 TLB, 避免主循环中 page-walk stall
+    - 对 > 256KB 的 A/B 矩阵有明显收益
+
+34. Boustrophedon 内部 FMA 顺序 (fmaBoustrophedon)
+    - DPAS 指令顺序按蛇形排列: 一轮正序, 一轮反序
+    - 利用寄存器访问 locality (相邻 DPAS 复用 src 寄存器)
+    - 减少 RAW stall
+
+35. cLoadAhead (C 预加载)
+    - 如果 beta ≠ 0, 提前加载 C 的当前 tile
+    - 与 k-loop 尾部的 DPAS 重叠, 隐藏 C-load 延迟
+    - 加载后直接 fma(alpha, acc, beta, C_old) 再写回
+
+36. 避免不必要的 repack
+    - 如果 A/B 在 memory 中已是 DPAS-friendly layout (packed, crosspack=2):
+      直接 block-load 到 GRF 即可, 不需要 copy 到 SLM 再 repack
+    - 判断标准: isPacked(A.layout) && alignment >= 16
+
+37. Kernel catalog / auto-tuning 思路
+    - 为不同 (M,N,K) 区间选择不同的 tile/strategy 组合
+    - 小 M (decode): 小 unrollM, 大 unrollN, 可能 no-SLM, Stream-K
+    - 大 M (prefill): 大 unrollM, SLM double-buffer, Boustrophedon walk
+
+================================================================================
+  End of Tips
+================================================================================

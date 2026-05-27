@@ -1,0 +1,39 @@
+Intel OpenCL DPAS Quick Usage Guide
+
+1. Enable Extensions
+#pragma OPENCL EXTENSION cl_intel_subgroup_matrix_multiply_accumulate : enable
+#pragma OPENCL EXTENSION cl_intel_subgroups : enable
+#pragma OPENCL EXTENSION cl_intel_required_subgroup_size : enable
+
+2. Set Subgroup Size
+- Add: __attribute__((intel_reqd_sub_group_size(N))) to the kernel
+- N = 8 or 16, must match the device's minimum subgroup size
+
+3. Common Function Signatures
+- FP16:
+  float8 intel_sub_group_f16_f16_matrix_mad_k16(short8 a, int8 b, float8 acc); // M=8, N=16
+- INT8:
+  int8 intel_sub_group_i8_i8_matrix_mad_k32(int8 a, int8 b, int8 acc); // M=8, N=8
+
+4. Data Packing Rules
+- Matrix A: Each work item holds M rows, each row packed as short (N=16) or int (N=8)
+- Matrix B: Each work item holds 1 column, K elements packed as int8
+- fp16 should be passed as signed types (use as_short/as_int)
+
+5. Data Loading
+- Recommended: use intel_sub_group_block_read8 to load B
+- Pointer must be 4-byte aligned
+
+6. Usage Example
+float8 acc = (float8)(0.0f);
+float8 result = intel_sub_group_f16_f16_matrix_mad_k16(a_packed, b_packed, acc);
+
+7. Loop Accumulation
+- For K_total > K_TILE, call DPAS multiple times in a loop, accumulating the result
+
+8. Notes
+- All work items in the subgroup must participate in DPAS
+- Subgroup size must match the device
+- Only supported on Intel GPUs with this extension
+
+Typical use: Hand-optimized high-performance GEMM kernels

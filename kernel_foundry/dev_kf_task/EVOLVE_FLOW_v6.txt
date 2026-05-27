@@ -1,0 +1,326 @@
+﻿
+
+Evolutionary Kernel Optimization for Intel Battlemage GPU
+A Comprehensive Analysis of MAP-Elites Based LLM-Driven
+GPU Kernel Search on OpenCL DPAS Matmul
+
+Target Hardware: Intel Battlemage G21 (B580)
+Task: FP16 Matrix Multiplication (2048x2560x2048)
+Framework: KernelFoundry Evolve Mode
+Date: May 2026
+
+Table of Contents
+1. Introduction
+2. Evolutionary Algorithm Architecture
+   2.1 Overview
+   2.2 MAP-Elites Quality-Diversity Framework
+   2.3 Behavioral Space Definition (4D Optimization Grid)
+   2.4 Island Model with Ring-Topology Migration
+   2.5 QD Gradient Tracking
+   2.6 Sampling Strategy (Parent Selection)
+   2.7 LLM-Based Mutation and Prompt Construction
+   2.8 Evaluation Pipeline
+   2.9 Fitness Function
+3. Experimental Results
+   3.1 Experiment Overview
+   3.2 Experiment v4: Single Model, Zero Temperature
+   3.3 Experiment v5: Multi-Model Ensemble, High Temperature
+   3.4 Experiment v6: Single Model, Low Temperature
+   3.5 Comparative Analysis
+   3.6 Key Findings
+4. Lessons Learned
+   4.1 Model Quality vs. Diversity
+   4.2 Temperature Sensitivity for Hardware-Specific Code
+   4.3 Path Dependency in Evolutionary Search
+   4.4 Fitness Function Blind Spots
+5. Recommendations for Improving Convergence
+   5.1 Immediate Actions (Configuration)
+   5.2 Short-Term Improvements (Minor Code Changes)
+   5.3 Medium-Term Improvements (Architecture Changes)
+   5.4 Long-Term Research Directions
+6. Conclusion
+
+1. Introduction
+This report presents a comprehensive analysis of an evolutionary algorithm system designed to automatically discover high-performance GPU kernels using Large Language Models (LLMs). The system combines MAP-Elites (a Quality-Diversity algorithm), island-model parallelism, and QD gradient tracking to guide LLM-based code generation toward optimal GPU kernel implementations.
+The target task is an FP16 matrix multiplication (C[M,N] = A[M,K] * B[K,N], where M=2048, K=2560, N=2048) on an Intel Battlemage G21 (B580) GPU. The optimization goal is to leverage Intel's DPAS (Dot Product Accumulate Systolic) / XMX hardware instructions to achieve maximum throughput.
+Three experiments were conducted with varying configurations to understand the interplay between model selection, temperature settings, and evolutionary algorithm parameters. The experiments revealed critical insights about the sensitivity of hardware-specific code generation to LLM configuration choices.
+2. Evolutionary Algorithm Architecture
+2.1 Overview
+The system implements a novel combination of evolutionary computation and LLM-based code generation. Rather than using traditional genetic operators (crossover, mutation on bit strings), it uses LLMs as intelligent mutation operators that can understand code semantics and hardware constraints.
+The core loop for each iteration:
+    1. 1. SAMPLE: Select parent program(s) from the MAP-Elites archive
+    2. 2. TARGET: Determine optimization profile direction (mutate/diversify)
+    3. 3. PROMPT: Construct LLM prompt with parent code, feedback, and target profile
+    4. 4. GENERATE: LLM inference produces new kernel code (N branches in parallel)
+    5. 5. EVALUATE: Build, test correctness, and benchmark each candidate
+    6. 6. UPDATE: Add evaluated programs to MAP-Elites archive with fitness scores
+
+Key source files: scripts/run_custom_task.py (entry point), kernelgen/custom_task_controller.py (main loop), kernelgen/controller.py (base class with evolution logic), kernelgen/evolve_database_optimization_aware.py (MAP-Elites database).
+2.2 MAP-Elites Quality-Diversity Framework
+MAP-Elites is a Quality-Diversity (QD) algorithm that maintains an archive of elite solutions organized by their behavioral characteristics. Unlike traditional optimization that seeks a single optimum, MAP-Elites simultaneously optimizes across a grid of behavioral niches, maintaining the best solution found in each niche (cell).
+Key properties:
+- Each cell stores exactly one elite (highest-fitness program with those behavioral coordinates)
+- New programs compete only against the existing elite in their assigned cell
+- This preserves diversity: a mediocre program in an empty cell is kept even if better programs exist elsewhere
+- The archive naturally builds a map of "what works where" in the optimization landscape
+2.3 Behavioral Space Definition (4D Optimization Grid)
+The behavioral space is defined as a 4-dimensional grid of optimization characteristics, determined by static code pattern matching (not runtime profiling):
+Dimension	Range	Meaning	Level Examples
+memory_opt	0-3	Memory hierarchy utilization	0=naive, 1=coalesced, 2=SLM tiling, 3=register blocking+async
+compute_opt	0-3	Algorithmic efficiency	0=multi-pass, 1=fused, 2=single-pass, 3=tiled/blocked
+parallelism_opt	0-3	Parallelism granularity	0=thread-only, 1=WG barriers, 2=sub-group, 3=hierarchical
+esimd_opt	0-3	ESIMD/DPAS usage level	0=standard, 1=basic simd, 2=optimized LSC, 3=expert DPAS/XMX
+
+Total grid size: 4x4x4x4 = 256 cells. Coordinates are assigned deterministically via OptimizationFeatureClassifier, which uses regex-based pattern matching on the generated code (e.g., detecting SLM usage, DPAS intrinsic calls, subgroup operations).
+2.4 Island Model with Ring-Topology Migration
+To prevent premature convergence and maintain population diversity, the system employs an island model with 4 sub-populations:
+- 4 islands evolve semi-independently
+- Programs assigned round-robin (every 10 programs, switch island)
+- Migration every 10 generations: ring topology, top performers copied to next island
+- Migration rate=0.1: ensures gradual knowledge transfer without destroying island diversity
+- Different islands can specialize in different optimization strategies before sharing discoveries
+2.5 QD Gradient Tracking
+Inspired by CMA-ME and PGA-MAP-Elites, the system records parent-to-child evolutionary transitions to estimate "pseudo-gradients" in the behavioral space:
+- TransitionRecord: immutable record with parent/child coordinates, fitness delta, outcome
+- GradientEstimator computes gradient approximations from transition history:
+  * fitness_weight=0.4: gradient of fitness values
+  * improvement_rate_weight=0.4: gradient of success rate
+  * exploration_weight=0.2-0.4: gradient toward unexplored regions
+These gradients guide parent selection (weighting sampling probability) and provide mutation hints to the LLM about which optimization direction to pursue.
+2.6 Sampling Strategy (Parent Selection)
+Each iteration selects a parent using a three-strategy approach:
+Strategy	Probability	Method
+Exploration	20-40%	Random selection from current island population
+Exploitation	50-70%	Fitness-proportional sampling from elite archive (softmax)
+Random	10%	Completely random for novelty injection
+
+Additionally, "inspiration" programs are sampled from different optimization niches, preferring elites with higher optimization levels for cross-pollination.
+2.7 LLM-Based Mutation and Prompt Construction
+Unlike traditional evolutionary algorithms that use syntactic operators, this system uses LLMs as semantic mutation operators. The prompt construction pipeline includes:
+1. Reference code: The original naive implementation
+2. Parent code: The selected parent with its evaluation feedback
+3. Inspiration codes: Elite programs from other niches
+4. Target optimization profile: Desired behavioral coordinates for the child
+5. Hardware specifications: GPU architecture details and available intrinsics
+6. Feedback LLM output (optional): Structured optimization suggestions
+
+The target optimization profile is selected via "mutate" (small perturbation from parent) or "diversify" (targeting underexplored regions of the grid).
+2.8 Evaluation Pipeline
+Each generated kernel undergoes multi-stage evaluation:
+1. Code injection: Generated code replaces EVOLVE block marker in task template
+2. Compilation: OpenCL kernel compiled with Intel icpx/NEO compiler
+3. Correctness testing: pytest validation against reference (rtol=2e-2, atol=2e-2)
+4. Performance benchmarking: 100 timed iterations (29 reported after warmup)
+5. Result aggregation: EvalResult with runtime, correctness, perf_score
+2.9 Fitness Function
+The fitness (combined_score) is computed as:
+combined_score = perf_score + 3 * I(correct AND speedup > 0) * runtime_improvement
+
+Where:
+- perf_score: 0=syntax error, 1=compile fail, 2=runtime error, 3=shape mismatch, 4=value mismatch, 5=correct
+- runtime_improvement = reference_runtime / kernel_runtime (speedup ratio)
+- I(.): indicator function (1 if true, 0 otherwise)
+- The 3x weight ensures performance dominates once a kernel is correct
+
+Score interpretation:
+Scenario	Score	Meaning
+Correct, 3x speedup	5 + 3*3.0 = 14.0	Excellent
+Correct, 1x speedup	5 + 3*1.0 = 8.0	Matches reference
+Correct, 0.5x (slower)	5 + 0 = 5.0	No speedup bonus
+Compilation failure	1.0	Minimal signal
+
+3. Experimental Results
+3.1 Experiment Overview
+Three experiments were conducted on the same task (FP16 matmul 2048x2560x2048 on Intel Battlemage B580) with varying LLM configurations:
+Exp	Model(s)	Temp	Iters x Branch	Total Evals	Best Runtime	Speedup
+v4	claude-4-6-opus	0.0	4 x 2	8	11.4 ms	2.98x
+v5	3-model ensemble	0.3-0.6	20 x 4	80	33.9 ms	1.0x
+v6	claude-4-6-opus	0.1	10 x 4	40	36.2 ms	0.94x
+3.2 Experiment v4: Single Model, Zero Temperature
+Configuration: claude-4-6-opus, temperature=0.0, 4 iterations x 2 branches = 8 evaluations
+
+Trial-by-Trial Results:
+Trial	Runtime (ms)	Speedup	Score	Strategy Used
+0	11.6	2.93x	13.79	DPAS (short8/int8)
+1	56.8	0.60x	~5.0	DPAS variant (incorrect)
+2	30.7	1.11x	~8.3	DPAS variant
+3	11.4	2.98x	13.95	DPAS optimized
+
+Key Characteristics:
+- First trial immediately achieved 2.93x speedup via correct DPAS usage
+- Correct operand types: short8 for A, int8 for B (packed half pairs)
+- 8x16 tile per subgroup matching XMX hardware tile size exactly
+- No reqd_work_group_size attribute; runtime selects optimal LWS
+- Zero SLM usage; pure register-based DPAS computation
+- Total runtime: 269.6 seconds
+3.3 Experiment v5: Multi-Model Ensemble, High Temperature
+Configuration: claude-4-5-sonnet (temp=0.6) + gpt-5.3-codex (temp=0.4) + claude-4-6-opus (temp=0.3), 20 iterations x 4 branches = 80 evaluations, feedback LLM enabled
+
+Summary Results:
+- 80/80 compiled (100%), 76/80 correct (95%), 0/80 beat reference (0%)
+- All correct kernels achieved exactly 33.9ms (= reference speed)
+- Best combined_score: 8.0 (perf_score=5 + 3*1.0 = 8.0)
+- MAP-Elites coverage: 2/256 cells
+- Total runtime: 3508.5 seconds (58.5 minutes)
+
+Failure Analysis:
+All models generated code that called intel_sub_group_f16_f16_matrix_mad_k16 but with incorrect operand types (half16 instead of short8/int8). The DPAS instruction compiled successfully but produced results equivalent to scalar computation - correct output but without hardware acceleration. Additionally, kernels added reqd_work_group_size(16,1,1) which caused host launch to create 2048 work-groups in the Y dimension, of which only 128 performed useful work (93.75% waste).
+
+Model Utilization:
+Model	Calls	Avg Time	Output Quality
+claude-4-6-opus	30	45.5s	Correct, no speedup
+claude-4-5-sonnet	29	62.2s	Correct, no speedup
+gpt-5.3-codex	21	20.7s	Correct, no speedup
+3.4 Experiment v6: Single Model, Low Temperature
+Configuration: claude-4-6-opus (temp=0.1), 10 iterations x 4 branches = 40 evaluations, feedback LLM enabled, exploration_ratio=0.4
+
+Evolution Trajectory:
+Trial	Best Runtime	vs Reference	Correct/Total	Strategy Observed
+0	N/A	N/A	0/4	DPAS attempts (all failed)
+1	47.0 ms	0.72x	1/4	First correct (SLM)
+2	62.3 ms	0.54x	4/4	Exploring tile sizes
+3	66.9 ms	0.51x	4/4	Wide exploration
+4	57.1 ms	0.59x	4/4	Converging
+5	43.3 ms	0.78x	4/4	TILE_K: 32->64
+6	36.2 ms	0.94x	4/4	Best: 128x16x64 tile
+7	36.2 ms	0.94x	4/4	Plateaued
+8	38.9 ms	0.87x	4/4	Slight regression
+9	52.0 ms	0.65x	4/4	Exploration diverged
+
+Key Characteristics:
+- Showed genuine evolutionary convergence: 47ms -> 43ms -> 36.2ms
+- 13 elite updates in MAP-Elites (vs 4 in both v4 and v5)
+- 3 distinct cells discovered: (2,1,1,0), (2,3,1,0), (3,1,1,0)
+- Model abandoned DPAS after Trial 0 failures, pivoted to SLM tiling
+- SLM tiling ceiling (~33ms) prevented beating reference
+- Best kernel: 128x16x64 tile, 256 WIs, scalar FMA with unroll
+- Total runtime: 1447.3 seconds (24.1 minutes)
+3.5 Comparative Analysis
+Metric	v4	v5	v6
+Best speedup	2.98x	1.0x	0.94x
+Best runtime	11.4 ms	33.9 ms	36.2 ms
+Total evaluations	8	80	40
+Correctness rate	87.5%	95%	82.5%
+Elite updates	4	4	13
+MAP-Elites cells	2	2	3
+Total time	270s	3509s	1447s
+Core strategy	DPAS hardware	Broken DPAS	SLM tiling
+Evolution observed	Immediate hit	None	Genuine convergence
+3.6 Key Findings
+Finding 1: Temperature is a binary switch for DPAS correctness.
+For generating correct DPAS intrinsic code with proper operand types (short8/int8), temperature=0.0 produces correct code immediately, while any temperature >0 introduces type selection randomness causing DPAS failures. The correct operand types are non-obvious; the natural choice (half16) compiles but does not utilize XMX hardware.
+Finding 2: Multi-model ensembles are harmful for precision tasks.
+Weaker models lack specialized knowledge of DPAS operand packing semantics, generating syntactically correct but semantically scalar code. 80 evaluations across 3 models produced zero performance improvement.
+Finding 3: Evolutionary feedback creates irreversible path dependency.
+In v6, once DPAS attempts failed (Trial 0), the model received negative feedback and permanently abandoned DPAS. Correct SLM kernels (score=7.8) dominated parent selection, making DPAS exploration impossible through the normal evolutionary process.
+Finding 4: The fitness function has critical blind spots.
+The fitness cannot distinguish "easily fixable DPAS code" (score=3) from "fundamentally limited SLM approach" (score=7.8). The DPAS approach has a ceiling of score=14+ but appears worse than SLM until correctness is achieved.
+
+4. Lessons Learned
+4.1 Model Quality vs. Diversity
+For hardware-specific optimization requiring precise intrinsic usage, a single strongest model at deterministic settings outperforms diverse model ensembles. DPAS correctness requires exact knowledge of:
+- Operand type packing: A as short8 (8 rows, 16 K-elements distributed across subgroup)
+- B matrix encoding: int8 with pairs of half values packed as int32
+- Tile geometry: exactly 8 rows x 16 columns per subgroup invocation
+- Launch config: implicit LWS selection without reqd_work_group_size
+These form a narrow "needle" in code space that only the strongest model at temp=0 can hit.
+4.2 Temperature Sensitivity for Hardware-Specific Code
+Temperature controls token choice probability distribution:
+- temp=0.0: Deterministically selects short8/int8 -> correct DPAS -> 2.98x
+- temp=0.1: Small probability of half16 -> DPAS fails -> model abandons DPAS
+- temp=0.3+: High probability of wrong types -> all fail -> no speedup
+This "cliff edge" means temperature cannot be tuned continuously for this task class. It must be exactly 0 for tasks requiring precise intrinsic usage.
+4.3 Path Dependency in Evolutionary Search
+The algorithm exhibits strong path dependency through three mechanisms:
+
+1. Parent Selection Bias: Once a correct SLM kernel (score=7.8) enters the archive, it dominates parent selection (70% exploitation). All children inherit the SLM approach.
+
+2. LLM Context Learning: The prompt includes previous failures. When the model sees "DPAS correctness error," it explicitly avoids DPAS in future generations.
+
+3. Fitness Gradient Misdirection: The gradient from score=3 (failed DPAS) to score=7.8 (correct SLM) points away from DPAS, even though the global optimum (score=14) lies along the DPAS path.
+4.4 Fitness Function Blind Spots
+Current fitness limitations:
+- No "potential" signal: fixable DPAS (score=3) looks same as unfixable bugs (score=3)
+- Binary correctness: no partial credit for "almost correct" results
+- No hardware utilization metric: cannot distinguish XMX usage from EU ALU
+- Approach ceiling not encoded: algorithm cannot know SLM has ~1x ceiling
+
+5. Recommendations for Improving Convergence Speed and Accuracy
+5.1 Immediate Actions (Configuration Changes Only)
+R1: Restore temperature=0.0 for DPAS tasks
+For tasks requiring hardware intrinsics, use temperature=0.0 with the strongest model. Empirically proven to produce correct DPAS code on first attempt.
+R2: Warm-start from proven solutions
+Use kernels_iter_0_path to seed evolution with v4 best kernel (11.4ms). Avoids re-discovering DPAS correctness; focuses algorithm on further optimization beyond 2.98x.
+R3: Use single strong model exclusively
+For precision hardware tasks, use claude-4-6-opus only. Diversity should come from prompt variation (target profiles, inspirations) not model switching.
+
+Recommended configuration:
+inference:
+  servers:
+  - model_name: claude-4-6-opus
+    temperature: 0.0
+    max_tokens: 10000
+kernels_iter_0_path: "runs/b580_matmul_dpas_v4"
+max_iters: 20
+branches_per_iteration: 4
+5.2 Short-Term Improvements (Minor Code Changes)
+R4: Inject correct DPAS template in USER_INSTRUCTIONS
+Add code template showing exact correct operand types. Eliminates type-selection uncertainty:
+MANDATORY DPAS PATTERN:
+  short8 a_val;  // A: 8 rows packed as short
+  int8 b_val;    // B: 16x16 half pairs packed as int
+  float8 acc;    // Result: 8 rows
+  acc = intel_sub_group_f16_f16_matrix_mad_k16(a_val, b_val, acc);
+  DO NOT use half16 for DPAS operands.
+  DO NOT add reqd_work_group_size.
+
+R5: Add tabu list for repeated target profiles
+Prevent same target profile from being selected >N times. In v5, profile (3,3,3,0) was targeted 17 times. A tabu list forces exploration of new regions.
+
+R6: Fix host launch logic compatibility
+Improve task.py parser to correctly handle subgroup-only kernels (LWS=16x1x1). Either fix the GWS computation or add kernel comment parsing for intended launch parameters.
+5.3 Medium-Term Improvements (Architecture Changes)
+R7: Phased temperature strategy
+Use different temperatures per evolution phase:
+- Phase 1 (Trials 0-3): temp=0.0 to establish correct DPAS baseline
+- Phase 2 (Trials 4-10): temp=0.1 to explore DPAS variants
+- Phase 3 (Trials 11+): temp=0.2 for broader exploration
+This ensures archive is seeded with correct high-performance kernels first.
+
+R8: Potential-aware fitness function
+Augment fitness with hardware-utilization bonus:
+def compute_fitness(eval_result, code):
+    base = current_fitness(eval_result)
+    if uses_dpas_intrinsic(code):
+        potential_bonus = 2.0  # DPAS ceiling ~3x
+    elif uses_slm_tiling(code):
+        potential_bonus = 0.5  # SLM ceiling ~1x
+    return base + potential_bonus
+
+R9: Separate DPAS and non-DPAS evolution tracks
+Run parallel tracks: one constrained to DPAS (with template), one free to explore. Cross-pollinate via migration. Prevents SLM track from starving DPAS exploration.
+
+R10: Explicit crossover prompting
+When two parents from different cells exist, prompt LLM to combine best aspects (e.g., DPAS compute from one + SLM prefetch from another).
+5.4 Long-Term Research Directions
+R11: Surrogate-model pre-screening
+Train lightweight classifier to predict DPAS correctness from AST features (presence of short8/int8 types). Filter candidates before GPU evaluation, reducing wasted evals.
+R12: Profiler-guided evolution
+Integrate Intel unitrace/VTune data into feedback. Reveals EU-bound vs XMX-bound status, directly guiding LLM toward DPAS when XMX utilization is low.
+R13: Hierarchical code generation
+Decompose generation into layers: (1) compute strategy selection, (2) tile sizing, (3) data packing, (4) optimizations. Evolve each layer independently.
+R14: Verifiable code constraints (post-processing)
+Implement AST-level verification that checks DPAS operand types and auto-fixes incorrect types (half16->short8 for A, half16->int8 for B) before compilation. Decouples "DPAS usage decision" from "implementation correctness."
+
+6. Conclusion
+This experimental series reveals a fundamental tension in LLM-driven evolutionary kernel optimization: the trade-off between exploration diversity and precision reliability.
+
+The key conclusions are:
+
+1. For hardware intrinsic tasks, model precision trumps diversity. A single strong model (claude-4-6-opus) at temperature=0 achieves 2.98x speedup in 8 evaluations, while a 3-model ensemble with higher temperatures fails to exceed 1.0x in 80 evaluations.
+2. The evolutionary algorithm works correctly but is constrained by LLM output quality. v6 demonstrates genuine convergence (13 elite updates, improving scores), but converges to a local optimum (SLM tiling, 0.94x) because initial DPAS failures created irreversible path dependency.
+3. Temperature is not a continuous parameter for this task class. It acts as a binary switch: 0 = correct DPAS (2.98x), >0 = incorrect DPAS -> abandoned -> suboptimal path (0.94x). No sweet spot exists between 0 and 0.1.
+4. Warm-starting from proven solutions is essential. Rather than rediscovering DPAS correctness each run, seeding with known-good kernels and evolving from there is the most efficient path.
+5. The fitness function needs hardware-awareness. Current fitness cannot distinguish approaches with different performance ceilings. A potential-aware fitness rewarding intrinsic usage would prevent premature convergence to suboptimal strategies.
+
+The recommended next experiment: claude-4-6-opus at temperature=0.0, warm-started from v4 best kernel (11.4ms), with 20 iterations x 4 branches, and DPAS operand template in USER_INSTRUCTIONS. This combines proven DPAS capability with larger search budget to potentially push beyond 2.98x.

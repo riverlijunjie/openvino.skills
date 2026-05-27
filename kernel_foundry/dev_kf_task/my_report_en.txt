@@ -1,0 +1,138 @@
+Kernel Foundry GEMM Optimization Work Report (Expanded)
+Date: 2026-05-25
+
+## 1. Project Objective
+
+This project evaluates LLM-driven evolutionary optimization for FP16 GEMM on Intel Battlemage B580.
+
+- Hardware: Intel Battlemage G21 (B580), 20 Xe2 cores
+- FP16 XMX peak: 96 TFLOPS
+- Memory bandwidth: ~456 GB/s
+- L2 cache: ~24 MB
+
+Target kernel:
+- C[2048,2560] = A[2048,2048] × B[2048,2560]
+- Compute workload: 21.5 GFLOP
+- Theoretical lower bound: ~0.224 ms (compute-bound, high OI)
+
+Key primitive:
+- intel_sub_group_f16_f16_matrix_mad_k16(...)
+- 4096 FLOPs per invocation (8×16×16 FP16 MAD)
+
+Baseline performance:
+- Runtime: 33.9 ms
+- Throughput: 0.63 TFLOPS
+- XMX utilization: 0.7%
+Project Objective
+## 2. Method and Experimental Design
+
+Optimization was performed through iterative evolutionary search (v4–v11), varying:
+
+1) LLM sampling temperature (0.0 to 0.3)
+2) Seed kernel strategy (no seed, warm start from previous best)
+3) Prompt guidance strength (generic to explicit bottleneck instructions)
+4) Multi-branch generation and hardware-validated selection
+
+Core idea:
+- LLM proposes mutated kernels
+- Framework validates correctness + benchmark speed
+- Strong candidates become seeds for next rounds
+
+## 3. Experiment Configuration Summary
+
+| Exp | Model | Temp | Seed | Iters | Branches | Notes | Evals |
+|-----|-------|------|------|-------|----------|-------|-------|
+| v4  | opus | 0.0 | none | 4  | 2 | first DPAS attempt | 8 |
+| v5  | sonnet+codex+opus | 0.3–0.6 | none | 20 | 4 | mixed-model run | 80 |
+| v6  | opus | 0.1 | none | 10 | 4 | low-temp | 40 |
+| v7  | opus | 0.0 | none | 10 | 4 | zero-temp | 40 |
+| v8  | opus | 0.1 | none | 8  | 4 | simplified config | 32 |
+| v9  | opus | 0.2 | none | 8  | 4 | gradient tracking | 32 |
+| v10 | opus | 0.25 | v4 best | 12 | 4 | warm start + stronger guidance | 48 |
+| v11 | opus | 0.3 | v10 best | 11* | 4 | explicit bottleneck direction | 43 |
+
+*v11 iteration 12 was interrupted by rate limits.
+
+## 4. Main Results
+
+| Exp | Best Time | Speedup | TFLOPS | XMX Util | Correctness | Experiment Time |
+|-----|-----------|---------|--------|----------|-------------|-----------------|
+| baseline | 33.9ms | 1.0x | 0.63 | 0.7% | — | — |
+| v4 | 11.4ms | 2.98x | 1.88 | 2.0% | 100% | 270s |
+| v5 | 33.9ms | 1.0x | 0.63 | 0.7% | 100% | 3508s |
+| v6 | 36.2ms | 0.94x | 0.59 | 0.6% | 90% | 1447s |
+| v7 | 33.9ms | 1.0x | 0.63 | 0.7% | 100% | 2128s |
+| v8 | 30.9ms | 1.10x | 0.70 | 0.7% | 100% | 775s |
+| v9 | 23.8ms | 1.42x | 0.90 | 0.9% | 100% | 819s |
+| **v10** | **1.07ms** | **31.7x** | **20.1** | **20.9%** | **100%** | **843s** |
+| v11 | 1.31ms | 25.9x | 16.4 | 17.1% | 97.7% | 1022s |
+
+Best milestone:
+- v10 reduced runtime from 33.9ms to 1.07ms (31.7x speedup)
+- Evolution from v4 seed (11.4ms) to v10 achieved another ~10.7x improvement
+
+## 5. Efficiency and ROI
+
+| Exp | Cost/Eval (s) | Improvement per Eval | ROI |
+|-----|---------------|----------------------|-----|
+| v4  | 33.8 | 2.81ms/eval | ★★★★ |
+| v5  | 43.9 | 0 | ✗ |
+| v6  | 36.2 | -0.06ms/eval | ✗ |
+| v7  | 53.2 | 0 | ✗ |
+| v8  | 24.2 | 0.09ms/eval | ★ |
+| v9  | 25.6 | 0.32ms/eval | ★★ |
+| v10 | 17.6 | 0.68ms/eval | ★★★★★ |
+| v11 | 23.8 | 0 (regression) | ✗ |
+
+Interpretation:
+- v10 delivered the best absolute performance and best cost-effectiveness.
+- More evaluations do not guarantee gains (v5 had the largest budget but no progress).
+
+## 6. Technical Findings
+
+1) Temperature is the primary evolution control variable.
+- 0.0: nearly no useful architecture mutation
+- 0.1–0.2: incremental progress only
+- 0.25: best balance between creativity and stability (breakthrough regime)
+- 0.3: higher regression risk near optimum
+
+2) Seed quality determines whether budget goes to “correctness” or “optimization”.
+- No seed: many trials spent on reaching workable structure
+- v4 seed: unlocked rapid optimization (v10 breakthrough)
+- v10 seed + high temp: tends to damage already-good structure
+
+3) Architectural mutation can outperform textbook intuition.
+- Breakthrough came from a non-obvious architecture shift rather than pure micro-tuning.
+
+4) On this GPU, occupancy and latency hiding dominated algorithm-level tricks.
+- Some theoretically “better” ideas (e.g., heavier buffering / larger resource footprint) reduced practical performance.
+
+5) Model consistency matters.
+- Mixed-model evolution (v5) showed poor inheritance continuity.
+- Strong single-model runs (opus-only) produced most of the gains.
+
+## 7. Current Limits
+
+- Strong dependence on high-quality model reasoning
+- Utilization plateau around ~21% XMX
+- High end-to-end evaluation cost (compile + verify + benchmark + inference)
+- No adaptive temperature control implemented yet
+- Limited compiler-awareness feedback (IGC-level effects not closed-loop)
+
+## 8. Recommended Next Steps
+
+Priority A — Short term (highest impact):
+1) Fine-tune around v10 with lower temperature (0.15–0.2)
+2) Constrain mutations to local improvements (avoid architecture-destroying jumps)
+
+Priority B — Medium term:
+3) Add compiler-guided loop: collect IGC ISA dumps and feed salient signals back to the model
+4) Introduce adaptive temperature scheduling (explore → exploit → reheat on stagnation)
+
+Priority C — Search quality:
+5) Refine behavior descriptors / archive granularity to preserve high-potential variants
+6) Use staged evolution: architecture discovery first, micro-optimization second
+
+## 9. Final Conclusion
+
+This project demonstrates that evolutionary LLM-driven kernel optimization can produce major, hardware-validated gains on Intel GPU GEMM workloads. The v10 result (1.07ms, 31.7x speedup, 20.9% XMX utilization, 100% correctness) confirms the method’s practical value. Future improvements are likely to come from tighter compiler-aware feedback and adaptive search control rather than brute-force evaluation scaling.

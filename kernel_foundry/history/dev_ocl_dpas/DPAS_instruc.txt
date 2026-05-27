@@ -1,0 +1,39 @@
+Intel OpenCL DPAS 快速使用说明
+
+1. 启用扩展
+#pragma OPENCL EXTENSION cl_intel_subgroup_matrix_multiply_accumulate : enable
+#pragma OPENCL EXTENSION cl_intel_subgroups : enable
+#pragma OPENCL EXTENSION cl_intel_required_subgroup_size : enable
+
+2. 设置 subgroup size
+- kernel 必须加：__attribute__((intel_reqd_sub_group_size(N)))
+- N = 8 或 16，需与设备最小 subgroup size 匹配
+
+3. 函数签名（常用）
+- FP16:
+  float8 intel_sub_group_f16_f16_matrix_mad_k16(short8 a, int8 b, float8 acc); // M=8, N=16
+- INT8:
+  int8 intel_sub_group_i8_i8_matrix_mad_k32(int8 a, int8 b, int8 acc); // M=8, N=8
+
+4. 数据 pack 规则
+- A 矩阵：每 work item 持有 M 行，每行 pack 为 short（N=16）或 int（N=8）
+- B 矩阵：每 work item 持有 1 列，K 个元素 pack 为 int8
+- fp16 用 signed 类型传递（用 as_short/as_int）
+
+5. 加载数据
+- 推荐用 intel_sub_group_block_read8 加载 B
+- 指针需 4 字节对齐
+
+6. 调用方式
+float8 acc = (float8)(0.0f);
+float8 result = intel_sub_group_f16_f16_matrix_mad_k16(a_packed, b_packed, acc);
+
+7. 循环累加
+- K_total > K_TILE 时，循环多次 DPAS，累加结果
+
+8. 注意事项
+- 所有 work item 必须参与 DPAS
+- subgroup size 必须与设备匹配
+- 仅支持支持该扩展的 Intel GPU
+
+常用场景：高性能 GEMM kernel 手写优化

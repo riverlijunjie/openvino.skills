@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EVOLVE_SUMMARY_20260515</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { max-width: 980px; margin: 36px auto; padding: 0 20px; font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    h1, h2, h3 { line-height: 1.3; }
+    pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+    pre { padding: 12px; border: 1px solid #8883; border-radius: 8px; overflow: auto; }
+    table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+    th, td { border: 1px solid #8886; padding: 6px 8px; text-align: left; }
+    th { background: #8882; }
+    hr { border: 0; border-top: 1px solid #8886; margin: 1.4em 0; }
+  </style>
+</head>
+<body>
+<h1>KernelFoundry Evolutionary Kernel Optimization: Comprehensive Experiment Report</h1>
+<h2>Abstract</h2>
+<p>This report summarizes 8 experiments (v4–v11) of LLM-driven evolutionary kernel optimization on Intel Battlemage B580 GPU. The target problem is FP16 matrix multiplication C[2048,2560] = A[2048,2048] × B[2048,2560] using Intel XMX DPAS instructions. Through systematic exploration of temperature, seed kernel, and prompting strategies, we achieved <strong>1.07ms</strong> execution time (<strong>31.7x speedup</strong> over the 33.9ms reference baseline), reaching <strong>20.9% XMX hardware utilization</strong>. The experiments reveal core mechanisms of LLM-evolutionary optimization, identify critical control variables, and establish hardware-specific constraints that define the performance ceiling.</p>
+<hr />
+<h2>1. Background and Principles</h2>
+<h3>1.1 Evolutionary Kernel Optimization</h3>
+<p>Traditional GPU kernel optimization requires human experts with deep hardware knowledge and extensive trial-and-error. KernelFoundry proposes a new paradigm: <strong>LLM as mutation operator + MAP-Elites evolutionary framework as search strategy</strong>, automatically discovering high-performance GPU kernels.</p>
+<p>Core loop:</p>
+<pre><code>Seed kernel → LLM generates mutations → Hardware evaluation (compile + correctness + perf)
+     ↑                                                        ↓
+     ← MAP-Elites archive selects parent for next generation ←┘
+</code></pre>
+<h3>1.2 MAP-Elites Quality-Diversity Algorithm</h3>
+<p>Unlike traditional evolutionary algorithms that retain only the &quot;single best,&quot; MAP-Elites maintains an <strong>elite archive</strong> across a behavioral feature space:</p>
+<ul>
+<li><strong>4D behavioral space</strong>: memory_opt × compute_opt × parallelism_opt × esimd_opt, each 0–3</li>
+<li><strong>256 cells</strong>: 4^4 possible behavioral niches</li>
+<li><strong>Elite selection</strong>: Each cell retains the best-performing kernel with that behavioral profile</li>
+<li><strong>Island model</strong>: 4 sub-populations evolve in parallel with migration</li>
+</ul>
+<p>Behavioral features are extracted automatically via code pattern analysis:</p>
+<ul>
+<li>memory_opt: SLM usage, prefetch, bank conflict avoidance patterns</li>
+<li>compute_opt: DPAS instructions, loop unrolling, register blocking</li>
+<li>parallelism_opt: WG size, subgroup count, cooperative loading</li>
+</ul>
+<h3>1.3 LLM as Semantic Mutation Operator</h3>
+<p>Unlike traditional random bit-flip mutations, LLM mutations are <strong>semantically aware</strong>:</p>
+<ul>
+<li><strong>Input</strong>: Current best kernel + performance feedback + hardware specs + optimization hints</li>
+<li><strong>Output</strong>: Reasoned improvement (analysis/thinking + new code)</li>
+<li><strong>Temperature</strong>: Controls mutation magnitude — low (incremental) vs high (architectural redesign)</li>
+</ul>
+<h3>1.4 Fitness Function</h3>
+<pre><code>combined_score = perf_score + 3 × I(correct ∧ speedup &gt; 0) × runtime_improvement
+
+Where:
+- perf_score: Performance tier (1-5)
+- runtime_improvement: Speedup relative to reference baseline
+- I(·): Correctness indicator — only correct kernels with speedup receive fitness reward
+</code></pre>
+<h3>1.5 Target Problem</h3>
+<pre><code>Hardware: Intel Battlemage G21 (B580)
+  - 20 Xe2 cores
+  - FP16 XMX theoretical peak: 96 TFLOPS (20 × 2048 ops/cycle × 2.4 GHz / 1024)
+  - Memory bandwidth: ~456 GB/s
+  - L2 Cache: ~24 MB
+
+Problem: FP16 GEMM
+  - C[2048, 2560] = A[2048, 2048] × B[2048, 2560]
+  - Compute: 21.5 GFLOP
+  - Theoretical minimum time: 0.224 ms (compute-bound, OI=731 FLOP/byte)
+
+Key instruction: intel_sub_group_f16_f16_matrix_mad_k16(short8 a, int8 b, float8 acc)
+  - Per invocation: 8×16×16 = 2048 FP16 MADs = 4096 FLOPs
+  - Subgroup size = 16
+</code></pre>
+<hr />
+<h2>2. Experiment Configuration Overview</h2>
+<h3>2.1 Full Configuration Comparison</h3>
+<p>| Exp | LLM Model | Temp | Seed | Iters | Branches | Special Config | Total Evals |
+|-----|-----------|------|------|-------|----------|----------------|-------------|
+| v4 | opus | 0.0 | none | 4 | 2 | First DPAS experiment | 8 |
+| v5 | sonnet+codex+opus mix | 0.3-0.6 | none | 20 | 4 | Multi-model | 80 |
+| v6 | opus | 0.1 | none | 10 | 4 | Low temp | 40 |
+| v7 | opus | 0.0 | none | 10 | 4 | Zero temp | 40 |
+| v8 | opus | 0.1 | none | 8 | 4 | Simplified config | 32 |
+| v9 | opus | 0.2 | none | 8 | 4 | Gradient tracking | 32 |
+| v10 | opus | 0.25 | v4 best | 12 | 4 | Warm-start + enhanced prompts | 48 |
+| v11 | opus | 0.3 | v10 best | 11* | 4 | Explicit bottleneck guidance | 43 |</p>
+<p>*v11 trial 12 interrupted by GNAI rate limit</p>
+<h3>2.2 Key Variable Evolution</h3>
+<pre><code>Temperature: 0.0 → 0.1 → 0.2 → 0.25 → 0.3
+                ↗         ↗         ↗      ↘ (too high)
+          zero evo    slow    moderate  breakthrough  regression
+
+Seed:     none → none → ... → none → v4(11.4ms) → v10(1.07ms)
+                                       ↑ critical turning point
+
+Instructions: generic → simplified → enhanced → explicit bottleneck targeting
+</code></pre>
+<hr />
+<h2>3. Results Comparison</h2>
+<h3>3.1 Performance Summary</h3>
+<p>| Exp | Best Time | Speedup | TFLOPS | XMX Util | Correctness | Wall-clock |
+|-----|-----------|---------|--------|----------|-------------|------------|
+| baseline | 33.9ms | 1.0x | 0.63 | 0.7% | — | — |
+| v4 | 11.4ms | 2.98x | 1.88 | 2.0% | 100% | 270s |
+| v5 | 33.9ms | 1.0x | 0.63 | 0.7% | 100% | 3508s |
+| v6 | 36.2ms | 0.94x | 0.59 | 0.6% | 90% | 1447s |
+| v7 | 33.9ms | 1.0x | 0.63 | 0.7% | 100% | 2128s |
+| v8 | 30.9ms | 1.10x | 0.70 | 0.7% | 100% | 775s |
+| v9 | 23.8ms | 1.42x | 0.90 | 0.9% | 100% | 819s |
+| <strong>v10</strong> | <strong>1.07ms</strong> | <strong>31.7x</strong> | <strong>20.1</strong> | <strong>20.9%</strong> | <strong>100%</strong> | <strong>843s</strong> |
+| v11 | 1.31ms | 25.9x | 16.4 | 17.1% | 97.7% | 1022s |</p>
+<h3>3.2 Visual Comparison</h3>
+<pre><code>Runtime (log scale, lower is better):
+  v6  |████████████████████████████████████| 36.2ms
+  v5  |███████████████████████████████████ | 33.9ms
+  v7  |███████████████████████████████████ | 33.9ms
+  v8  |█████████████████████████████████   | 30.9ms
+  v9  |████████████████████████            | 23.8ms
+  v4  |████████████                        | 11.4ms
+  v11 |██                                  | 1.31ms
+  v10 |█                                   | 1.07ms  ← BEST
+  Peak|                                    | 0.22ms
+      +----+----+----+----+----+----+----+→
+      0    5   10   15   20   25   30   35 ms
+
+XMX Utilization:
+  v10 |████████████████████▉          | 20.9%  ← BEST
+  v11 |█████████████████▏             | 17.1%
+  v4  |██                             | 2.0%
+  v9  |▉                              | 0.9%
+  rest|▎                              | &lt;0.7%
+      +----+----+----+----+----+----+→
+      0    5   10   15   20   25   30 %
+</code></pre>
+<h3>3.3 Efficiency Analysis</h3>
+<p>| Exp | Cost/eval (s) | Performance gain/eval | ROI |
+|-----|--------------|----------------------|-----|
+| v4 | 33.8 | 2.81ms/eval | ★★★★ |
+| v5 | 43.9 | 0ms/eval | ✗ |
+| v6 | 36.2 | -0.06ms/eval | ✗ |
+| v7 | 53.2 | 0ms/eval | ✗ |
+| v8 | 24.2 | 0.09ms/eval | ★ |
+| v9 | 25.6 | 0.32ms/eval | ★★ |
+| v10 | 17.6 | 0.68ms/eval | ★★★★★ |
+| v11 | 23.8 | 0ms/eval (regression) | ✗ |</p>
+<hr />
+<h2>4. Key Findings</h2>
+<h3>4.1 Finding 1: Temperature is the Core Control Variable</h3>
+<pre><code>Temperature Effect:
+
+Performance Improvement
+     ^
+  31x|                    * v10 (0.25)
+     |
+     |
+   5x|
+     |
+  1.4x|              * v9 (0.2)
+  1.1x|        * v8 (0.1)
+  1.0x|──*─────*─────────────────────* ← v5(mixed), v7(0.0)
+  0.9x|  v7   v6               v11(0.3)
+     +────+────+────+────+────+────+→ Temperature
+          0   0.1  0.2  0.25  0.3
+
+Optimal temperature window: 0.25
+</code></pre>
+<p><strong>Mechanism</strong>:</p>
+<ul>
+<li><strong>T=0.0</strong>: Deterministic decoding → identical outputs → zero evolution</li>
+<li><strong>T=0.1</strong>: Minimal randomness → same-architecture micro-adjustments only</li>
+<li><strong>T=0.2</strong>: Moderate randomness → tile size/loop structure changes, but no architectural boundary crossing</li>
+<li><strong>T=0.25</strong>: Critical threshold → sufficient to &quot;forget&quot; fixed patterns (e.g., B→SLM), producing novel architectures</li>
+<li><strong>T=0.3</strong>: Too high → breaks already-optimal structures → regression</li>
+</ul>
+<h3>4.2 Finding 2: Seed Kernel is the Critical Enabler</h3>
+<p>| Seed State | Best Evolution Result | Analysis |
+|------------|---------------------|----------|
+| Empty (v5–v9) | 23.8ms | LLM must design DPAS kernel from scratch; evolution budget wasted on basic correctness |
+| v4 best (v10) | 1.07ms | Seed validates correct DPAS usage; 100% budget on performance optimization |
+| v10 best (v11) | 1.31ms | Seed already near-optimal; high-temp mutations move away from optimum |</p>
+<p><strong>Insight</strong>: The ideal seed is &quot;correct but far from optimal&quot; —</p>
+<ul>
+<li>Too weak (empty): Evolution wastes budget on correctness exploration</li>
+<li>Too strong (v10→v11): High-temperature mutations tend to destroy existing optimizations</li>
+<li>Just right (v4→v10): Correctness solved, large headroom for performance gains</li>
+</ul>
+<h3>4.3 Finding 3: Architectural Phase Transitions</h3>
+<p>v10 exhibited classic <strong>phase transition</strong> behavior:</p>
+<pre><code>v10 trajectory:
+  7.0 → 5.74 → 5.93 → 3.87 → 5.65 → 5.22 → [1.08] → 1.09 → ...
+                                                ↑
+                                         Phase transition (Trial 6)
+                                         3.87ms → 1.08ms (3.6x jump)
+</code></pre>
+<p><strong>Pre-transition</strong>: All kernels use &quot;A+B both in SLM&quot; (incremental: 3–7ms)
+<strong>Post-transition</strong>: Discovery of &quot;A in SLM, B from global&quot; (breakthrough to 1ms)</p>
+<p>This reveals <strong>fitness valleys</strong> in the performance landscape — crossing a counter-intuitive intermediate state is required to reach the global optimum. Temperature 0.25 provides exactly the &quot;jump force&quot; needed to cross this valley.</p>
+<h3>4.4 Finding 4: GPU Microarchitecture &gt; Algorithmic Optimization</h3>
+<p>v11 demonstrated that on B580:</p>
+<p>| Theoretically Better | Actually Worse | Root Cause |
+|---------------------|----------------|------------|
+| Double-buffering (overlap load/compute) | Single-buffer faster | SLM usage↑ → occupancy↓ → worse latency hiding |
+| 128 WIs (more parallelism) | 64 WIs faster | Register pressure↑ → spilling |
+| B in SLM (shared, reduce bandwidth) | B from L2 faster | L2 sufficient; saved SLM enables more concurrent WGs |
+| TILE_K=64 (more DPAS/barrier) | TILE_K=32 faster | SLM overflow + excessive load loops |</p>
+<p><strong>Core lesson</strong>: In GPU optimization, <strong>occupancy</strong> and <strong>latency hiding</strong> often dominate <strong>algorithmic-level optimizations</strong> (double-buffering, larger tiles). A 2.2KB SLM footprint allowing multiple concurrent WGs is more effective than a 25KB &quot;perfect&quot; double-buffered scheme.</p>
+<h3>4.5 Finding 5: LLM Model Selection Matters</h3>
+<p>| Model Config | Result | Analysis |
+|-------------|--------|----------|
+| sonnet + codex mix (v5) | 33.9ms, no progress | Style inconsistency prevents cumulative evolution |
+| opus alone (v4, v6–v11) | 1.07ms achieved | Consistent style, sufficient reasoning depth |</p>
+<p>v5 used claude-4-5-sonnet + gpt-5.3-codex + claude-4-6-opus mix across 80 evaluations with zero progress. Different models' code styles prevent effective inheritance between generations.</p>
+<hr />
+<h2>5. Optimal B580 Kernel Architecture</h2>
+<h3>5.1 v10 Champion Kernel (1.07ms)</h3>
+<pre><code class="language-c">// Hardware mapping:
+//   WG tile: 32 rows × 64 cols
+//   4 subgroups × 16 WIs = 64 WIs per WG
+//   Each subgroup: 4 vertical 8×16 DPAS = 32 rows × 16 cols
+//   A → SLM (shared, only ~2.2KB), B → global/L2 (direct reads)
+//   K-loop: TILE_K=32, 2 k16 DPAS steps per K-tile
+
+Key optimizations:
+1. Bit operations (&gt;&gt; 5, &amp; 31) replace division/modulo
+2. Fast-path: skip boundary checks when tile is fully in-bounds
+3. SLM padding (+2) avoids bank conflicts
+4. Cooperative load: 64 WIs, 16 elements each, fill 32×32 A tile
+</code></pre>
+<h3>5.2 Why This Architecture Wins on B580</h3>
+<pre><code>Performance decomposition (estimated):
+
+  XMX compute: 8 DPAS × 4096 FLOP = 32,768 FLOPs per K-tile
+  SLM load: 16 half reads per WI × 64 WIs (A) ≈ 4 cycles
+  B load: 16 half reads per SG from L2 ≈ 8 cycles
+  Barriers: ~10 cycles × 2 per K-tile
+  
+  Key insight: Small SLM (2.2KB) → theoretically ~10 WGs per Xe-core
+       → When one WG waits on barrier, others execute
+       → Latency hiding is the TRUE acceleration source
+</code></pre>
+<hr />
+<h2>6. Strengths of Evolutionary Kernel Optimization</h2>
+<h3>6.1 Discovers Counter-Intuitive Optimizations</h3>
+<ul>
+<li>&quot;A in SLM, B from global&quot; is NOT recommended by any textbook or manual optimization guide</li>
+<li>It was &quot;accidentally&quot; discovered by temperature-0.25 sampling on the 24th evaluation</li>
+<li>A human expert might never try this &quot;asymmetric&quot; strategy</li>
+</ul>
+<h3>6.2 Efficient Search</h3>
+<ul>
+<li>v10: Only 48 evaluations (14 minutes) to find 31.7x speedup</li>
+<li>Equivalent to 2.3x performance improvement per minute</li>
+<li>Human manual tuning might take days to weeks for comparable results</li>
+</ul>
+<h3>6.3 Correctness Guarantee</h3>
+<ul>
+<li>v10: All 48 evaluations produced correct results</li>
+<li>The evolutionary framework's validation mechanism ensures only correct kernels enter the elite archive</li>
+<li>Eliminates the &quot;faster but broken&quot; risk inherent in manual optimization</li>
+</ul>
+<h3>6.4 Knowledge Accumulation</h3>
+<ul>
+<li>Each generation's analysis and code serve as context for the next</li>
+<li>The LLM's &quot;analysis&quot; section demonstrates understanding of prior results</li>
+<li>This &quot;think → experiment → feedback&quot; loop simulates a human engineer's learning process</li>
+</ul>
+<hr />
+<h2>7. Problems and Limitations</h2>
+<h3>7.1 Dependence on Strong LLM Reasoning</h3>
+<ul>
+<li>Current approach critically depends on claude-4-6-opus code reasoning ability</li>
+<li>Weaker models (v5's sonnet/codex mix) completely fail to evolve</li>
+<li>High inference cost: 30–80 seconds per generation</li>
+</ul>
+<h3>7.2 Cannot Break ~21% Utilization Ceiling</h3>
+<ul>
+<li>After v10 reached 20.9%, v11's various &quot;improved&quot; strategies all failed</li>
+<li>The remaining 79% performance gap likely requires:
+<ul>
+<li>Compiler-level optimization (IGC instruction scheduling)</li>
+<li>Hand-tuned assembly (inline ISA)</li>
+<li>Deeper hardware feature exploitation (cooperative kernel launch, etc.)</li>
+</ul>
+</li>
+</ul>
+<h3>7.3 Uncontrollable High-Temperature Mutations</h3>
+<ul>
+<li>T=0.25 produced breakthrough in v10; T=0.3 caused regression in v11</li>
+<li>Optimal temperature is highly dependent on current seed quality:
+<ul>
+<li>Far-from-optimal seed: needs high temperature (0.25–0.3) for large-step exploration</li>
+<li>Near-optimal seed: needs low temperature (0.1–0.2) for fine-tuning</li>
+</ul>
+</li>
+<li>No automatic temperature scheduling mechanism exists</li>
+</ul>
+<h3>7.4 Seed Selection Dilemma</h3>
+<ul>
+<li>Empty seed: wastes evolution budget on basic correctness</li>
+<li>Optimal seed + high temperature: tends to destroy existing optimizations</li>
+<li>Needs a &quot;just right&quot; seed — correct but far from optimal</li>
+</ul>
+<h3>7.5 Evaluation Cost</h3>
+<ul>
+<li>Each evaluation: ~15–30 seconds (compile + correctness + benchmark)</li>
+<li>LLM inference: 30–80 seconds per call</li>
+<li>Full experiment (48 evals): ~14–17 minutes</li>
+<li>GNAI rate limits can interrupt long experiments</li>
+</ul>
+<h3>7.6 Coarse Behavioral Feature Space</h3>
+<ul>
+<li>Current 4D MAP-Elites space too coarse</li>
+<li>All 1ms-class kernels fall in same cell (2,3,3,0)</li>
+<li>Cannot distinguish v10's 64-WI architecture from v11's 128-WI architecture</li>
+<li>May cause excellent non-mainstream variants to be discarded</li>
+</ul>
+<h3>7.7 Lack of Compiler Awareness</h3>
+<ul>
+<li>LLM doesn't understand Intel Graphics Compiler (IGC) internals</li>
+<li>Some code patterns may inhibit compiler optimization (e.g., excessive SLM blocks automatic register allocation)</li>
+<li>No feedback mechanism for LLM to see compiled ISA</li>
+</ul>
+<hr />
+<h2>8. Directional Guidance for Future Work</h2>
+<h3>8.1 Near-term (v12–v13)</h3>
+<p><strong>Goal</strong>: Micro-tune within v10's architecture, from 1.07ms to 0.8–0.9ms</p>
+<h4>Strategy A: Low-Temperature Fine-Tuning</h4>
+<pre><code>Seed: v10 best (1.07ms)
+Temperature: 0.15–0.2
+Instructions: Explicitly prohibit architecture changes, allow only micro-optimizations
+Directions:
+  - Vectorized SLM reads (intel_sub_group_block_read_us)
+  - Vectorized B reads (vload2, block reads)
+  - Remove dead code (K-remainder path when K%32==0)
+  - Try TILE_M=48 or 64 (keeping B-global)
+  - K-loop unroll 2x
+  - Prefetch B data
+</code></pre>
+<h4>Strategy B: Compiler-Guided Optimization</h4>
+<pre><code>Add: IGC ISA dump analysis in evaluation pipeline
+Let LLM see actual compiled instruction sequences
+Identify compiler-missed hotspots (unnecessary spill/fill)
+Feed back into next generation's prompt
+</code></pre>
+<h3>8.2 Medium-term</h3>
+<h4>Adaptive Temperature Scheduling</h4>
+<pre><code class="language-python">def adaptive_temperature(trial, best_score, prev_best_score):
+    if trial &lt; 3:
+        return 0.3  # Initial high-temp exploration
+    improvement_rate = (best_score - prev_best_score) / prev_best_score
+    if improvement_rate &gt; 0.1:
+        return 0.2  # Still improving fast, moderate temp
+    elif improvement_rate &gt; 0.01:
+        return 0.15  # Incremental, low temp
+    else:
+        return 0.25  # Stalled, raise temp for breakthrough
+</code></pre>
+<h4>Multi-Phase Evolution</h4>
+<pre><code>Phase 1 (T=0.3, no seed): Explore fundamental architecture space
+Phase 2 (T=0.25, Phase 1 best as seed): Seek architectural mutations
+Phase 3 (T=0.15, Phase 2 best as seed): Fine-tune
+</code></pre>
+<h4>Refined Behavioral Features</h4>
+<ul>
+<li>Current 4D space too coarse (all 1ms kernels in same cell)</li>
+<li>Add dimensions: WG_size_opt, SLM_usage_opt, tile_shape_opt</li>
+<li>Or use continuous coordinates + adaptive grid partitioning</li>
+</ul>
+<h3>8.3 Long-term Directions</h3>
+<h4>1. Multi-Level Optimization Pipeline</h4>
+<pre><code>LLM generates OCL → IGC compiles → ISA analysis → LLM understands ISA →
+→ Produces compiler-friendly OCL patterns
+</code></pre>
+<h4>2. Cross-Problem / Cross-Hardware Generalization</h4>
+<ul>
+<li>Transfer v10's &quot;A-SLM + B-global&quot; strategy to other GEMM sizes</li>
+<li>Test on different Intel GPUs (Arc A770, Data Center Max)</li>
+<li>Build hardware→strategy knowledge base</li>
+</ul>
+<h4>3. Mixed Precision / Operator Fusion</h4>
+<ul>
+<li>Extend from pure GEMM to GEMM + Bias + ReLU fused kernels</li>
+<li>FP16/INT8 mixed-precision DPAS</li>
+<li>Support different matrix layouts (row-major, column-major, blocked)</li>
+</ul>
+<h4>4. Complement Traditional Autotuning</h4>
+<ul>
+<li>Use LLM evolution to discover architectural prototypes</li>
+<li>Use traditional grid search to fine-tune numerical parameters (tile sizes, unroll factors)</li>
+<li>Combine strengths of both approaches</li>
+</ul>
+<h2>9. Conclusions</h2>
+<h3>9.1 Three Core Conclusions</h3>
+<ol>
+<li>
+<p><strong>LLM evolutionary optimization can discover counter-intuitive high-performance GPU kernels</strong>: v10's &quot;A-SLM + B-global&quot; strategy does not come from textbooks — it is an &quot;accidental&quot; product of evolutionary search. This validates the fundamental viability of this approach for GPU optimization.</p>
+</li>
+<li>
+<p><strong>Temperature × Seed = determinant of evolution effectiveness</strong>: Temperature 0.25 combined with a &quot;correct but non-optimal&quot; seed is the most effective combination. Neither factor alone suffices — seedless high-temperature cannot produce correct kernels; seeded zero-temperature cannot produce new architectures.</p>
+</li>
+<li>
+<p><strong>GPU microarchitecture constraints set the current performance ceiling</strong>: ~21% XMX utilization indicates that pure code-level optimization is approaching its limits. Further breakthroughs require compiler co-optimization, ISA-level knowledge, or deeper hardware feature exploitation.</p>
+</li>
+</ol>
+<h3>9.2 Final Performance Milestones</h3>
+<pre><code>Reference baseline: 33.9ms  (0.63 TFLOPS,  0.7% XMX)
+v4 direct gen:      11.4ms  (1.88 TFLOPS,  2.0% XMX)
+v10 evolved best:    1.07ms (20.1 TFLOPS, 20.9% XMX)  ← GLOBAL BEST
+Theoretical peak:    0.22ms (96.0 TFLOPS, 100% XMX)
+
+Total speedup: 33.9ms → 1.07ms = 31.7x
+Evolution contribution: 11.4ms → 1.07ms = 10.7x (improvement on seed)
+</code></pre>
+<hr />
+</body>
+</html>
