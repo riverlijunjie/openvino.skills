@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 520" font-family="Arial, sans-serif">
+  <!-- Background -->
+  <rect width="820" height="520" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="410" y="28" text-anchor="middle" font-size="15" font-weight="bold">V16 Cold-Start: XMX Roofline Utilization by Branch</text>
+  <text x="410" y="46" text-anchor="middle" font-size="10.5" fill="#666">FP16 GEMM 2048×2560×2048 on Intel B580 | Theoretical peak = 0.224ms (100%)</text>
+
+  <!-- Chart area: x=90..760, y=70..420 -->
+  <!-- Y range: 0% to 18%, height=350, so 1%=19.44px -->
+  <!-- y = 420 - (pct * 19.44) -->
+
+  <!-- Axes -->
+  <line x1="90" y1="420" x2="760" y2="420" stroke="#333" stroke-width="1.5"/>
+  <line x1="90" y1="70" x2="90" y2="420" stroke="#333" stroke-width="1.5"/>
+
+  <!-- Y-axis label -->
+  <text x="28" y="245" text-anchor="middle" font-size="12" transform="rotate(-90,28,245)">XMX Utilization (%)</text>
+
+  <!-- X-axis label -->
+  <text x="425" y="470" text-anchor="middle" font-size="12">Trial (Iteration)</text>
+
+  <!-- Y-axis grid: 0,2,4,6,8,10,12,14,16,18 -->
+  <!-- 0%: y=420, 2%: y=381.1, 4%: y=342.2, 6%: y=303.3, 8%: y=264.4, 10%: y=225.6, 12%: y=186.7, 14%: y=147.8, 16%: y=108.9, 18%: y=70 -->
+  <line x1="90" y1="381.1" x2="760" y2="381.1" stroke="#eee" stroke-width="0.7" stroke-dasharray="4,3"/>
+  <text x="82" y="385" text-anchor="end" font-size="9.5">2</text>
+
+  <line x1="90" y1="342.2" x2="760" y2="342.2" stroke="#eee" stroke-width="0.7" stroke-dasharray="4,3"/>
+  <text x="82" y="346" text-anchor="end" font-size="9.5">4</text>
+
+  <line x1="90" y1="303.3" x2="760" y2="303.3" stroke="#eee" stroke-width="0.7" stroke-dasharray="4,3"/>
+  <text x="82" y="307" text-anchor="end" font-size="9.5">6</text>
+
+  <line x1="90" y1="264.4" x2="760" y2="264.4" stroke="#eee" stroke-width="0.7" stroke-dasharray="4,3"/>
+  <text x="82" y="268" text-anchor="end" font-size="9.5">8</text>
+
+  <line x1="90" y1="225.6" x2="760" y2="225.6" stroke="#eee" stroke-width="0.7" stroke-dasharray="4,3"/>
+  <text x="82" y="229" text-anchor="end" font-size="9.5">10</text>
+
+  <line x1="90" y1="186.7" x2="760" y2="186.7" stroke="#eee" stroke-width="0.7" stroke-dasharray="4,3"/>
+  <text x="82" y="190" text-anchor="end" font-size="9.5">12</text>
+
+  <line x1="90" y1="147.8" x2="760" y2="147.8" stroke="#eee" stroke-width="0.7" stroke-dasharray="4,3"/>
+  <text x="82" y="151" text-anchor="end" font-size="9.5">14</text>
+
+  <line x1="90" y1="108.9" x2="760" y2="108.9" stroke="#eee" stroke-width="0.7" stroke-dasharray="4,3"/>
+  <text x="82" y="112" text-anchor="end" font-size="9.5">16</text>
+
+  <line x1="90" y1="70" x2="760" y2="70" stroke="#eee" stroke-width="0.7" stroke-dasharray="4,3"/>
+  <text x="82" y="74" text-anchor="end" font-size="9.5">18</text>
+
+  <text x="82" y="424" text-anchor="end" font-size="9.5">0</text>
+
+  <!-- X-axis: Trial 0-11, spacing = 670/11 = 60.9px -->
+  <!-- x = 90 + trial * 60.9 -->
+  <text x="90" y="438" text-anchor="middle" font-size="10">0</text>
+  <text x="150.9" y="438" text-anchor="middle" font-size="10">1</text>
+  <text x="211.8" y="438" text-anchor="middle" font-size="10">2</text>
+  <text x="272.7" y="438" text-anchor="middle" font-size="10">3</text>
+  <text x="333.6" y="438" text-anchor="middle" font-size="10">4</text>
+  <text x="394.5" y="438" text-anchor="middle" font-size="10">5</text>
+  <text x="455.5" y="438" text-anchor="middle" font-size="10">6</text>
+  <text x="516.4" y="438" text-anchor="middle" font-size="10">7</text>
+  <text x="577.3" y="438" text-anchor="middle" font-size="10">8</text>
+  <text x="638.2" y="438" text-anchor="middle" font-size="10">9</text>
+  <text x="699.1" y="438" text-anchor="middle" font-size="10">10</text>
+  <text x="760" y="438" text-anchor="middle" font-size="10">11</text>
+
+  <!-- X tick marks -->
+  <line x1="90" y1="420" x2="90" y2="426" stroke="#333" stroke-width="1"/>
+  <line x1="150.9" y1="420" x2="150.9" y2="426" stroke="#333" stroke-width="1"/>
+  <line x1="211.8" y1="420" x2="211.8" y2="426" stroke="#333" stroke-width="1"/>
+  <line x1="272.7" y1="420" x2="272.7" y2="426" stroke="#333" stroke-width="1"/>
+  <line x1="333.6" y1="420" x2="333.6" y2="426" stroke="#333" stroke-width="1"/>
+  <line x1="394.5" y1="420" x2="394.5" y2="426" stroke="#333" stroke-width="1"/>
+  <line x1="455.5" y1="420" x2="455.5" y2="426" stroke="#333" stroke-width="1"/>
+  <line x1="516.4" y1="420" x2="516.4" y2="426" stroke="#333" stroke-width="1"/>
+  <line x1="577.3" y1="420" x2="577.3" y2="426" stroke="#333" stroke-width="1"/>
+  <line x1="638.2" y1="420" x2="638.2" y2="426" stroke="#333" stroke-width="1"/>
+  <line x1="699.1" y1="420" x2="699.1" y2="426" stroke="#333" stroke-width="1"/>
+  <line x1="760" y1="420" x2="760" y2="426" stroke="#333" stroke-width="1"/>
+
+  <!-- Coord helper: y = 420 - (pct * 19.44) -->
+  <!-- Branch v0 (Blue #2563eb): T3=14.5 T4=13.7 T5=14.3 T6=17.2 T7=13.3 T8=17.0 T9=16.4 T10=13.8 T11=13.7 -->
+  <!-- y: 14.5->138.1, 13.7->153.7, 14.3->142.0, 17.2->85.6, 13.3->161.4, 17.0->89.5, 16.4->101.2, 13.8->151.7, 13.7->153.7 -->
+  <polyline points="272.7,138.1 333.6,153.7 394.5,142.0 455.5,85.6 516.4,161.4 577.3,89.5 638.2,101.2 699.1,151.7 760,153.7"
+    fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="272.7" cy="138.1" r="5" fill="#2563eb"/>
+  <circle cx="333.6" cy="153.7" r="5" fill="#2563eb"/>
+  <circle cx="394.5" cy="142.0" r="5" fill="#2563eb"/>
+  <circle cx="455.5" cy="85.6" r="5" fill="#2563eb" stroke="#fff" stroke-width="1.5"/>
+  <circle cx="516.4" cy="161.4" r="5" fill="#2563eb"/>
+  <circle cx="577.3" cy="89.5" r="5" fill="#2563eb"/>
+  <circle cx="638.2" cy="101.2" r="5" fill="#2563eb"/>
+  <circle cx="699.1" cy="151.7" r="5" fill="#2563eb"/>
+  <circle cx="760" cy="153.7" r="5" fill="#2563eb"/>
+
+  <!-- Branch v1 (Red #dc2626): T0=0.66 T2=15.3 T3=13.9 T4=14.3 T6=16.1 T8=16.2 T9=13.7 T10=13.9 T11=14.2 -->
+  <!-- y: 0.66->407.2, 15.3->122.6, 13.9->149.8, 14.3->142.0, 16.1->107.0, 16.2->105.1, 13.7->153.7, 13.9->149.8, 14.2->144.0 -->
+  <polyline points="90,407.2 211.8,122.6 272.7,149.8 333.6,142.0 455.5,107.0 577.3,105.1 638.2,153.7 699.1,149.8 760,144.0"
+    fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="8,4"/>
+  <circle cx="90" cy="407.2" r="5" fill="#dc2626"/>
+  <circle cx="211.8" cy="122.6" r="5" fill="#dc2626"/>
+  <circle cx="272.7" cy="149.8" r="5" fill="#dc2626"/>
+  <circle cx="333.6" cy="142.0" r="5" fill="#dc2626"/>
+  <circle cx="455.5" cy="107.0" r="5" fill="#dc2626"/>
+  <circle cx="577.3" cy="105.1" r="5" fill="#dc2626"/>
+  <circle cx="638.2" cy="153.7" r="5" fill="#dc2626"/>
+  <circle cx="699.1" cy="149.8" r="5" fill="#dc2626"/>
+  <circle cx="760" cy="144.0" r="5" fill="#dc2626"/>
+
+  <!-- Branch v2 (Green #16a34a): T0=15.3 T1=0.66 T2=17.2 T4=13.8 T7=13.9 T8=13.9 T9=17.1 -->
+  <!-- y: 15.3->122.6, 0.66->407.2, 17.2->85.6, 13.8->151.7, 13.9->149.8, 13.9->149.8, 17.1->87.6 -->
+  <polyline points="90,122.6 150.9,407.2 211.8,85.6 333.6,151.7 516.4,149.8 577.3,149.8 638.2,87.6"
+    fill="none" stroke="#16a34a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3,5"/>
+  <circle cx="90" cy="122.6" r="5" fill="#16a34a"/>
+  <circle cx="150.9" cy="407.2" r="5" fill="#16a34a"/>
+  <circle cx="211.8" cy="85.6" r="5" fill="#16a34a" stroke="#fff" stroke-width="1.5"/>
+  <circle cx="333.6" cy="151.7" r="5" fill="#16a34a"/>
+  <circle cx="516.4" cy="149.8" r="5" fill="#16a34a"/>
+  <circle cx="577.3" cy="149.8" r="5" fill="#16a34a"/>
+  <circle cx="638.2" cy="87.6" r="5" fill="#16a34a"/>
+
+  <!-- Branch v3 (Orange #ea580c): T0=0.66 T2=16.2 -->
+  <!-- y: 0.66->407.2, 16.2->105.1 -->
+  <line x1="90" y1="407.2" x2="211.8" y2="105.1" stroke="#ea580c" stroke-width="2.2" stroke-dasharray="2,6"/>
+  <circle cx="90" cy="407.2" r="5" fill="#ea580c"/>
+  <circle cx="211.8" cy="105.1" r="5" fill="#ea580c"/>
+
+  <!-- Best line at 17.2% -->
+  <line x1="90" y1="85.6" x2="760" y2="85.6" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="6,4" opacity="0.7"/>
+  <text x="765" y="89" font-size="9" fill="#d97706" font-weight="bold">Best: 17.2%</text>
+
+  <!-- Annotation arrows for key events -->
+  <!-- Trial 0 v2: first breakthrough -->
+  <text x="90" y="113" font-size="9" fill="#16a34a" font-weight="bold">1.46ms</text>
+
+  <!-- Trial 2 v2: global best -->
+  <text x="195" y="75" font-size="9.5" fill="#16a34a" font-weight="bold">★ 1.30ms</text>
+
+  <!-- Trial 6 v0: tied best -->
+  <text x="459" y="76" font-size="9.5" fill="#2563eb" font-weight="bold">★ 1.30ms</text>
+
+  <!-- Note about 0.66% entries -->
+  <text x="120" y="400" font-size="8.5" fill="#888">← 34ms (0.66%)</text>
+
+  <!-- Legend box -->
+  <rect x="555" y="440" width="250" height="70" rx="4" fill="#f8f9fa" stroke="#ddd" stroke-width="1"/>
+  <line x1="565" y1="457" x2="595" y2="457" stroke="#2563eb" stroke-width="2.2"/>
+  <circle cx="580" cy="457" r="3.5" fill="#2563eb"/>
+  <text x="602" y="461" font-size="10.5">Branch v0 (9 correct)</text>
+
+  <line x1="565" y1="475" x2="595" y2="475" stroke="#dc2626" stroke-width="2.2" stroke-dasharray="8,4"/>
+  <circle cx="580" cy="475" r="3.5" fill="#dc2626"/>
+  <text x="602" y="479" font-size="10.5">Branch v1 (9 correct)</text>
+
+  <line x1="565" y1="493" x2="595" y2="493" stroke="#16a34a" stroke-width="2.2" stroke-dasharray="3,5"/>
+  <circle cx="580" cy="493" r="3.5" fill="#16a34a"/>
+  <text x="602" y="497" font-size="10.5">Branch v2 (7 correct)</text>
+
+  <line x1="692" y1="457" x2="722" y2="457" stroke="#ea580c" stroke-width="2.2" stroke-dasharray="2,6"/>
+  <circle cx="707" cy="457" r="3.5" fill="#ea580c"/>
+  <text x="729" y="461" font-size="10.5">Branch v3 (2 correct)</text>
+
+  <!-- Footer note -->
+  <text x="410" y="505" text-anchor="middle" font-size="9.5" fill="#999">★ = Global best (1.30ms = 17.2% XMX) | v15 warm-start best: 0.274ms = 81.6% XMX (off chart)</text>
+</svg>
