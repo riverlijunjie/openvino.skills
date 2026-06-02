@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="980" viewBox="0 0 1500 980" role="img" aria-labelledby="title desc">
+  <title id="title">Two-Level Kernel Optimization Agent Flow</title>
+  <desc id="desc">Clean English-only execution flow for a two-level Kernel Foundry based kernel optimization agent. The inner CustomTask loop performs kernel generation and micro testing; the outer loop performs E2E validation and promotion.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#334155"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .bandOuter { fill: #eef2ff; stroke: #6366f1; stroke-width: 2; rx: 18; }
+      .bandInner { fill: #ecfeff; stroke: #0891b2; stroke-width: 2; rx: 18; }
+      .bandData { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 2; rx: 18; }
+      .box { fill: #ffffff; stroke: #334155; stroke-width: 2; rx: 12; }
+      .green { fill: #f0fdf4; stroke: #16a34a; stroke-width: 2; rx: 12; }
+      .red { fill: #fef2f2; stroke: #dc2626; stroke-width: 2; rx: 12; }
+      .orange { fill: #fff7ed; stroke: #f97316; stroke-width: 2; rx: 12; }
+      .title { font-family: Arial, Helvetica, sans-serif; font-size: 28px; font-weight: 700; fill: #0f172a; }
+      .subtitle { font-family: Arial, Helvetica, sans-serif; font-size: 15px; fill: #475569; }
+      .section { font-family: Arial, Helvetica, sans-serif; font-size: 16px; font-weight: 700; fill: #0f172a; }
+      .text { font-family: Arial, Helvetica, sans-serif; font-size: 14px; fill: #0f172a; }
+      .small { font-family: Arial, Helvetica, sans-serif; font-size: 12px; fill: #475569; }
+      .arrow { stroke: #334155; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .dash { stroke-dasharray: 7 5; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1500" height="980"/>
+  <text class="title" x="60" y="52">Two-Level Kernel Optimization Agent Flow</text>
+  <text class="subtitle" x="60" y="78">Inner loop: fast KF CustomTask evolution. Outer loop: expensive E2E validation and promotion.</text>
+
+  <rect class="bandOuter" x="60" y="115" width="1380" height="185"/>
+  <text class="section" x="90" y="150">Outer Agent Loop: Plan a Kernel Foundry CustomTask Round</text>
+
+  <rect class="box" x="110" y="180" width="170" height="70"/>
+  <text class="text" x="145" y="209">User Request</text>
+  <text class="small" x="132" y="232">goal, constraints, budget</text>
+
+  <rect class="box" x="355" y="180" width="175" height="70"/>
+  <text class="text" x="390" y="209">Task Contract</text>
+  <text class="small" x="386" y="232">explicit or implicit</text>
+
+  <rect class="box" x="605" y="180" width="180" height="70"/>
+  <text class="text" x="646" y="209">Outer Plan</text>
+  <text class="small" x="628" y="232">task direction and budget</text>
+
+  <rect class="box" x="860" y="180" width="210" height="70"/>
+  <text class="text" x="903" y="209">Create KF Task</text>
+  <text class="small" x="894" y="232">CustomTask workspace</text>
+
+  <rect class="green" x="1160" y="180" width="185" height="70"/>
+  <text class="text" x="1197" y="209">Run Inner Loop</text>
+  <text class="small" x="1194" y="232">single tool call</text>
+
+  <path class="arrow" d="M280 215 H355"/>
+  <path class="arrow" d="M530 215 H605"/>
+  <path class="arrow" d="M785 215 H860"/>
+  <path class="arrow" d="M1070 215 H1160"/>
+
+  <rect class="bandInner" x="110" y="360" width="1280" height="300"/>
+  <text class="section" x="140" y="395">Inner Kernel Foundry CustomTask Evolution Loop: Many InnerTrials, No E2E</text>
+
+  <rect class="box" x="165" y="430" width="150" height="65"/>
+  <text class="text" x="190" y="457">Generate</text>
+  <text class="small" x="185" y="478">kernel variant</text>
+
+  <rect class="box" x="395" y="430" width="150" height="65"/>
+  <text class="text" x="452" y="457">Build</text>
+  <text class="small" x="438" y="478">compile</text>
+
+  <rect class="red" x="625" y="430" width="150" height="65"/>
+  <text class="text" x="661" y="457">Correctness</text>
+  <text class="small" x="652" y="478">correct tests</text>
+
+  <rect class="box" x="855" y="430" width="150" height="65"/>
+  <text class="text" x="895" y="457">Perf Test</text>
+  <text class="small" x="884" y="478">micro metrics</text>
+
+  <rect class="orange" x="1085" y="430" width="150" height="65"/>
+  <text class="text" x="1115" y="457">Record Trial</text>
+  <text class="small" x="1105" y="478">InnerTrial result</text>
+
+  <path class="arrow" d="M315 462 H395"/>
+  <path class="arrow" d="M545 462 H625"/>
+  <path class="arrow" d="M775 462 H855"/>
+  <path class="arrow" d="M1005 462 H1085"/>
+
+  <rect class="green" x="480" y="560" width="225" height="65"/>
+  <text class="text" x="532" y="587">Select Inner Best</text>
+  <text class="small" x="520" y="608">best kernel + evidence</text>
+
+  <rect class="box" x="830" y="560" width="220" height="65"/>
+  <text class="text" x="876" y="587">Continue Inner Loop?</text>
+  <text class="small" x="875" y="608">budget or convergence</text>
+
+  <path class="arrow" d="M1160 495 V592 H1050"/>
+  <path class="arrow" d="M830 592 H705"/>
+  <path class="arrow dash" d="M940 560 V535 H240 V495"/>
+  <text class="small" x="250" y="527">yes: next InnerTrial</text>
+
+  <path class="arrow" d="M592 660 V725"/>
+
+  <rect class="bandOuter" x="60" y="725" width="1380" height="145"/>
+  <text class="section" x="90" y="760">Outer Agent Loop: Candidate, E2E, and Next Round</text>
+
+  <rect class="box" x="125" y="790" width="225" height="60"/>
+  <text class="text" x="174" y="816">Materialize Candidate</text>
+  <text class="small" x="168" y="837">from selected inner best</text>
+
+  <rect class="box" x="455" y="790" width="175" height="60"/>
+  <text class="text" x="506" y="816">Integrate</text>
+  <text class="small" x="485" y="837">optional runtime</text>
+
+  <rect class="red" x="735" y="790" width="180" height="60"/>
+  <text class="text" x="790" y="816">E2E Test</text>
+  <text class="small" x="768" y="837">outer-only, expensive</text>
+
+  <rect class="orange" x="1020" y="790" width="175" height="60"/>
+  <text class="text" x="1068" y="816">Decision</text>
+  <text class="small" x="1047" y="837">promote or retry</text>
+
+  <path class="arrow" d="M350 820 H455"/>
+  <path class="arrow" d="M630 820 H735"/>
+  <path class="arrow" d="M915 820 H1020"/>
+
+  <path class="arrow dash" d="M1195 820 H1365 V150 H695 V180"/>
+  <text class="small" x="1055" y="705">if E2E fails: plan a new KF CustomTask round</text>
+
+  <rect class="bandData" x="60" y="905" width="1380" height="52"/>
+  <text class="text" x="95" y="937">Evidence: inner_trials.jsonl · best_kernel · candidates.jsonl · E2E results · final_report.md</text>
+</svg>

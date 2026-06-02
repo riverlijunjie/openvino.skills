@@ -1,0 +1,200 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1120" viewBox="0 0 1680 1120" role="img" aria-labelledby="title desc">
+  <title id="title">Detailed Kernel Foundry Agent Architecture</title>
+  <desc id="desc">English-only architecture diagram with clean swimlanes and non-overlapping connectors. The diagram separates outer agent control, tool adapters, Kernel Foundry inner evolution, outer E2E boundary, and evidence memory.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#334155"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { font-family: Arial, Helvetica, sans-serif; font-size: 28px; font-weight: 700; fill: #0f172a; }
+      .sub { font-family: Arial, Helvetica, sans-serif; font-size: 15px; fill: #475569; }
+      .laneA { fill: #eef2ff; stroke: #6366f1; stroke-width: 2; rx: 20; }
+      .laneB { fill: #ecfeff; stroke: #0891b2; stroke-width: 2; rx: 20; }
+      .laneC { fill: #f0fdf4; stroke: #16a34a; stroke-width: 2; rx: 20; }
+      .laneD { fill: #fef2f2; stroke: #dc2626; stroke-width: 2; rx: 20; }
+      .laneE { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 2; rx: 20; }
+      .box { fill: #ffffff; stroke: #334155; stroke-width: 2; rx: 12; }
+      .soft { fill: #fff7ed; stroke: #f97316; stroke-width: 2; rx: 12; }
+      .green { fill: #f0fdf4; stroke: #16a34a; stroke-width: 2; rx: 12; }
+      .red { fill: #fef2f2; stroke: #dc2626; stroke-width: 2; rx: 12; }
+      .head { font-family: Arial, Helvetica, sans-serif; font-size: 17px; font-weight: 700; fill: #0f172a; }
+      .text { font-family: Arial, Helvetica, sans-serif; font-size: 13.5px; fill: #0f172a; }
+      .small { font-family: Arial, Helvetica, sans-serif; font-size: 11.5px; fill: #475569; }
+      .arrow { stroke: #334155; stroke-width: 2.1; fill: none; marker-end: url(#arrow); }
+      .dash { stroke-dasharray: 7 5; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1680" height="1120"/>
+  <text class="title" x="60" y="52">Detailed Kernel Foundry Agent Architecture</text>
+  <text class="sub" x="60" y="78">Outer Agent controls planning and E2E decisions; Kernel Foundry owns the inner CustomTask evolution loop.</text>
+
+  <!-- Lanes -->
+  <rect class="laneA" x="50" y="120" width="280" height="850"/>
+  <rect class="laneB" x="370" y="120" width="280" height="850"/>
+  <rect class="laneC" x="690" y="120" width="320" height="850"/>
+  <rect class="laneD" x="1050" y="120" width="260" height="850"/>
+  <rect class="laneE" x="1350" y="120" width="280" height="850"/>
+
+  <text class="head" x="80" y="155">1. Outer Agent</text>
+  <text class="head" x="400" y="155">2. Tool Adapters</text>
+  <text class="head" x="720" y="155">3. Kernel Foundry Core</text>
+  <text class="head" x="1080" y="155">4. E2E Boundary</text>
+  <text class="head" x="1380" y="155">5. Evidence / Memory</text>
+
+  <!-- Lane A -->
+  <rect class="box" x="80" y="185" width="220" height="70"/>
+  <text class="text" x="112" y="213">Requirement Parser</text>
+  <text class="small" x="105" y="235">NL request to contract</text>
+
+  <rect class="box" x="80" y="305" width="220" height="70"/>
+  <text class="text" x="128" y="333">Outer Planner</text>
+  <text class="small" x="105" y="355">round goal and budget</text>
+
+  <rect class="soft" x="80" y="425" width="220" height="70"/>
+  <text class="text" x="122" y="453">Skill Hints</text>
+  <text class="small" x="104" y="475">knowledge, not facts</text>
+
+  <rect class="box" x="80" y="545" width="220" height="70"/>
+  <text class="text" x="113" y="573">Outer Round State</text>
+  <text class="small" x="105" y="595">parent, budget, stop rule</text>
+
+  <rect class="soft" x="80" y="665" width="220" height="70"/>
+  <text class="text" x="124" y="693">Decision Logic</text>
+  <text class="small" x="106" y="715">promote, retry, or stop</text>
+
+  <rect class="box" x="80" y="785" width="220" height="70"/>
+  <text class="text" x="121" y="813">Report Writer</text>
+  <text class="small" x="104" y="835">final report and lineage</text>
+
+  <!-- Lane B -->
+  <rect class="box" x="400" y="185" width="220" height="70"/>
+  <text class="text" x="455" y="213">load_task</text>
+  <text class="small" x="432" y="235">load or create CustomTask</text>
+
+  <rect class="box" x="400" y="305" width="220" height="70"/>
+  <text class="text" x="422" y="333">run_custom_task_evolution</text>
+  <text class="small" x="444" y="355">call KF inner loop</text>
+
+  <rect class="box" x="400" y="425" width="220" height="70"/>
+  <text class="text" x="420" y="453">materialize_candidate</text>
+  <text class="small" x="433" y="475">best inner trial to Candidate</text>
+
+  <rect class="box" x="400" y="545" width="220" height="70"/>
+  <text class="text" x="442" y="573">integrate_runtime</text>
+  <text class="small" x="444" y="595">optional integration</text>
+
+  <rect class="red" x="400" y="665" width="220" height="70"/>
+  <text class="text" x="454" y="693">benchmark_e2e</text>
+  <text class="small" x="441" y="715">outer-only validation</text>
+
+  <rect class="box" x="400" y="785" width="220" height="70"/>
+  <text class="text" x="450" y="813">record_result</text>
+  <text class="small" x="438" y="835">candidate and artifacts</text>
+
+  <!-- Lane C -->
+  <rect class="green" x="735" y="185" width="230" height="70"/>
+  <text class="text" x="788" y="213">CustomTask</text>
+  <text class="small" x="766" y="235">task.py, config, tests</text>
+
+  <rect class="box" x="735" y="305" width="230" height="70"/>
+  <text class="text" x="778" y="333">CustomTaskController</text>
+  <text class="small" x="772" y="355">owns inner evolution</text>
+
+  <rect class="box" x="735" y="425" width="230" height="70"/>
+  <text class="text" x="780" y="453">TaskRunner</text>
+  <text class="small" x="770" y="475">build and execute trial</text>
+
+  <rect class="red" x="735" y="545" width="230" height="70"/>
+  <text class="text" x="784" y="573">Evaluator</text>
+  <text class="small" x="760" y="595">correctness and perf tests</text>
+
+  <rect class="box" x="735" y="665" width="230" height="70"/>
+  <text class="text" x="785" y="693">Profiler Feedback</text>
+  <text class="small" x="765" y="715">summary for selected trials</text>
+
+  <rect class="green" x="735" y="785" width="230" height="70"/>
+  <text class="text" x="788" y="813">Best Inner Kernel</text>
+  <text class="small" x="763" y="835">selected from many InnerTrials</text>
+
+  <!-- Lane D -->
+  <rect class="box" x="1080" y="425" width="200" height="70"/>
+  <text class="text" x="1133" y="453">Runtime Target</text>
+  <text class="small" x="1117" y="475">OpenVINO / PyTorch-XPU</text>
+
+  <rect class="red" x="1080" y="545" width="200" height="70"/>
+  <text class="text" x="1138" y="573">E2E Test</text>
+  <text class="small" x="1120" y="595">expensive, outer-only</text>
+
+  <rect class="soft" x="1080" y="665" width="200" height="70"/>
+  <text class="text" x="1136" y="693">Promotion Gate</text>
+  <text class="small" x="1118" y="715">requires E2E evidence</text>
+
+  <!-- Lane E -->
+  <rect class="box" x="1380" y="185" width="220" height="70"/>
+  <text class="text" x="1440" y="213">inner_trials</text>
+  <text class="small" x="1430" y="235">per CustomTask run</text>
+
+  <rect class="box" x="1380" y="345" width="220" height="70"/>
+  <text class="text" x="1444" y="373">candidates</text>
+  <text class="small" x="1430" y="395">outer Candidate log</text>
+
+  <rect class="box" x="1380" y="505" width="220" height="70"/>
+  <text class="text" x="1440" y="533">E2E results</text>
+  <text class="small" x="1426" y="555">workload-level evidence</text>
+
+  <rect class="box" x="1380" y="665" width="220" height="70"/>
+  <text class="text" x="1437" y="693">KF DB / RAG</text>
+  <text class="small" x="1420" y="715">seeds and strategy stats</text>
+
+  <rect class="box" x="1380" y="825" width="220" height="70"/>
+  <text class="text" x="1455" y="853">Report</text>
+  <text class="small" x="1428" y="875">final_report.md</text>
+
+  <!-- Internal vertical connectors: each connector uses a gap between boxes only. -->
+  <path class="arrow" d="M190 255 V305"/>
+  <path class="arrow" d="M190 375 V425"/>
+  <path class="arrow" d="M190 495 V545"/>
+  <path class="arrow" d="M190 615 V665"/>
+  <path class="arrow" d="M190 735 V785"/>
+
+  <path class="arrow" d="M510 255 V305"/>
+  <path class="arrow" d="M510 375 V425"/>
+  <path class="arrow" d="M510 495 V545"/>
+  <path class="arrow" d="M510 615 V665"/>
+  <path class="arrow" d="M510 735 V785"/>
+
+  <path class="arrow" d="M850 255 V305"/>
+  <path class="arrow" d="M850 375 V425"/>
+  <path class="arrow" d="M850 495 V545"/>
+  <path class="arrow" d="M850 615 V665"/>
+  <path class="arrow" d="M850 735 V785"/>
+
+  <path class="arrow" d="M1180 495 V545"/>
+  <path class="arrow" d="M1180 615 V665"/>
+
+  <!-- Cross-lane connectors: only horizontal lines through empty gaps between columns. -->
+  <path class="arrow" d="M300 220 H400"/>
+  <path class="arrow" d="M620 220 H735"/>
+  <path class="arrow" d="M620 340 H735"/>
+  <path class="arrow" d="M965 820 H1015 V460 H1080"/>
+  <path class="arrow" d="M620 460 H735"/>
+  <path class="arrow" d="M620 580 H735"/>
+  <path class="arrow" d="M620 700 H735"/>
+  <path class="arrow" d="M965 820 H1035 V580 H1080"/>
+  <path class="arrow" d="M1280 580 H1380"/>
+  <path class="arrow" d="M1280 700 H1380"/>
+  <path class="arrow" d="M620 820 H735"/>
+  <path class="arrow" d="M620 820 H700 V900 H1380"/>
+
+  <!-- Evidence connections use right-side short horizontal connectors. -->
+  <path class="arrow" d="M965 340 H1345 V220 H1380"/>
+  <path class="arrow" d="M620 460 H675 V380 H1380"/>
+  <!-- Retry feedback: bottom corridor, outside all boxes. -->
+  <path class="arrow dash" d="M1080 700 H1040 V1000 H190 V735"/>
+  <text class="small" x="515" y="1030">If E2E fails, feedback returns to Outer Decision and starts a new CustomTask round.</text>
+
+  <rect class="box" x="50" y="1055" width="1580" height="34"/>
+  <text class="small" x="70" y="1077">Invariant: the inner KF CustomTask loop runs many InnerTrials; only the selected best kernel becomes an outer Candidate for E2E testing and promotion.</text>
+</svg>
