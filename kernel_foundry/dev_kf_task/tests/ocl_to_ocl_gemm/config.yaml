@@ -1,0 +1,63 @@
+task_name: gemm_ocl_opt # name for operation
+job_name: test_gemm_ocl_ptl # A name for the job, e.g., experiment name or model name
+
+gpu_arch: ptl # Short name of the target architecture
+language: OCL # The target language
+
+inference:
+  servers:
+  - _target_: kernelgen.inference_server.InferenceServer
+    server_type: intel_gnai
+    model_name: claude-4-6-opus
+    temperature: 0.0
+    max_tokens: 5000
+
+prompt:
+  reference_language: OCL
+  num_optimization_tips: 2
+  include_hardware_specs: true
+  include_inspirations: true
+  rag: []
+
+test_reference: true # If true will run the tests and profiling for the reference too
+
+# evolve mode
+evolve_mode: true
+
+# use_queue: false
+
+# store_generated_kernels_in_db: false
+# paths:
+#     kernels_db_readonly_path: null
+#     kernels_db_insertonly_path: null
+
+# eval_config:
+#     profile_custom_model: false
+#     profile_original_model: false
+
+# database:
+#   config:
+#     exploration_ratio: 0.3
+#     num_top_programs: 4
+
+
+max_iters: 10
+branches_per_iteration: 2
+
+# QD Gradient Tracking
+use_gradient_tracking: true
+gradient_sampling_weight: 0.3
+
+# Fine-tune gradient computation (optional)
+gradient_config:
+  max_history: 10000          # Transitions to remember
+  max_cell_cache: 256         # Cell statistics cache size
+  fitness_weight: 0.4         # Weight for fitness gradient
+  improvement_rate_weight: 0.4 # Weight for improvement rate
+  exploration_weight: 0.2     # Weight for exploring empty cells
+  checkpoint_interval: 100    # Save gradient data every N transitions
+
+# 优化感知 Prompting
+use_optimization_aware_prompting: True
+exploration_strategy: mutate  # mutate/intensify/diversify
+use_exploration_prompts: True

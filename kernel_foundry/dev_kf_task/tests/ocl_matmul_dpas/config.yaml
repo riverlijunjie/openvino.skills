@@ -1,0 +1,73 @@
+task_name: ocl_matmul_dpas
+job_name: test_ocl_matmul_dpas_ptl
+
+gpu_arch: ptl
+language: OCL
+
+inference:
+  servers:
+  # - _target_: kernelgen.inference_server.InferenceServer
+  #   server_type: intel_gnai
+  #   model_name: claude-4-5-sonnet
+  #   temperature: 0.0
+  #   max_tokens: 5000
+  # - _target_: kernelgen.inference_server.InferenceServer
+  #   server_type: intel_gnai
+  #   model_name: gpt-5.3-codex
+  #   temperature: 0.4
+  #   max_tokens: 5000
+  - _target_: kernelgen.inference_server.InferenceServer
+    server_type: aws_bedrock
+    model_name: ${oc.env:CLAUDE_BEDROCK_MODEL,us.anthropic.claude-opus-4-6-v1}
+    temperature: 0.0
+    max_tokens: 10000
+
+prompt:
+  reference_language: OCL
+  num_optimization_tips: 2
+  include_hardware_specs: true
+  include_inspirations: true
+  rag: []
+
+test_reference: true
+
+evolve_mode: true
+
+# database:
+#   config:
+#     exploration_ratio: 0.4
+#     exploitation_ratio: 0.5
+#     # guidance_exploration_rate: 0.3
+#     num_top_programs: 2
+
+max_iters: 30
+branches_per_iteration: 3
+
+# use_feedback_llm: true
+# feedback_llm_config:
+#     model_name: "gpt-5.3-codex"
+#     temperature: 0.3 
+
+
+# initial_seed: "v4_best_11.4ms.cl"  # 关键：温启动
+early_stopping:
+  patience: 2         # 连续2轮无改进则停止
+  min_trials: 3       # 至少运行3轮
+
+syntax_precheck: true   # 快速OpenCL编译检查，跳过语法错误的kernel
+
+# QD Gradient Tracking
+use_gradient_tracking: true
+gradient_sampling_weight: 0.2
+
+gradient_config:
+  max_history: 10000
+  max_cell_cache: 256
+  fitness_weight: 0.4
+  improvement_rate_weight: 0.4
+  exploration_weight: 0.4
+  checkpoint_interval: 100
+
+use_optimization_aware_prompting: True
+exploration_strategy: mutate
+use_exploration_prompts: True

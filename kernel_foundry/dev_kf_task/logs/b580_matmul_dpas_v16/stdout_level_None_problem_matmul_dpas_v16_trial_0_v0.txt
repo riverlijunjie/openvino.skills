@@ -1,0 +1,152 @@
+SyntaxError. 
+ Your output was not in the required format. The code could not be extracted.
+
+Test result on platform Intel Corporation Battlemage G21 [Intel Graphics]:
+==== test session starts
+
+task.py::TestMatmulOCL::test_correctness_wrt_pytorch[0] FAILED           [ 25%]
+task.py::TestMatmulOCL::test_correctness_wrt_pytorch[1] FAILED           [ 50%]
+task.py::TestMatmulOCL::test_correctness_wrt_reference[0] FAILED         [ 75%]
+task.py::TestMatmulOCL::test_correctness_wrt_reference[1] FAILED         [100%]
+
+=================================== FAILURES ===================================
+________________ TestMatmulOCL.test_correctness_wrt_pytorch[0] _________________
+
+self = <task.TestMatmulOCL object at 0x7ebfd32825a0>
+kernel = <function initialize_matmul_kernel.<locals>.run at 0x7ebf6a1351c0>
+ocl_queue = <pyopencl._cl.CommandQueue object at 0x7ebf78336020>, _run = 0
+
+    @pytest.mark.parametrize("_run", range(2))
+    def test_correctness_wrt_pytorch(self, kernel, ocl_queue, _run):
+        args, expected = get_data_on_device(DEFAULT_SHAPE, ocl_queue, seed=_run)
+>       kernel(*args)
+
+task.py:236: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+task.py:197: in run
+    gws = tuple(_eval_gws_expr(e, env) for e in gws_exprs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+task.py:197: in <genexpr>
+    gws = tuple(_eval_gws_expr(e, env) for e in gws_exprs)
+                ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+expr = 'ceil(N/64)*64', env = {'K': 2560, 'M': 2048, 'N': 2048}
+
+    def _eval_gws_expr(expr: str, env: dict[str, int]) -> int:
+        """Evaluate a simple GWS expression like '(N/64)*64' or 'M/32' given M,K,N values."""
+        expr = expr.strip()
+        allowed = set("0123456789+-*/() MKN")
+        if not all(c in allowed for c in expr):
+>           raise ValueError(f"Unsafe GWS expression: {expr}")
+E           ValueError: Unsafe GWS expression: ceil(N/64)*64
+
+task.py:43: ValueError
+________________ TestMatmulOCL.test_correctness_wrt_pytorch[1] _________________
+
+self = <task.TestMatmulOCL object at 0x7ebfd01a7380>
+kernel = <function initialize_matmul_kernel.<locals>.run at 0x7ebf6a1351c0>
+ocl_queue = <pyopencl._cl.CommandQueue object at 0x7ebf78336020>, _run = 1
+
+    @pytest.mark.parametrize("_run", range(2))
+    def test_correctness_wrt_pytorch(self, kernel, ocl_queue, _run):
+        args, expected = get_data_on_device(DEFAULT_SHAPE, ocl_queue, seed=_run)
+>       kernel(*args)
+
+task.py:236: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+task.py:197: in run
+    gws = tuple(_eval_gws_expr(e, env) for e in gws_exprs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+task.py:197: in <genexpr>
+    gws = tuple(_eval_gws_expr(e, env) for e in gws_exprs)
+                ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+expr = 'ceil(N/64)*64', env = {'K': 2560, 'M': 2048, 'N': 2048}
+
+    def _eval_gws_expr(expr: str, env: dict[str, int]) -> int:
+        """Evaluate a simple GWS expression like '(N/64)*64' or 'M/32' given M,K,N values."""
+        expr = expr.strip()
+        allowed = set("0123456789+-*/() MKN")
+        if not all(c in allowed for c in expr):
+>           raise ValueError(f"Unsafe GWS expression: {expr}")
+E           ValueError: Unsafe GWS expression: ceil(N/64)*64
+
+task.py:43: ValueError
+_______________ TestMatmulOCL.test_correctness_wrt_reference[0] ________________
+
+self = <task.TestMatmulOCL object at 0x7ebf78323680>
+kernel = <function initialize_matmul_kernel.<locals>.run at 0x7ebf6a1351c0>
+ocl_queue = <pyopencl._cl.CommandQueue object at 0x7ebf78336020>, _run = 0
+
+    @pytest.mark.parametrize("_run", range(2))
+    def test_correctness_wrt_reference(self, kernel, ocl_queue, _run):
+        args, _ = get_data_on_device(DEFAULT_SHAPE, ocl_queue, seed=100 + _run)
+>       kernel(*args)
+
+task.py:249: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+task.py:197: in run
+    gws = tuple(_eval_gws_expr(e, env) for e in gws_exprs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+task.py:197: in <genexpr>
+    gws = tuple(_eval_gws_expr(e, env) for e in gws_exprs)
+                ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+expr = 'ceil(N/64)*64', env = {'K': 2560, 'M': 2048, 'N': 2048}
+
+    def _eval_gws_expr(expr: str, env: dict[str, int]) -> int:
+        """Evaluate a simple GWS expression like '(N/64)*64' or 'M/32' given M,K,N values."""
+        expr = expr.strip()
+        allowed = set("0123456789+-*/() MKN")
+        if not all(c in allowed for c in expr):
+>           raise ValueError(f"Unsafe GWS expression: {expr}")
+E           ValueError: Unsafe GWS expression: ceil(N/64)*64
+
+task.py:43: ValueError
+_______________ TestMatmulOCL.test_correctness_wrt_reference[1] ________________
+
+self = <task.TestMatmulOCL object at 0x7ebf78323860>
+kernel = <function initialize_matmul_kernel.<locals>.run at 0x7ebf6a1351c0>
+ocl_queue = <pyopencl._cl.CommandQueue object at 0x7ebf78336020>, _run = 1
+
+    @pytest.mark.parametrize("_run", range(2))
+    def test_correctness_wrt_reference(self, kernel, ocl_queue, _run):
+        args, _ = get_data_on_device(DEFAULT_SHAPE, ocl_queue, seed=100 + _run)
+>       kernel(*args)
+
+task.py:249: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+task.py:197: in run
+    gws = tuple(_eval_gws_expr(e, env) for e in gws_exprs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+task.py:197: in <genexpr>
+    gws = tuple(_eval_gws_expr(e, env) for e in gws_exprs)
+                ^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+expr = 'ceil(N/64)*64', env = {'K': 2560, 'M': 2048, 'N': 2048}
+
+    def _eval_gws_expr(expr: str, env: dict[str, int]) -> int:
+        """Evaluate a simple GWS expression like '(N/64)*64' or 'M/32' given M,K,N values."""
+        expr = expr.strip()
+        allowed = set("0123456789+-*/() MKN")
+        if not all(c in allowed for c in expr):
+>           raise ValueError(f"Unsafe GWS expression: {expr}")
+E           ValueError: Unsafe GWS expression: ceil(N/64)*64
+
+task.py:43: ValueError
+=============================== warnings summary ===============================
+task.py::TestMatmulOCL::test_correctness_wrt_pytorch[0]
+  /home/openvino-ci-74/miniforge3/envs/kernel_intel/lib/python3.12/site-packages/pyopencl/cache.py:517: CompilerWarning: Non-empty compiler output encountered. Set the environment variable PYOPENCL_COMPILER_OUTPUT=1 to see more.
+    _create_built_program_from_source_cached(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED task.py::TestMatmulOCL::test_correctness_wrt_pytorch[0] - ValueError: ...
+FAILED task.py::TestMatmulOCL::test_correctness_wrt_pytorch[1] - ValueError: ...
+FAILED task.py::TestMatmulOCL::test_correctness_wrt_reference[0] - ValueError...
+FAILED task.py::TestMatmulOCL::test_correctness_wrt_reference[1] - ValueError...
+================== 4 failed, 1 deselected, 1 warning in 0.77s ==================

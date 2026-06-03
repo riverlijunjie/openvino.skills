@@ -1,0 +1,944 @@
+
+
+# You are a OCL programming expert specializing in GPU kernel optimization. 
+Given a reference OCL implementation, your objective is to create a performant OCL kernel with identical functionality as the reference.
+
+The code you generate will be pasted into an existing project. Make sure to follow the existing code structure and function signatures.
+
+## The user provided the following additional instructions for you:
+Performance optimization techniques to consider:
+- Current kernel achieves 21% XMX utilization (1.07ms for 21.5 GFLOP on 96 TFLOPS peak).
+    Target: <0.5ms (>45% utilization).
+    Key bottleneck: LOW DPAS-to-barrier ratio. Current: 8 DPAS per 2 barriers.
+    Optimization directions (in priority order):
+        1. DOUBLE BUFFERING: Overlap SLM loads with DPAS compute (ping-pong buffers)
+        2. LARGER TILE_M (64 or 128): More DPAS calls per barrier pair → amortize overhead
+        3. INCREASE WG SIZE to 128-256 WIs: Better EU occupancy + faster cooperative loads  
+        4. TILE_K=64: More DPAS per K-tile iteration (4 k16 steps, 16 DPAS per barrier pair)
+        5. B in SLM: Avoid redundant L2 reads across subgroups
+        6. Prefetch: async_work_group_copy or explicit load-ahead
+    Hardware: B580 = 20 Xe2 cores, 96 TFLOPS FP16 XMX, ~456 GB/s, ~24 MB L2
+    DPAS: intel_sub_group_f16_f16_matrix_mad_k16(short8 a, int8 b, float8 acc)
+- Must use Intel OpenCL DPAS instruction(XMX), e.g. intel_sub_group_f16_f16_matrix_mad_k16.
+- Double-buffering: Overlap SLM loads with DPAS computation
+- Prefetching: Use async_work_group_copy for next K-tile
+- Register blocking: Maximize DPAS utilization per register load
+- Loop unrolling: Fully unroll K-loop if TILE_K <= 64
+- SLM bank conflict avoidance: Pad SLM arrays by +1 column
+- Provide explicit launch metadata (GWS/LWS/subgroup hints) in kernel comments.
+
+## Reference code / Task:
+
+This is the reference OCL implementation:
+```
+// Simple row-major FP16 matmul:
+//   C[M,N] = A[M,K] x B[K,N]
+// Input/Output dtype: half
+// Accumulation dtype: float
+__kernel void matmul(
+    __global const half* A,
+    __global const half* B,
+    __global half* C,
+    const int M,
+    const int K,
+    const int N)
+{
+    const int col = get_global_id(0);
+    const int row = get_global_id(1);
+
+    if (row >= M || col >= N)
+        return;
+
+    float acc = 0.0f;
+    for (int k = 0; k < K; ++k) {
+        acc += convert_float(A[row * K + k]) * convert_float(B[k * N + col]);
+    }
+
+    C[row * N + col] = convert_half(acc);
+}
+
+```
+
+## Previous OCL implementations with scores:
+
+### Version 1 (Result: Correctness score: 5 / 5 (compiles and correct), runtime in ms: 1.330):
+```OCL
+#pragma OPENCL EXTENSION cl_intel_subgroups : enable
+#pragma OPENCL EXTENSION cl_intel_subgroup_matrix_multiply_accumulate : enable
+#pragma OPENCL EXTENSION cl_khr_fp16 : enable
+
+// TILE_M=64, TILE_N=128, TILE_K=32
+// 8 subgroups x 16 WIs = 128 WIs per WG
+// Each subgroup: 8 vertical 8x16 DPAS tiles = 64 rows x 16 cols
+// Per K-tile: 2 k16 steps x 8 row-blocks = 16 DPAS per subgroup
+// Double-buffered SLM for A and B
+// SLM A: 2 x 64 x 34 = 8704 bytes, SLM B: 2 x 32 x 130 = 16640 bytes, total ~25KB
+// GWS = (ceil(N/128)*128, ceil(M/64))  LWS = (128, 1)
+
+#define TILE_M 64
+#define TILE_N 128
+#define TILE_K 32
+#define SLM_A_STRIDE (TILE_K + 2)
+#define SLM_B_STRIDE (TILE_N + 2)
+#define NUM_WI 128
+
+__attribute__((intel_reqd_sub_group_size(16)))
+__attribute__((reqd_work_group_size(128, 1, 1)))
+__kernel void matmul(
+    __global const half* restrict A,
+    __global const half* restrict B,
+    __global half* restrict C,
+    const int M,
+    const int K,
+    const int N)
+{
+    const int sg_id = get_sub_group_id();        // 0..7
+    const int sg_lid = get_sub_group_local_id(); // 0..15
+    const int lid = get_local_id(0);             // 0..127
+
+    const int n_base = get_group_id(0) * TILE_N;
+    const int col_base = n_base + sg_id * 16;
+    const int row_base = get_group_id(1) * TILE_M;
+
+    __local half slm_A[2 * TILE_M * SLM_A_STRIDE];
+    __local half slm_B[2 * TILE_K * SLM_B_STRIDE];
+
+    if (row_base >= M || n_base >= N)
+        return;
+
+    // 8 accumulators for 8 row-blocks of 8 rows each = 64 rows
+    float8 acc0 = 0.0f, acc1 = 0.0f, acc2 = 0.0f, acc3 = 0.0f;
+    float8 acc4 = 0.0f, acc5 = 0.0f, acc6 = 0.0f, acc7 = 0.0f;
+
+    const int col_idx = col_base + sg_lid;
+    const bool row_tile_valid = (row_base + TILE_M <= M);
+    const bool col_tile_valid = (n_base + TILE_N <= N);
+    const int num_k_tiles = (K + TILE_K - 1) / TILE_K;
+
+    // A tile: 64 x 32 = 2048 halves, 128 WIs => 16 each
+    // B tile: 32 x 128 = 4096 halves, 128 WIs => 32 each
+
+    // --- Load first tile into buffer 0 ---
+    {
+        __local half* slm_A_cur = slm_A;
+        __local half* slm_B_cur = slm_B;
+
+        // Load A
+        if (row_tile_valid && TILE_K <= K) {
+            #pragma unroll
+            for (int i = 0; i < 16; i++) {
+                int elem_id = lid + i * NUM_WI;
+                int r = elem_id / TILE_K;
+                int c = elem_id % TILE_K;
+                slm_A_cur[r * SLM_A_STRIDE + c] = A[(row_base + r) * K + c];
+            }
+        } else {
+            #pragma unroll
+            for (int i = 0; i < 16; i++) {
+                int elem_id = lid + i * NUM_WI;
+                int r = elem_id / TILE_K;
+                int c = elem_id % TILE_K;
+                int gr = row_base + r;
+                slm_A_cur[r * SLM_A_STRIDE + c] = (gr < M && c < K) ? A[gr * K + c] : (half)0.0h;
+            }
+        }
+
+        // Load B
+        if (col_tile_valid && TILE_K <= K) {
+            #pragma unroll
+            for (int i = 0; i < 32; i++) {
+                int elem_id = lid + i * NUM_WI;
+                int r = elem_id / TILE_N;
+                int c = elem_id % TILE_N;
+                slm_B_cur[r * SLM_B_STRIDE + c] = B[r * N + n_base + c];
+            }
+        } else {
+            #pragma unroll
+            for (int i = 0; i < 32; i++) {
+                int elem_id = lid + i * NUM_WI;
+                int r = elem_id / TILE_N;
+                int c = elem_id % TILE_N;
+                int gn = n_base + c;
+                slm_B_cur[r * SLM_B_STRIDE + c] = (r < K && gn < N) ? B[r * N + gn] : (half)0.0h;
+            }
+        }
+    }
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    for (int kt = 0; kt < num_k_tiles; kt++) {
+        int cur_buf = kt & 1;
+        int next_buf = 1 - cur_buf;
+        int k_cur = kt * TILE_K;
+        int k_next = k_cur + TILE_K;
+        bool has_next = (kt + 1 < num_k_tiles);
+
+        __local half* slm_A_cur = slm_A + cur_buf * TILE_M * SLM_A_STRIDE;
+        __local half* slm_B_cur = slm_B + cur_buf * TILE_K * SLM_B_STRIDE;
+
+        // Load next tile while computing (true double buffering - writes to different buffer)
+        if (has_next) {
+            __local half* slm_A_nxt = slm_A + next_buf * TILE_M * SLM_A_STRIDE;
+            __local half* slm_B_nxt = slm_B + next_buf * TILE_K * SLM_B_STRIDE;
+
+            if (row_tile_valid && k_next + TILE_K <= K) {
+                #pragma unroll
+                for (int i = 0; i < 16; i++) {
+                    int elem_id = lid + i * NUM_WI;
+                    int r = elem_id / TILE_K;
+                    int c = elem_id % TILE_K;
+                    slm_A_nxt[r * SLM_A_STRIDE + c] = A[(row_base + r) * K + k_next + c];
+                }
+            } else {
+                #pragma unroll
+                for (int i = 0; i < 16; i++) {
+                    int elem_id = lid + i * NUM_WI;
+                    int r = elem_id / TILE_K;
+                    int c = elem_id % TILE_K;
+                    int gr = row_base + r;
+                    int gk = k_next + c;
+                    slm_A_nxt[r * SLM_A_STRIDE + c] = (gr < M && gk < K) ? A[gr * K + gk] : (half)0.0h;
+                }
+            }
+
+            if (col_tile_valid && k_next + TILE_K <= K) {
+                #pragma unroll
+                for (int i = 0; i < 32; i++) {
+                    int elem_id = lid + i * NUM_WI;
+                    int r = elem_id / TILE_N;
+                    int c = elem_id % TILE_N;
+                    slm_B_nxt[r * SLM_B_STRIDE + c] = B[(k_next + r) * N + n_base + c];
+                }
+            } else {
+                #pragma unroll
+                for (int i = 0; i < 32; i++) {
+                    int elem_id = lid + i * NUM_WI;
+                    int r = elem_id / TILE_N;
+                    int c = elem_id % TILE_N;
+                    int gk = k_next + r;
+                    int gn = n_base + c;
+                    slm_B_nxt[r * SLM_B_STRIDE + c] = (gk < K && gn < N) ? B[gk * N + gn] : (half)0.0h;
+                }
+            }
+        }
+
+        // Compute: 2 k16 steps x 8 row-blocks = 16 DPAS
+        #pragma unroll
+        for (int kk = 0; kk < TILE_K; kk += 16) {
+            short8 a0, a1, a2, a3, a4, a5, a6, a7;
+
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a0)[r] = as_short(slm_A_cur[r * SLM_A_STRIDE + kk + sg_lid]);
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a1)[r] = as_short(slm_A_cur[(8 + r) * SLM_A_STRIDE + kk + sg_lid]);
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a2)[r] = as_short(slm_A_cur[(16 + r) * SLM_A_STRIDE + kk + sg_lid]);
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a3)[r] = as_short(slm_A_cur[(24 + r) * SLM_A_STRIDE + kk + sg_lid]);
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a4)[r] = as_short(slm_A_cur[(32 + r) * SLM_A_STRIDE + kk + sg_lid]);
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a5)[r] = as_short(slm_A_cur[(40 + r) * SLM_A_STRIDE + kk + sg_lid]);
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a6)[r] = as_short(slm_A_cur[(48 + r) * SLM_A_STRIDE + kk + sg_lid]);
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a7)[r] = as_short(slm_A_cur[(56 + r) * SLM_A_STRIDE + kk + sg_lid]);
+
+            int sg_col_offset = sg_id * 16;
+            int8 b_val;
+            #pragma unroll
+            for (int p = 0; p < 8; p++) {
+                int k_row0 = kk + 2 * p;
+                int k_row1 = k_row0 + 1;
+                short s0 = as_short(slm_B_cur[k_row0 * SLM_B_STRIDE + sg_col_offset + sg_lid]);
+                short s1 = as_short(slm_B_cur[k_row1 * SLM_B_STRIDE + sg_col_offset + sg_lid]);
+                ((int*)&b_val)[p] = as_int((short2)(s0, s1));
+            }
+
+            acc0 = intel_sub_group_f16_f16_matrix_mad_k16(a0, b_val, acc0);
+            acc1 = intel_sub_group_f16_f16_matrix_mad_k16(a1, b_val, acc1);
+            acc2 = intel_sub_group_f16_f16_matrix_mad_k16(a2, b_val, acc2);
+            acc3 = intel_sub_group_f16_f16_matrix_mad_k16(a3, b_val, acc3);
+            acc4 = intel_sub_group_f16_f16_matrix_mad_k16(a4, b_val, acc4);
+            acc5 = intel_sub_group_f16_f16_matrix_mad_k16(a5, b_val, acc5);
+            acc6 = intel_sub_group_f16_f16_matrix_mad_k16(a6, b_val, acc6);
+            acc7 = intel_sub_group_f16_f16_matrix_mad_k16(a7, b_val, acc7);
+        }
+
+        if (has_next) {
+            barrier(CLK_LOCAL_MEM_FENCE);
+        }
+    }
+
+    // Store results
+    const bool col_valid = col_idx < N;
+    if (col_valid) {
+        #pragma unroll
+        for (int r = 0; r < 8; r++)
+            if (row_base + r < M) C[(row_base + r) * N + col_idx] = convert_half(((float*)&acc0)[r]);
+        #pragma unroll
+        for (int r = 0; r < 8; r++)
+            if (row_base + 8 + r < M) C[(row_base + 8 + r) * N + col_idx] = convert_half(((float*)&acc1)[r]);
+        #pragma unroll
+        for (int r = 0; r < 8; r++)
+            if (row_base + 16 + r < M) C[(row_base + 16 + r) * N + col_idx] = convert_half(((float*)&acc2)[r]);
+        #pragma unroll
+        for (int r = 0; r < 8; r++)
+            if (row_base + 24 + r < M) C[(row_base + 24 + r) * N + col_idx] = convert_half(((float*)&acc3)[r]);
+        #pragma unroll
+        for (int r = 0; r < 8; r++)
+            if (row_base + 32 + r < M) C[(row_base + 32 + r) * N + col_idx] = convert_half(((float*)&acc4)[r]);
+        #pragma unroll
+        for (int r = 0; r < 8; r++)
+            if (row_base + 40 + r < M) C[(row_base + 40 + r) * N + col_idx] = convert_half(((float*)&acc5)[r]);
+        #pragma unroll
+        for (int r = 0; r < 8; r++)
+            if (row_base + 48 + r < M) C[(row_base + 48 + r) * N + col_idx] = convert_half(((float*)&acc6)[r]);
+        #pragma unroll
+        for (int r = 0; r < 8; r++)
+            if (row_base + 56 + r < M) C[(row_base + 56 + r) * N + col_idx] = convert_half(((float*)&acc7)[r]);
+    }
+}
+```
+
+### Version 2 (Result: Correctness score: 5 / 5 (compiles and correct), runtime in ms: 1.330):
+```OCL
+#pragma OPENCL EXTENSION cl_intel_subgroups : enable
+#pragma OPENCL EXTENSION cl_intel_subgroup_matrix_multiply_accumulate : enable
+#pragma OPENCL EXTENSION cl_khr_fp16 : enable
+
+// TILE_M=64, TILE_N=128, TILE_K=32
+// 8 subgroups x 16 WIs = 128 WIs per WG
+// Each subgroup: 8 row-blocks of 8x16 = 64x16 output
+// Per K-tile: 2 k16 steps x 8 row-blocks = 16 DPAS per subgroup per barrier pair
+// Double-buffered SLM for A and B
+// SLM A: 2 x 64 x 34 x 2 = 8704 bytes
+// SLM B: 2 x 32 x 130 x 2 = 16640 bytes, total ~25 KB
+// GWS = (ceil(N/128)*128, ceil(M/64))  LWS = (128, 1)
+
+#define TILE_M 64
+#define TILE_N 128
+#define TILE_K 32
+#define SLM_A_STRIDE (TILE_K + 2)
+#define SLM_B_STRIDE (TILE_N + 2)
+#define NUM_WI 128
+
+__attribute__((intel_reqd_sub_group_size(16)))
+__attribute__((reqd_work_group_size(128, 1, 1)))
+__kernel void matmul(
+    __global const half* restrict A,
+    __global const half* restrict B,
+    __global half* restrict C,
+    const int M,
+    const int K,
+    const int N)
+{
+    const int sg_id = get_sub_group_id();        // 0..7
+    const int sg_lid = get_sub_group_local_id(); // 0..15
+    const int lid = get_local_id(0);             // 0..127
+
+    const int n_base = get_group_id(0) * TILE_N;
+    const int row_base = get_group_id(1) * TILE_M;
+
+    __local half slm_A[2 * TILE_M * SLM_A_STRIDE];
+    __local half slm_B[2 * TILE_K * SLM_B_STRIDE];
+
+    if (row_base >= M || n_base >= N)
+        return;
+
+    float8 acc0 = 0.0f, acc1 = 0.0f, acc2 = 0.0f, acc3 = 0.0f;
+    float8 acc4 = 0.0f, acc5 = 0.0f, acc6 = 0.0f, acc7 = 0.0f;
+
+    const int col_base = n_base + sg_id * 16;
+    const int col_idx = col_base + sg_lid;
+    const int sg_col_off = sg_id * 16;
+    const bool row_tile_full = (row_base + TILE_M <= M);
+    const bool col_tile_full = (n_base + TILE_N <= N);
+    const int num_k_tiles = (K + TILE_K - 1) / TILE_K;
+
+    // Macro to load A tile into SLM
+    // A tile: 64x32 = 2048 halves, 128 WIs => 16 each
+    // elem / 32 = elem >> 5, elem % 32 = elem & 31
+    #define LOAD_A_TILE(dst, k_off, bounds_check) \
+    { \
+        _Pragma("unroll") \
+        for (int _i = 0; _i < 16; _i++) { \
+            int _eid = lid + _i * NUM_WI; \
+            int _r = _eid >> 5; \
+            int _c = _eid & 31; \
+            if (bounds_check) { \
+                int _gr = row_base + _r; \
+                int _gk = (k_off) + _c; \
+                (dst)[_r * SLM_A_STRIDE + _c] = (_gr < M && _gk < K) ? A[_gr * K + _gk] : (half)0.0h; \
+            } else { \
+                (dst)[_r * SLM_A_STRIDE + _c] = A[(row_base + _r) * K + (k_off) + _c]; \
+            } \
+        } \
+    }
+
+    // Macro to load B tile into SLM
+    // B tile: 32x128 = 4096 halves, 128 WIs => 32 each
+    // elem / 128 = elem >> 7, elem % 128 = elem & 127
+    #define LOAD_B_TILE(dst, k_off, bounds_check) \
+    { \
+        _Pragma("unroll") \
+        for (int _i = 0; _i < 32; _i++) { \
+            int _eid = lid + _i * NUM_WI; \
+            int _r = _eid >> 7; \
+            int _c = _eid & 127; \
+            if (bounds_check) { \
+                int _gk = (k_off) + _r; \
+                int _gn = n_base + _c; \
+                (dst)[_r * SLM_B_STRIDE + _c] = (_gk < K && _gn < N) ? B[_gk * N + _gn] : (half)0.0h; \
+            } else { \
+                (dst)[_r * SLM_B_STRIDE + _c] = B[((k_off) + _r) * N + n_base + _c]; \
+            } \
+        } \
+    }
+
+    // Macro to do DPAS compute on current SLM buffers
+    #define COMPUTE_TILE(cur_A, cur_B) \
+    { \
+        _Pragma("unroll") \
+        for (int _kk = 0; _kk < TILE_K; _kk += 16) { \
+            int8 _b; \
+            _Pragma("unroll") \
+            for (int _p = 0; _p < 8; _p++) { \
+                int _k0 = _kk + 2 * _p; \
+                short _s0 = as_short((cur_B)[_k0 * SLM_B_STRIDE + sg_col_off + sg_lid]); \
+                short _s1 = as_short((cur_B)[(_k0+1) * SLM_B_STRIDE + sg_col_off + sg_lid]); \
+                ((int*)&_b)[_p] = as_int((short2)(_s0, _s1)); \
+            } \
+            short8 _a; \
+            _Pragma("unroll") \
+            for (int _r = 0; _r < 8; _r++) \
+                ((short*)&_a)[_r] = as_short((cur_A)[_r * SLM_A_STRIDE + _kk + sg_lid]); \
+            acc0 = intel_sub_group_f16_f16_matrix_mad_k16(_a, _b, acc0); \
+            _Pragma("unroll") \
+            for (int _r = 0; _r < 8; _r++) \
+                ((short*)&_a)[_r] = as_short((cur_A)[(8+_r) * SLM_A_STRIDE + _kk + sg_lid]); \
+            acc1 = intel_sub_group_f16_f16_matrix_mad_k16(_a, _b, acc1); \
+            _Pragma("unroll") \
+            for (int _r = 0; _r < 8; _r++) \
+                ((short*)&_a)[_r] = as_short((cur_A)[(16+_r) * SLM_A_STRIDE + _kk + sg_lid]); \
+            acc2 = intel_sub_group_f16_f16_matrix_mad_k16(_a, _b, acc2); \
+            _Pragma("unroll") \
+            for (int _r = 0; _r < 8; _r++) \
+                ((short*)&_a)[_r] = as_short((cur_A)[(24+_r) * SLM_A_STRIDE + _kk + sg_lid]); \
+            acc3 = intel_sub_group_f16_f16_matrix_mad_k16(_a, _b, acc3); \
+            _Pragma("unroll") \
+            for (int _r = 0; _r < 8; _r++) \
+                ((short*)&_a)[_r] = as_short((cur_A)[(32+_r) * SLM_A_STRIDE + _kk + sg_lid]); \
+            acc4 = intel_sub_group_f16_f16_matrix_mad_k16(_a, _b, acc4); \
+            _Pragma("unroll") \
+            for (int _r = 0; _r < 8; _r++) \
+                ((short*)&_a)[_r] = as_short((cur_A)[(40+_r) * SLM_A_STRIDE + _kk + sg_lid]); \
+            acc5 = intel_sub_group_f16_f16_matrix_mad_k16(_a, _b, acc5); \
+            _Pragma("unroll") \
+            for (int _r = 0; _r < 8; _r++) \
+                ((short*)&_a)[_r] = as_short((cur_A)[(48+_r) * SLM_A_STRIDE + _kk + sg_lid]); \
+            acc6 = intel_sub_group_f16_f16_matrix_mad_k16(_a, _b, acc6); \
+            _Pragma("unroll") \
+            for (int _r = 0; _r < 8; _r++) \
+                ((short*)&_a)[_r] = as_short((cur_A)[(56+_r) * SLM_A_STRIDE + _kk + sg_lid]); \
+            acc7 = intel_sub_group_f16_f16_matrix_mad_k16(_a, _b, acc7); \
+        } \
+    }
+
+    // Determine if we need bounds checking at all
+    // Fast path: full tiles for both M and N dimensions, and K is multiple of TILE_K
+    const bool k_full = (K % TILE_K == 0);
+    const bool all_full = row_tile_full && col_tile_full && k_full;
+
+    // --- Load first tile into buffer 0 ---
+    if (all_full) {
+        LOAD_A_TILE(slm_A, 0, 0)
+        LOAD_B_TILE(slm_B, 0, 0)
+    } else {
+        LOAD_A_TILE(slm_A, 0, 1)
+        LOAD_B_TILE(slm_B, 0, 1)
+    }
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    if (all_full) {
+        // Fast path: no bounds checking needed anywhere
+        for (int kt = 0; kt < num_k_tiles; kt++) {
+            int cur_buf = kt & 1;
+            int nxt_buf = 1 - cur_buf;
+            int k_next = (kt + 1) * TILE_K;
+            bool has_next = (kt + 1 < num_k_tiles);
+
+            __local const half* cur_A = slm_A + cur_buf * TILE_M * SLM_A_STRIDE;
+            __local const half* cur_B = slm_B + cur_buf * TILE_K * SLM_B_STRIDE;
+
+            // Start loading next tile (writes to different buffer - no conflict)
+            if (has_next) {
+                __local half* nxt_A = slm_A + nxt_buf * TILE_M * SLM_A_STRIDE;
+                __local half* nxt_B = slm_B + nxt_buf * TILE_K * SLM_B_STRIDE;
+                LOAD_A_TILE(nxt_A, k_next, 0)
+                LOAD_B_TILE(nxt_B, k_next, 0)
+            }
+
+            // Compute on current buffer
+            COMPUTE_TILE(cur_A, cur_B)
+
+            if (has_next) {
+                barrier(CLK_LOCAL_MEM_FENCE);
+            }
+        }
+    } else {
+        // Slow path with bounds checking
+        for (int kt = 0; kt < num_k_tiles; kt++) {
+            int cur_buf = kt & 1;
+            int nxt_buf = 1 - cur_buf;
+            int k_next = (kt + 1) * TILE_K;
+            bool has_next = (kt + 1 < num_k_tiles);
+
+            __local const half* cur_A = slm_A + cur_buf * TILE_M * SLM_A_STRIDE;
+            __local const half* cur_B = slm_B + cur_buf * TILE_K * SLM_B_STRIDE;
+
+            // Start loading next tile
+            if (has_next) {
+                __local half* nxt_A = slm_A + nxt_buf * TILE_M * SLM_A_STRIDE;
+                __local half* nxt_B = slm_B + nxt_buf * TILE_K * SLM_B_STRIDE;
+
+                bool nxt_k_full = (k_next + TILE_K <= K);
+                if (row_tile_full && nxt_k_full) {
+                    LOAD_A_TILE(nxt_A, k_next, 0)
+                } else {
+                    LOAD_A_TILE(nxt_A, k_next, 1)
+                }
+                if (col_tile_full && nxt_k_full) {
+                    LOAD_B_TILE(nxt_B, k_next, 0)
+                } else {
+                    LOAD_B_TILE(nxt_B, k_next, 1)
+                }
+            }
+
+            COMPUTE_TILE(cur_A, cur_B)
+
+            if (has_next) {
+                barrier(CLK_LOCAL_MEM_FENCE);
+            }
+        }
+    }
+
+    // Store results
+    if (col_idx < N) {
+        #define STORE_BLOCK(off, acc_reg) \
+        { \
+            if (row_base + (off) + 8 <= M) { \
+                _Pragma("unroll") \
+                for (int _r = 0; _r < 8; _r++) \
+                    C[(row_base + (off) + _r) * N + col_idx] = convert_half(((float*)&(acc_reg))[_r]); \
+            } else { \
+                _Pragma("unroll") \
+                for (int _r = 0; _r < 8; _r++) \
+                    if (row_base + (off) + _r < M) \
+                        C[(row_base + (off) + _r) * N + col_idx] = convert_half(((float*)&(acc_reg))[_r]); \
+            } \
+        }
+
+        STORE_BLOCK(0, acc0)
+        STORE_BLOCK(8, acc1)
+        STORE_BLOCK(16, acc2)
+        STORE_BLOCK(24, acc3)
+        STORE_BLOCK(32, acc4)
+        STORE_BLOCK(40, acc5)
+        STORE_BLOCK(48, acc6)
+        STORE_BLOCK(56, acc7)
+
+        #undef STORE_BLOCK
+    }
+
+    #undef LOAD_A_TILE
+    #undef LOAD_B_TILE
+    #undef COMPUTE_TILE
+}
+```
+
+### Previous kernel and evaluation:
+Here is the last OCL kernel we tested (Result: Correctness score: 5 / 5 (compiles and correct), runtime in ms: 1.310):
+```OCL
+#pragma OPENCL EXTENSION cl_intel_subgroups : enable
+#pragma OPENCL EXTENSION cl_intel_subgroup_matrix_multiply_accumulate : enable
+#pragma OPENCL EXTENSION cl_khr_fp16 : enable
+
+// TILE_M=64, TILE_N=128, TILE_K=32
+// 8 subgroups x 16 WIs = 128 WIs per WG
+// Each subgroup: 8 row-blocks of 8 rows x 16 cols = 64x16
+// Per K-tile: 2 k16 steps x 8 row-blocks = 16 DPAS per subgroup
+// True double buffering: load next A+B tile interleaved with DPAS compute on current tile
+// SLM A: 2 x 64 x 34 halves, SLM B: 2 x 32 x 130 halves, total ~25KB
+// GWS = (ceil(N/128)*128, ceil(M/64))  LWS = (128, 1)
+
+#define TILE_M 64
+#define TILE_N 128
+#define TILE_K 32
+#define SLM_A_STRIDE (TILE_K + 2)
+#define SLM_B_STRIDE (TILE_N + 2)
+#define NUM_WI 128
+
+__attribute__((intel_reqd_sub_group_size(16)))
+__attribute__((reqd_work_group_size(128, 1, 1)))
+__kernel void matmul(
+    __global const half* restrict A,
+    __global const half* restrict B,
+    __global half* restrict C,
+    const int M,
+    const int K,
+    const int N)
+{
+    const int sg_id = get_sub_group_id();
+    const int sg_lid = get_sub_group_local_id();
+    const int lid = get_local_id(0);
+
+    const int n_base = get_group_id(0) * TILE_N;
+    const int row_base = get_group_id(1) * TILE_M;
+
+    __local half slm_A[2 * TILE_M * SLM_A_STRIDE];
+    __local half slm_B[2 * TILE_K * SLM_B_STRIDE];
+
+    if (row_base >= M || n_base >= N)
+        return;
+
+    float8 acc0 = 0.0f, acc1 = 0.0f, acc2 = 0.0f, acc3 = 0.0f;
+    float8 acc4 = 0.0f, acc5 = 0.0f, acc6 = 0.0f, acc7 = 0.0f;
+
+    const int col_base = n_base + sg_id * 16;
+    const int col_idx = col_base + sg_lid;
+    const bool row_tile_valid = (row_base + TILE_M <= M);
+    const bool col_tile_valid = (n_base + TILE_N <= N);
+    const int num_k_tiles = (K + TILE_K - 1) / TILE_K;
+
+    // Precompute cooperative load indices for A (16 elements per WI)
+    // A tile: 64 x 32 = 2048 halves / 128 WIs = 16 each
+    // B tile: 32 x 128 = 4096 halves / 128 WIs = 32 each
+
+    // Load first tile (buffer 0)
+    {
+        __local half* a_dst = slm_A;
+        __local half* b_dst = slm_B;
+
+        if (row_tile_valid && TILE_K <= K) {
+            #pragma unroll
+            for (int i = 0; i < 16; i++) {
+                int eid = lid + i * NUM_WI;
+                int r = eid >> 5; // /32
+                int c = eid & 31; // %32
+                a_dst[r * SLM_A_STRIDE + c] = A[(row_base + r) * K + c];
+            }
+        } else {
+            #pragma unroll
+            for (int i = 0; i < 16; i++) {
+                int eid = lid + i * NUM_WI;
+                int r = eid >> 5;
+                int c = eid & 31;
+                int gr = row_base + r;
+                a_dst[r * SLM_A_STRIDE + c] = (gr < M && c < K) ? A[gr * K + c] : (half)0.0h;
+            }
+        }
+
+        if (col_tile_valid && TILE_K <= K) {
+            #pragma unroll
+            for (int i = 0; i < 32; i++) {
+                int eid = lid + i * NUM_WI;
+                int r = eid >> 7; // /128
+                int c = eid & 127; // %128
+                b_dst[r * SLM_B_STRIDE + c] = B[r * N + n_base + c];
+            }
+        } else {
+            #pragma unroll
+            for (int i = 0; i < 32; i++) {
+                int eid = lid + i * NUM_WI;
+                int r = eid >> 7;
+                int c = eid & 127;
+                int gn = n_base + c;
+                b_dst[r * SLM_B_STRIDE + c] = (r < K && gn < N) ? B[r * N + gn] : (half)0.0h;
+            }
+        }
+    }
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    for (int kt = 0; kt < num_k_tiles; kt++) {
+        const int cur_buf = kt & 1;
+        const int nxt_buf = 1 - cur_buf;
+        const int k_cur = kt * TILE_K;
+        const int k_next = k_cur + TILE_K;
+        const bool has_next = (kt + 1 < num_k_tiles);
+
+        __local const half* cur_A = slm_A + cur_buf * TILE_M * SLM_A_STRIDE;
+        __local const half* cur_B = slm_B + cur_buf * TILE_K * SLM_B_STRIDE;
+
+        // === k16 step 0: compute + start loading next tile ===
+        {
+            // Load B block for k16 step 0 from SLM
+            int sg_col_off = sg_id * 16;
+            int8 b_val;
+            #pragma unroll
+            for (int p = 0; p < 8; p++) {
+                short s0 = as_short(cur_B[(2 * p) * SLM_B_STRIDE + sg_col_off + sg_lid]);
+                short s1 = as_short(cur_B[(2 * p + 1) * SLM_B_STRIDE + sg_col_off + sg_lid]);
+                ((int*)&b_val)[p] = as_int((short2)(s0, s1));
+            }
+
+            // Load all 8 A blocks and DPAS
+            short8 a_block;
+
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a_block)[r] = as_short(cur_A[r * SLM_A_STRIDE + sg_lid]);
+            acc0 = intel_sub_group_f16_f16_matrix_mad_k16(a_block, b_val, acc0);
+
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a_block)[r] = as_short(cur_A[(8 + r) * SLM_A_STRIDE + sg_lid]);
+            acc1 = intel_sub_group_f16_f16_matrix_mad_k16(a_block, b_val, acc1);
+
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a_block)[r] = as_short(cur_A[(16 + r) * SLM_A_STRIDE + sg_lid]);
+            acc2 = intel_sub_group_f16_f16_matrix_mad_k16(a_block, b_val, acc2);
+
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a_block)[r] = as_short(cur_A[(24 + r) * SLM_A_STRIDE + sg_lid]);
+            acc3 = intel_sub_group_f16_f16_matrix_mad_k16(a_block, b_val, acc3);
+
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a_block)[r] = as_short(cur_A[(32 + r) * SLM_A_STRIDE + sg_lid]);
+            acc4 = intel_sub_group_f16_f16_matrix_mad_k16(a_block, b_val, acc4);
+
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a_block)[r] = as_short(cur_A[(40 + r) * SLM_A_STRIDE + sg_lid]);
+            acc5 = intel_sub_group_f16_f16_matrix_mad_k16(a_block, b_val, acc5);
+
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a_block)[r] = as_short(cur_A[(48 + r) * SLM_A_STRIDE + sg_lid]);
+            acc6 = intel_sub_group_f16_f16_matrix_mad_k16(a_block, b_val, acc6);
+
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a_block)[r] = as_short(cur_A[(56 + r) * SLM_A_STRIDE + sg_lid]);
+            acc7 = intel_sub_group_f16_f16_matrix_mad_k16(a_block, b_val, acc7);
+        }
+
+        // Interleave: start loading next A tile into nxt_buf while we still have k16 step 1 to compute
+        // Since nxt_buf != cur_buf, no SLM read/write conflict
+        if (has_next) {
+            __local half* nxt_A = slm_A + nxt_buf * TILE_M * SLM_A_STRIDE;
+            if (row_tile_valid && k_next + TILE_K <= K) {
+                #pragma unroll
+                for (int i = 0; i < 16; i++) {
+                    int eid = lid + i * NUM_WI;
+                    int r = eid >> 5;
+                    int c = eid & 31;
+                    nxt_A[r * SLM_A_STRIDE + c] = A[(row_base + r) * K + k_next + c];
+                }
+            } else {
+                #pragma unroll
+                for (int i = 0; i < 16; i++) {
+                    int eid = lid + i * NUM_WI;
+                    int r = eid >> 5;
+                    int c = eid & 31;
+                    int gr = row_base + r;
+                    int gk = k_next + c;
+                    nxt_A[r * SLM_A_STRIDE + c] = (gr < M && gk < K) ? A[gr * K + gk] : (half)0.0h;
+                }
+            }
+        }
+
+        // === k16 step 1: compute on current buffer ===
+        {
+            int sg_col_off = sg_id * 16;
+            int8 b_val;
+            #pragma unroll
+            for (int p = 0; p < 8; p++) {
+                short s0 = as_short(cur_B[(16 + 2 * p) * SLM_B_STRIDE + sg_col_off + sg_lid]);
+                short s1 = as_short(cur_B[(16 + 2 * p + 1) * SLM_B_STRIDE + sg_col_off + sg_lid]);
+                ((int*)&b_val)[p] = as_int((short2)(s0, s1));
+            }
+
+            short8 a_block;
+
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a_block)[r] = as_short(cur_A[r * SLM_A_STRIDE + 16 + sg_lid]);
+            acc0 = intel_sub_group_f16_f16_matrix_mad_k16(a_block, b_val, acc0);
+
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a_block)[r] = as_short(cur_A[(8 + r) * SLM_A_STRIDE + 16 + sg_lid]);
+            acc1 = intel_sub_group_f16_f16_matrix_mad_k16(a_block, b_val, acc1);
+
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a_block)[r] = as_short(cur_A[(16 + r) * SLM_A_STRIDE + 16 + sg_lid]);
+            acc2 = intel_sub_group_f16_f16_matrix_mad_k16(a_block, b_val, acc2);
+
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a_block)[r] = as_short(cur_A[(24 + r) * SLM_A_STRIDE + 16 + sg_lid]);
+            acc3 = intel_sub_group_f16_f16_matrix_mad_k16(a_block, b_val, acc3);
+
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a_block)[r] = as_short(cur_A[(32 + r) * SLM_A_STRIDE + 16 + sg_lid]);
+            acc4 = intel_sub_group_f16_f16_matrix_mad_k16(a_block, b_val, acc4);
+
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a_block)[r] = as_short(cur_A[(40 + r) * SLM_A_STRIDE + 16 + sg_lid]);
+            acc5 = intel_sub_group_f16_f16_matrix_mad_k16(a_block, b_val, acc5);
+
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a_block)[r] = as_short(cur_A[(48 + r) * SLM_A_STRIDE + 16 + sg_lid]);
+            acc6 = intel_sub_group_f16_f16_matrix_mad_k16(a_block, b_val, acc6);
+
+            #pragma unroll
+            for (int r = 0; r < 8; r++)
+                ((short*)&a_block)[r] = as_short(cur_A[(56 + r) * SLM_A_STRIDE + 16 + sg_lid]);
+            acc7 = intel_sub_group_f16_f16_matrix_mad_k16(a_block, b_val, acc7);
+        }
+
+        // Load next B tile (interleaved after k16 step 1 DPAS)
+        if (has_next) {
+            __local half* nxt_B = slm_B + nxt_buf * TILE_K * SLM_B_STRIDE;
+            if (col_tile_valid && k_next + TILE_K <= K) {
+                #pragma unroll
+                for (int i = 0; i < 32; i++) {
+                    int eid = lid + i * NUM_WI;
+                    int r = eid >> 7;
+                    int c = eid & 127;
+                    nxt_B[r * SLM_B_STRIDE + c] = B[(k_next + r) * N + n_base + c];
+                }
+            } else {
+                #pragma unroll
+                for (int i = 0; i < 32; i++) {
+                    int eid = lid + i * NUM_WI;
+                    int r = eid >> 7;
+                    int c = eid & 127;
+                    int gk = k_next + r;
+                    int gn = n_base + c;
+                    nxt_B[r * SLM_B_STRIDE + c] = (gk < K && gn < N) ? B[gk * N + gn] : (half)0.0h;
+                }
+            }
+            barrier(CLK_LOCAL_MEM_FENCE);
+        }
+    }
+
+    // Store results
+    const bool col_valid = col_idx < N;
+    if (col_valid) {
+        #define STORE_BLK(off, acc_v) \
+        { \
+            int ro = row_base + (off); \
+            if (ro + 8 <= M) { \
+                _Pragma("unroll") \
+                for (int r = 0; r < 8; r++) \
+                    C[(ro + r) * N + col_idx] = convert_half(((float*)&acc_v)[r]); \
+            } else { \
+                _Pragma("unroll") \
+                for (int r = 0; r < 8; r++) \
+                    if (ro + r < M) \
+                        C[(ro + r) * N + col_idx] = convert_half(((float*)&acc_v)[r]); \
+            } \
+        }
+
+        STORE_BLK(0, acc0)
+        STORE_BLK(8, acc1)
+        STORE_BLK(16, acc2)
+        STORE_BLK(24, acc3)
+        STORE_BLK(32, acc4)
+        STORE_BLK(40, acc5)
+        STORE_BLK(48, acc6)
+        STORE_BLK(56, acc7)
+
+        #undef STORE_BLK
+    }
+}
+```
+
+Console output from running this kernel:
+
+Test result on platform Intel Corporation Battlemage G21 [Intel Graphics]:
+==== test session starts
+
+task.py::TestMatmulOCL::test_correctness_wrt_pytorch[0] PASSED           [ 25%]
+task.py::TestMatmulOCL::test_correctness_wrt_pytorch[1] PASSED           [ 50%]
+task.py::TestMatmulOCL::test_correctness_wrt_reference[0] PASSED         [ 75%]
+task.py::TestMatmulOCL::test_correctness_wrt_reference[1] PASSED         [100%]
+
+=============================== warnings summary ===============================
+task.py::TestMatmulOCL::test_correctness_wrt_pytorch[0]
+  /home/openvino-ci-74/miniforge3/envs/kernel_intel/lib/python3.12/site-packages/pyopencl/cache.py:517: CompilerWarning: Non-empty compiler output encountered. Set the environment variable PYOPENCL_COMPILER_OUTPUT=1 to see more.
+    _create_built_program_from_source_cached(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================== 4 passed, 1 deselected, 1 warning in 0.79s ==================
+The kernel compiles and is correct, great job!
+
+## Hardware specification:
+Your code will run on the following hardware:
+**Intel Battlemage** with specs: Xe-cores: 20, Render Slices: 5, Ray Tracing Units: 20, Intel® Xe Matrix Extensions (Intel® XMX) Engines: 160, Xe Vector Engines: 160, Graphics Clock: 2670, GPU Peak TOPS (Int8): 233, TBP: 190, PCI Express Configurations ‡: PCI Express 4.0 x8, Device ID: 0xE20B, Memory: 12 GB GDDR6, Memory Interface: 192 bit, Memory Bandwidth: 456, Memory Speed: 19, ISA_GPU: Xe2-HPG
+Please consider the hardware specifications when improving the code. 
+
+## Task:
+
+**Your objectives**:
+1. Analyze the previous versions and their results (why does one achieve better results than the other?).
+2. Identify any inefficiencies and bottlenecks.
+3. Propose specific improvements or options to take the best of all prior versions, explaining your reasoning step by step.
+
+4. Provide a new kernel that achieves better performance **on the target hardware**. Provide the complete, improved code in a code block.
+
+**Optimization strategies**:
+
+Here are some potential strategies to improve the kernel runtime:
+1. Avoid Bank Conflicts: Local memory is organized into banks (typically 32 banks). Pad shared arrays to avoid stride conflicts, e.g., __local float tile[TILE_SIZE][TILE_SIZE + 1] for transpose operations. Use sequential access patterns within wavefronts.
+2. Coalesced Access: Ensure work-items in the same wavefront/warp access contiguous memory addresses. For row-major data, have adjacent work-items (consecutive get_global_id(0)) access adjacent memory locations. Use linear indexing that matches your data layout.
+
+**Critical Requirements:**
+
+1. The kernel must exactly match the reference implementation's functionality.
+2. The code must compile and run properly on the GPU.
+3. Do not cache or reuse previous results; ensure the code executes fully on each run.
+4. Keep all hyperparameters (e.g., batch size, dimensions) unchanged as specified in the reference implementation.
+8. Beware of the critical error "Unexpected kernel lambda size. In such cases removing constexpr specifier aligns the captures between the host compiler and the device compiler"! Do not capture constexpr variables in lambda functions passed to kernel launches as this can lead to different lambda sizes between the host and device compiler.
+
+Additional Guidance:
+
+1. Clearly comment on any performance optimizations you implement.
+2. If you change the kernel structure, explain why.
+3. Anticipate and address possible runtime or compilation errors.
+
+Please structure your response as follows:
+
+1. Analysis:
+    * Summarize the issues found in the previous kernel and log.
+    * Explain your proposed changes and optimizations.
+2. Improved OCL code:
+    * Provide the complete, improved OCL code in a code block:
+```OCL
+Your code here
+```
+
+
+## Required Optimizations
+
+Apply the following optimization techniques in your implementation:
+
+- **Register Blocking**: Each work-item computes a THREAD_M×THREAD_N output block in private register arrays. Use `#pragma unroll` on inner loops. Combine with SLM tiling for multi-level memory hierarchy optimization.
+- **Blocked/Tiled Algorithms**: Process input in blocks to bound peak memory. Trade recomputation for memory savings (e.g., Flash-Attention style). Maintain running accumulators across blocks with proper rescaling.
+- **Hierarchical Parallelism**: Structure work at three levels - work-groups (tile assignment), sub-groups (sub-tile processing), work-items (register tile). Use sub-group shuffles to share data within sub-group without SLM.

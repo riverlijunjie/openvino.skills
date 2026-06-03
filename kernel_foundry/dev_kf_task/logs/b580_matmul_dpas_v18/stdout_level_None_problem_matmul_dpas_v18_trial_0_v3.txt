@@ -1,0 +1,146 @@
+
+Test result on platform Intel Corporation Battlemage G21 [Intel Graphics]:
+==== test session starts
+
+task.py::TestMatmulOCL::test_correctness_wrt_pytorch[0] FAILED           [ 25%]
+task.py::TestMatmulOCL::test_correctness_wrt_pytorch[1] FAILED           [ 50%]
+task.py::TestMatmulOCL::test_correctness_wrt_reference[0] FAILED         [ 75%]
+task.py::TestMatmulOCL::test_correctness_wrt_reference[1] FAILED         [100%]
+
+=================================== FAILURES ===================================
+________________ TestMatmulOCL.test_correctness_wrt_pytorch[0] _________________
+
+self = <task.TestMatmulOCL object at 0x76ca13287830>
+kernel = <function initialize_matmul_kernel.<locals>.run at 0x76ca055451c0>
+ocl_queue = <pyopencl._cl.CommandQueue object at 0x76ca1334a020>, _run = 0
+
+    @pytest.mark.parametrize("_run", range(2))
+    def test_correctness_wrt_pytorch(self, kernel, ocl_queue, _run):
+        args, expected = get_data_on_device(DEFAULT_SHAPE, ocl_queue, seed=_run)
+>       kernel(*args)
+
+task.py:236: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+task.py:199: in run
+    return knl(queue, gws, lws, a, b, c, np.int32(m), np.int32(k), np.int32(n))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <pyopencl._cl.Kernel object at 0x76ca055480a0>
+queue = <pyopencl._cl.CommandQueue object at 0x76ca1334a020>
+global_size = (512, 64), local_size = (16, 4)
+arg0 = <pyopencl._cl.Buffer object at 0x76ca0557aac0>
+arg1 = <pyopencl._cl.Buffer object at 0x76ca0557ab10>
+arg2 = <pyopencl._cl.Buffer object at 0x76ca0557aa70>, arg3 = np.int32(2048)
+arg4 = np.int32(2560), arg5 = np.int32(2048), global_offset = None
+g_times_l = False, allow_empty_ndrange = False, wait_for = None
+
+>   ???
+E   pyopencl._cl.LogicError: clEnqueueNDRangeKernel failed: INVALID_WORK_GROUP_SIZE
+
+<generated: 'pyopencl invoker for 'matmul'-38514ba52669826e'>:8: LogicError
+________________ TestMatmulOCL.test_correctness_wrt_pytorch[1] _________________
+
+self = <task.TestMatmulOCL object at 0x76ca6b73de80>
+kernel = <function initialize_matmul_kernel.<locals>.run at 0x76ca055451c0>
+ocl_queue = <pyopencl._cl.CommandQueue object at 0x76ca1334a020>, _run = 1
+
+    @pytest.mark.parametrize("_run", range(2))
+    def test_correctness_wrt_pytorch(self, kernel, ocl_queue, _run):
+        args, expected = get_data_on_device(DEFAULT_SHAPE, ocl_queue, seed=_run)
+>       kernel(*args)
+
+task.py:236: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+task.py:199: in run
+    return knl(queue, gws, lws, a, b, c, np.int32(m), np.int32(k), np.int32(n))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <pyopencl._cl.Kernel object at 0x76ca055480a0>
+queue = <pyopencl._cl.CommandQueue object at 0x76ca1334a020>
+global_size = (512, 64), local_size = (16, 4)
+arg0 = <pyopencl._cl.Buffer object at 0x76ca133489f0>
+arg1 = <pyopencl._cl.Buffer object at 0x76ca6b11abb0>
+arg2 = <pyopencl._cl.Buffer object at 0x76ca6b11bc40>, arg3 = np.int32(2048)
+arg4 = np.int32(2560), arg5 = np.int32(2048), global_offset = None
+g_times_l = False, allow_empty_ndrange = False, wait_for = None
+
+>   ???
+E   pyopencl._cl.LogicError: clEnqueueNDRangeKernel failed: INVALID_WORK_GROUP_SIZE
+
+<generated: 'pyopencl invoker for 'matmul'-38514ba52669826e'>:8: LogicError
+_______________ TestMatmulOCL.test_correctness_wrt_reference[0] ________________
+
+self = <task.TestMatmulOCL object at 0x76ca13333590>
+kernel = <function initialize_matmul_kernel.<locals>.run at 0x76ca055451c0>
+ocl_queue = <pyopencl._cl.CommandQueue object at 0x76ca1334a020>, _run = 0
+
+    @pytest.mark.parametrize("_run", range(2))
+    def test_correctness_wrt_reference(self, kernel, ocl_queue, _run):
+        args, _ = get_data_on_device(DEFAULT_SHAPE, ocl_queue, seed=100 + _run)
+>       kernel(*args)
+
+task.py:249: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+task.py:199: in run
+    return knl(queue, gws, lws, a, b, c, np.int32(m), np.int32(k), np.int32(n))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <pyopencl._cl.Kernel object at 0x76ca055480a0>
+queue = <pyopencl._cl.CommandQueue object at 0x76ca1334a020>
+global_size = (512, 64), local_size = (16, 4)
+arg0 = <pyopencl._cl.Buffer object at 0x76ca6b11bb00>
+arg1 = <pyopencl._cl.Buffer object at 0x76ca6b11ba60>
+arg2 = <pyopencl._cl.Buffer object at 0x76ca6b11bb50>, arg3 = np.int32(2048)
+arg4 = np.int32(2560), arg5 = np.int32(2048), global_offset = None
+g_times_l = False, allow_empty_ndrange = False, wait_for = None
+
+>   ???
+E   pyopencl._cl.LogicError: clEnqueueNDRangeKernel failed: INVALID_WORK_GROUP_SIZE
+
+<generated: 'pyopencl invoker for 'matmul'-38514ba52669826e'>:8: LogicError
+_______________ TestMatmulOCL.test_correctness_wrt_reference[1] ________________
+
+self = <task.TestMatmulOCL object at 0x76ca13333770>
+kernel = <function initialize_matmul_kernel.<locals>.run at 0x76ca055451c0>
+ocl_queue = <pyopencl._cl.CommandQueue object at 0x76ca1334a020>, _run = 1
+
+    @pytest.mark.parametrize("_run", range(2))
+    def test_correctness_wrt_reference(self, kernel, ocl_queue, _run):
+        args, _ = get_data_on_device(DEFAULT_SHAPE, ocl_queue, seed=100 + _run)
+>       kernel(*args)
+
+task.py:249: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+task.py:199: in run
+    return knl(queue, gws, lws, a, b, c, np.int32(m), np.int32(k), np.int32(n))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <pyopencl._cl.Kernel object at 0x76ca055480a0>
+queue = <pyopencl._cl.CommandQueue object at 0x76ca1334a020>
+global_size = (512, 64), local_size = (16, 4)
+arg0 = <pyopencl._cl.Buffer object at 0x76ca6b11b790>
+arg1 = <pyopencl._cl.Buffer object at 0x76ca6b11bba0>
+arg2 = <pyopencl._cl.Buffer object at 0x76ca6e1c8b30>, arg3 = np.int32(2048)
+arg4 = np.int32(2560), arg5 = np.int32(2048), global_offset = None
+g_times_l = False, allow_empty_ndrange = False, wait_for = None
+
+>   ???
+E   pyopencl._cl.LogicError: clEnqueueNDRangeKernel failed: INVALID_WORK_GROUP_SIZE
+
+<generated: 'pyopencl invoker for 'matmul'-38514ba52669826e'>:8: LogicError
+=============================== warnings summary ===============================
+task.py::TestMatmulOCL::test_correctness_wrt_pytorch[0]
+  /home/openvino-ci-74/miniforge3/envs/kernel_intel/lib/python3.12/site-packages/pyopencl/cache.py:517: CompilerWarning: Non-empty compiler output encountered. Set the environment variable PYOPENCL_COMPILER_OUTPUT=1 to see more.
+    _create_built_program_from_source_cached(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED task.py::TestMatmulOCL::test_correctness_wrt_pytorch[0] - pyopencl._cl...
+FAILED task.py::TestMatmulOCL::test_correctness_wrt_pytorch[1] - pyopencl._cl...
+FAILED task.py::TestMatmulOCL::test_correctness_wrt_reference[0] - pyopencl._...
+FAILED task.py::TestMatmulOCL::test_correctness_wrt_reference[1] - pyopencl._...
+================== 4 failed, 1 deselected, 1 warning in 0.81s ==================

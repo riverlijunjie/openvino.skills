@@ -1,0 +1,209 @@
+## Analysis
+
+Looking at the previous kernel's output, I can see several issues:
+
+1. **Most of the output is zeros** - Only the first few rows/columns have non-zero values, suggesting the kernel only computes a small portion of the output. This is likely because `get_group_id(0)` with `LWS=(4,1)` doesn't properly map to the N/64 tile grid.
+
+2. **NaN values in row 2** - Suggests memory access issues, possibly from incorrect SLM addressing.
+
+3. **The GWS/LWS mismatch** - With `reqd_work_group_size(4, 1, 1)` and subgroup size 16, we get 4 WIs per WG, not 64. The intent was 4 subgroups × 16 WIs = 64 WIs, but `reqd_work_group_size(4,1,1)` means only 4 work-items total. We need `reqd_work_group_size(64, 1, 1)`.
+
+4. **GWS calculation** - With LWS=(64,1), GWS should be `(N/64 * 64, M/32)` = `(N, M/32)` for dimension 0, since each WG of 64 handles 64 columns.
+
+5. **The `buf` variable issue** - The initial load goes to buffer 0, but the loop starts with `buf=0` and uses `cur_buf = ki & 1`. On the first iteration `ki=0`, it reads from buffer 0 (correct), but the double-buffering logic with `buf = next_buf` at the end doesn't match the `ki & 1` approach.
+
+6. **A load addressing** - The initial A load doesn't account for the k-offset (which is 0 for the first tile, so it's fine).
+
+Let me rewrite the kernel with these fixes:
+- Correct `reqd_work_group_size(64, 1, 1)`
+- Fix GWS to be `(ceil(N/64)*64, M/32)` 
+- Fix double-buffering logic
+- Simplify the A SLM load/read pattern
+- Ensure correct DPAS operand packing
+
+## Improved OCL code
+
+```OCL
+// GEMM: C[M,N] = A[M,K] x B[K,N], all row-major FP16, f32 accumulation
+// Launch: GWS = (N, M/32), LWS = (64, 1)
+//   - 64 WIs per WG = 4 subgroups of 16
+//   - Each WG computes a 32×64 output tile
+//   - TILE_M=32, TILE_N=64, TILE_K=32
+// A is loaded cooperatively into SLM (double-buffered), B from global/L2
+
+#pragma OPENCL EXTENSION cl_intel_subgroups : enable
+#pragma OPENCL EXTENSION cl_intel_subgroups_short : enable
+
+#define TILE_M 32
+#define TILE_N 64
+#define TILE_K 32
+#define SG_SIZE 16
+#define NUM_SG 4
+// SLM stride with padding to avoid bank conflicts (32 + 4 = 36 halfs = 72 bytes)
+#define SLM_A_STRIDE 36
+
+__attribute__((intel_reqd_sub_group_size(16)))
+__attribute__((reqd_work_group_size(64, 1, 1)))
+__kernel void matmul(
+    __global const half* A,
+    __global const half* B,
+    __global half* C,
+    const int M,
+    const int K,
+    const int N)
+{
+    // Work-group tile position
+    const int wg_n = get_group_id(0);  // which 64-col tile
+    const int wg_m = get_group_id(1);  // which 32-row tile
+
+    const int m_start = wg_m * TILE_M;
+    const int n_start = wg_n * TILE_N;
+
+    // Subgroup and lane identification
+    const int local_id = get_local_id(0);  // 0..63
+    const int sg_id = local_id / SG_SIZE;  // 0..3
+    const int sg_lid = local_id % SG_SIZE; // 0..15
+
+    // Each subgroup handles 16 columns of the 64-col output tile
+    const int sg_n_offset = sg_id * SG_SIZE;
+
+    // SLM double buffer for A: 2 buffers × 32 rows × SLM_A_STRIDE halfs
+    __local half slm_a[2 * TILE_M * SLM_A_STRIDE];
+
+    // Accumulators: 32 rows × 16 cols per subgroup = 4 DPAS blocks of 8 rows each
+    float8 acc0 = (float8)(0.0f);  // rows 0-7
+    float8 acc1 = (float8)(0.0f);  // rows 8-15
+    float8 acc2 = (float8)(0.0f);  // rows 16-23
+    float8 acc3 = (float8)(0.0f);  // rows 24-31
+
+    // Cooperative A load mapping:
+    // 64 threads load 32 rows × 32 cols = 1024 halfs
+    // Each thread loads 16 halfs (one half-row)
+    // Thread i: row = i/2, col_offset = (i%2)*16
+    const int a_load_row = local_id / 2;       // 0..31
+    const int a_load_col_half = local_id % 2;  // 0 or 1
+    const int a_load_col = a_load_col_half * 16;
+
+    // Load first A tile (k=0) into SLM buffer 0
+    {
+        __global const half* a_src = A + (m_start + a_load_row) * K + a_load_col;
+        __local half* a_dst = slm_a + a_load_row * SLM_A_STRIDE + a_load_col;
+        half8 v0 = vload8(0, a_src);
+        half8 v1 = vload8(1, a_src);
+        vstore8(v0, 0, a_dst);
+        vstore8(v1, 0, a_dst + 8);
+    }
+    barrier(CLK_LOCAL_MEM_FENCE);
+
+    const int k_iters = K / TILE_K;
+
+    for (int ki = 0; ki < k_iters; ki++) {
+        int cur_buf = ki & 1;
+        int next_buf = 1 - cur_buf;
+
+        // Prefetch next A tile into next SLM buffer (overlap with compute)
+        if (ki < k_iters - 1) {
+            int next_k = (ki + 1) * TILE_K;
+            __global const half* a_src = A + (m_start + a_load_row) * K + next_k + a_load_col;
+            __local half* a_dst = slm_a + next_buf * TILE_M * SLM_A_STRIDE + a_load_row * SLM_A_STRIDE + a_load_col;
+            half8 v0 = vload8(0, a_src);
+            half8 v1 = vload8(1, a_src);
+            vstore8(v0, 0, a_dst);
+            vstore8(v1, 0, a_dst + 8);
+        }
+
+        // Current A SLM base
+        __local half* a_base = slm_a + cur_buf * TILE_M * SLM_A_STRIDE;
+
+        // Current K offset for B
+        int k_base = ki * TILE_K;
+
+        // Process TILE_K=32 as two k16 steps (matching DPAS k16)
+        #pragma unroll
+        for (int kk = 0; kk < 2; kk++) {
+            int k_off = k_base + kk * 16;
+
+            // Load B: 16 k-rows × 16 cols for this subgroup
+            // B is row-major [K][N]. Each lane loads its column across 16 k-rows.
+            // DPAS b operand (int8): 8 ints per lane, each int = 2 packed fp16 (VNNI k-pairs)
+            __global const half* b_ptr = B + k_off * N + n_start + sg_n_offset + sg_lid;
+
+            int8 b_val;
+            #pragma unroll
+            for (int p = 0; p < 8; p++) {
+                ushort u0 = as_ushort(b_ptr[(2 * p) * N]);
+                ushort u1 = as_ushort(b_ptr[(2 * p + 1) * N]);
+                ((int*)&b_val)[p] = (int)((uint)u0 | ((uint)u1 << 16));
+            }
+
+            // Load A from SLM and compute DPAS for each 8-row block
+            // DPAS a operand (short8): for Xe2 exec_size=16, repcount=8, sdepth=8 (k16 for fp16)
+            // Each lane l holds A[row_base + r][k_inner + l] as short (= as_short(half))
+            // short8 = 8 rows, one element per row per lane
+            int k_inner = kk * 16;
+
+            // Block 0: rows 0-7
+            {
+                short8 a_val;
+                #pragma unroll
+                for (int r = 0; r < 8; r++) {
+                    a_val[r] = as_short(a_base[r * SLM_A_STRIDE + k_inner + sg_lid]);
+                }
+                acc0 = intel_sub_group_f16_f16_matrix_mad_k16(a_val, b_val, acc0);
+            }
+
+            // Block 1: rows 8-15
+            {
+                short8 a_val;
+                #pragma unroll
+                for (int r = 0; r < 8; r++) {
+                    a_val[r] = as_short(a_base[(8 + r) * SLM_A_STRIDE + k_inner + sg_lid]);
+                }
+                acc1 = intel_sub_group_f16_f16_matrix_mad_k16(a_val, b_val, acc1);
+            }
+
+            // Block 2: rows 16-23
+            {
+                short8 a_val;
+                #pragma unroll
+                for (int r = 0; r < 8; r++) {
+                    a_val[r] = as_short(a_base[(16 + r) * SLM_A_STRIDE + k_inner + sg_lid]);
+                }
+                acc2 = intel_sub_group_f16_f16_matrix_mad_k16(a_val, b_val, acc2);
+            }
+
+            // Block 3: rows 24-31
+            {
+                short8 a_val;
+                #pragma unroll
+                for (int r = 0; r < 8; r++) {
+                    a_val[r] = as_short(a_base[(24 + r) * SLM_A_STRIDE + k_inner + sg_lid]);
+                }
+                acc3 = intel_sub_group_f16_f16_matrix_mad_k16(a_val, b_val, acc3);
+            }
+        }
+
+        barrier(CLK_LOCAL_MEM_FENCE);
+    }
+
+    // Write results: each lane writes one column across 32 rows
+    __global half* c_ptr = C + m_start * N + n_start + sg_n_offset + sg_lid;
+
+    #pragma unroll
+    for (int r = 0; r < 8; r++) {
+        c_ptr[r * N] = convert_half(acc0[r]);
+    }
+    #pragma unroll
+    for (int r = 0; r < 8; r++) {
+        c_ptr[(8 + r) * N] = convert_half(acc1[r]);
+    }
+    #pragma unroll
+    for (int r = 0; r < 8; r++) {
+        c_ptr[(16 + r) * N] = convert_half(acc2[r]);
+    }
+    #pragma unroll
+    for (int r = 0; r < 8; r++) {
+        c_ptr[(24 + r) * N] = convert_half(acc3[r]);
+    }
+}
+```

@@ -1,0 +1,3380 @@
+========= Starting job_name='b580_matmul_dpas_v11', task_name='matmul_dpas_v11') ========
+================================================================================
+OPTIMIZATION-AWARE DATABASE INITIALIZATION
+================================================================================
+  Transition tracker output dir: runs/b580_matmul_dpas_v11
+Added 0 elites to feature map
+  Feature map coverage: 0/256 cells
+  Total programs: 0
+  Island 0: 0 programs
+  Island 1: 0 programs
+  Island 2: 0 programs
+  Island 3: 0 programs
+================================================================================
+INITIALIZATION COMPLETE
+  Archive coverage: 0/256
+  Total programs: 0
+  Available for evolution: 0
+================================================================================
+--------- Trial 0---------
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Finished inference with model claude-4-6-opus, time: 47.71031951904297
+Finished inference with model claude-4-6-opus, time: 53.60802102088928
+Finished inference with model claude-4-6-opus, time: 55.91684365272522
+Finished inference with model claude-4-6-opus, time: 57.406883239746094
+Time for generating all kernels 57.41311311721802
+Evaluating 4 solutions
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_kh0bd5lt
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_qua6o0oq
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_iczzgh74
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_r971zn4u
+Build 'custom' took 0.68 seconds
+build
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_wfwt7wrx
+[Test custom task] Start testing of custom
+Build 'custom' took 0.72 seconds
+build
+Build 'custom' took 0.77 seconds
+build
+Build 'custom' took 0.79 seconds
+build
+Correctness tests took 1.13 seconds
+Performance tests took 2.48 seconds
+[Test custom task] Start testing of reference
+Correctness tests took 11.07 seconds
+Performance tests took 12.55 seconds
+test_reference_correctness
+[Test Custom Task]
+test_reference_performance
+test_custom_correctness
+test_custom_performance
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_wtu7vz6_
+[Test custom task] Start testing of custom
+Correctness tests took 1.04 seconds
+Skipping profiling for 'custom' due to correctness test failure.
+[Test custom task] Start testing of reference
+Correctness tests took 11.03 seconds
+Performance tests took 12.56 seconds
+test_reference_correctness
+test_reference_performance
+[Test Custom Task]
+test_custom_correctness
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_zsz2bi24
+[Test custom task] Start testing of custom
+Correctness tests took 1.03 seconds
+Performance tests took 2.25 seconds
+[Test custom task] Start testing of reference
+Correctness tests took 11.05 seconds
+Performance tests took 12.55 seconds
+test_reference_correctness
+test_reference_performance
+test_custom_correctness
+test_custom_performance
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_eh1yuegh
+[Test custom task] Start testing of custom
+Correctness tests took 1.01 seconds
+Performance tests took 2.28 seconds
+[Test custom task] Start testing of reference
+Correctness tests took 11.04 seconds
+Performance tests took 12.63 seconds
+test_reference_correctness
+test_reference_performance
+test_custom_correctness
+test_custom_performance
+Time for evaluating all kernels 106.41638898849487
+New best program: b323ec48-eaa3-407b-b2fb-e80691525376 (score=31.2113)
+New elite in cell (2, 3, 3, 0): 6fb88116-1097-4a31-90b6-55c8e32530b4 (score=51.4384) replaced b323ec48-eaa3-407b-b2fb-e80691525376 (score=31.2113)
+New best program: 6fb88116-1097-4a31-90b6-55c8e32530b4 (score=51.4384) replaced b323ec48-eaa3-407b-b2fb-e80691525376 (score=31.2113)
+Results:
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 3.88,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 3.88,
+        "std": 0.0152,
+        "min": 3.85,
+        "max": 3.93,
+        "median": 3.88,
+        "speedup": 8.737113402061855,
+        "ref_speed": 33.9,
+        "num_trials": 128
+      }
+    }
+  },
+  "runtime_improvement": 8.737113402061853,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": false,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": -1.0,
+  "runtime_stats": {},
+  "runtime_improvement": -1.0,
+  "improve_over_compile": -1.0,
+  "perf_score": 3,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 2.19,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 2.19,
+        "std": 0.0117,
+        "min": 2.18,
+        "max": 2.29,
+        "median": 2.19,
+        "speedup": 15.479452054794521,
+        "ref_speed": 33.9,
+        "num_trials": 151
+      }
+    }
+  },
+  "runtime_improvement": 15.479452054794523,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 9.08,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 9.08,
+        "std": 0.112,
+        "min": 8.92,
+        "max": 9.77,
+        "median": 9.07,
+        "speedup": 3.7334801762114536,
+        "ref_speed": 33.9,
+        "num_trials": 110
+      }
+    }
+  },
+  "runtime_improvement": 3.7334801762114536,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_0_v2.txt
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_0_best.txt
+Time total for trial 0 163.87506103515625
+--------- Trial 1---------
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Finished inference with model claude-4-6-opus, time: 44.80281853675842
+Finished inference with model claude-4-6-opus, time: 50.276073694229126
+Finished inference with model claude-4-6-opus, time: 53.92389893531799
+Finished inference with model claude-4-6-opus, time: 53.94844317436218
+Time for generating all kernels 53.95140552520752
+Evaluating 4 solutions
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_rd0swto5
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_7t7cwwb0
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_oxd0gvdy
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_647lcy9o
+Build 'custom' took 0.45 seconds
+build
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_cxxe37k9
+[Test custom task] Start testing of custom
+Build 'custom' took 0.46 seconds
+Build 'custom' took 0.46 seconds
+build
+build
+Build 'custom' took 0.46 seconds
+build
+Correctness tests took 1.09 seconds
+Performance tests took 2.22 seconds
+test_custom_correctness
+test_custom_performance
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_uyk87s2q
+[Test custom task] Start testing of custom
+Correctness tests took 1.02 seconds
+Performance tests took 2.25 seconds
+test_custom_correctness
+[Test Custom Task]
+test_custom_performance
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_j_z2rym3
+[Test custom task] Start testing of custom
+Correctness tests took 1.00 seconds
+Performance tests took 2.23 seconds
+test_custom_correctness
+[Test Custom Task]
+test_custom_performance
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_86bd1254
+[Test custom task] Start testing of custom
+Correctness tests took 1.02 seconds
+Performance tests took 2.23 seconds
+test_custom_correctness
+test_custom_performance
+Time for evaluating all kernels 13.534659147262573
+Results:
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 5.07,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 5.07,
+        "std": 0.0897,
+        "min": 4.66,
+        "max": 5.2,
+        "median": 5.09,
+        "speedup": 6.686390532544378,
+        "ref_speed": 33.9,
+        "num_trials": 196
+      }
+    }
+  },
+  "runtime_improvement": 6.686390532544378,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 5.05,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 5.05,
+        "std": 0.0842,
+        "min": 4.64,
+        "max": 5.13,
+        "median": 5.06,
+        "speedup": 6.712871287128713,
+        "ref_speed": 33.9,
+        "num_trials": 198
+      }
+    }
+  },
+  "runtime_improvement": 6.712871287128713,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 5.04,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 5.04,
+        "std": 0.0947,
+        "min": 4.63,
+        "max": 5.11,
+        "median": 5.06,
+        "speedup": 6.726190476190476,
+        "ref_speed": 33.9,
+        "num_trials": 197
+      }
+    }
+  },
+  "runtime_improvement": 6.726190476190476,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 5.06,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 5.06,
+        "std": 0.061,
+        "min": 4.63,
+        "max": 5.1,
+        "median": 5.06,
+        "speedup": 6.699604743083004,
+        "ref_speed": 33.9,
+        "num_trials": 198
+      }
+    }
+  },
+  "runtime_improvement": 6.699604743083003,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_1_v2.txt
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_1_best.txt
+Time total for trial 1 67.51900243759155
+--------- Trial 2---------
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Finished inference with model claude-4-6-opus, time: 51.67641019821167
+Finished inference with model claude-4-6-opus, time: 55.248313665390015
+Finished inference with model claude-4-6-opus, time: 57.80622601509094
+Finished inference with model claude-4-6-opus, time: 65.68644404411316
+Time for generating all kernels 65.68822455406189
+Evaluating 4 solutions
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_q1rlmrqx
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_uwfgez8w
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_wi3rgyff
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_k_teibq3
+Build 'custom' took 0.60 seconds
+build
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_hxv5jq0o
+[Test custom task] Start testing of custom
+Build 'custom' took 0.63 seconds
+build
+Build 'custom' took 0.65 seconds
+build
+Build 'custom' took 0.88 seconds
+build
+Correctness tests took 1.01 seconds
+Performance tests took 2.46 seconds
+test_custom_correctness
+test_custom_performance
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_ksu3984_
+[Test custom task] Start testing of custom
+Correctness tests took 0.97 seconds
+Performance tests took 2.32 seconds
+test_custom_correctness
+test_custom_performance
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_a5tux9oz
+[Test custom task] Start testing of custom
+Correctness tests took 1.05 seconds
+Performance tests took 2.16 seconds
+test_custom_correctness
+[Test Custom Task]
+test_custom_performance
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_myhg3yze
+[Test custom task] Start testing of custom
+Correctness tests took 1.02 seconds
+Performance tests took 2.41 seconds
+test_custom_correctness
+test_custom_performance
+Time for evaluating all kernels 14.029920101165771
+New elite in cell (2, 3, 3, 0): e1441801-9a14-4ea9-86d2-41aaf418437f (score=52.0833) replaced 6fb88116-1097-4a31-90b6-55c8e32530b4 (score=51.4384)
+New best program: e1441801-9a14-4ea9-86d2-41aaf418437f (score=52.0833) replaced 6fb88116-1097-4a31-90b6-55c8e32530b4 (score=51.4384)
+Performing migration
+Performing island migration (iteration 0)
+Migration complete: 3 programs transferred
+Island Status:
+ * Island 0: 10 programs, gen=10
+   Island 1: 1 programs, gen=0
+   Island 2: 1 programs, gen=0
+   Island 3: 1 programs, gen=0
+New elite in cell (2, 3, 3, 0): f12e5585-2a2b-4a68-8025-b3d6234ce6f3 (score=81.4662) replaced e1441801-9a14-4ea9-86d2-41aaf418437f (score=52.0833)
+New best program: f12e5585-2a2b-4a68-8025-b3d6234ce6f3 (score=81.4662) replaced e1441801-9a14-4ea9-86d2-41aaf418437f (score=52.0833)
+Results:
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 2.16,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 2.16,
+        "std": 0.0444,
+        "min": 2.11,
+        "max": 2.53,
+        "median": 2.15,
+        "speedup": 15.694444444444443,
+        "ref_speed": 33.9,
+        "num_trials": 154
+      }
+    }
+  },
+  "runtime_improvement": 15.694444444444445,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 7.34,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 7.34,
+        "std": 0.173,
+        "min": 7.0,
+        "max": 8.42,
+        "median": 7.31,
+        "speedup": 4.618528610354224,
+        "ref_speed": 33.9,
+        "num_trials": 137
+      }
+    }
+  },
+  "runtime_improvement": 4.618528610354224,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 1.33,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 1.33,
+        "std": 0.00372,
+        "min": 1.32,
+        "max": 1.34,
+        "median": 1.33,
+        "speedup": 25.488721804511275,
+        "ref_speed": 33.9,
+        "num_trials": 148
+      }
+    }
+  },
+  "runtime_improvement": 25.488721804511275,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 3.34,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 3.34,
+        "std": 0.117,
+        "min": 3.14,
+        "max": 3.78,
+        "median": 3.3,
+        "speedup": 10.149700598802395,
+        "ref_speed": 33.9,
+        "num_trials": 149
+      }
+    }
+  },
+  "runtime_improvement": 10.149700598802394,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_2_v2.txt
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_2_best.txt
+Time total for trial 2 79.75545239448547
+--------- Trial 3---------
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Finished inference with model claude-4-6-opus, time: 52.926454305648804
+Finished inference with model claude-4-6-opus, time: 53.95477104187012
+Finished inference with model claude-4-6-opus, time: 58.30928111076355
+Finished inference with model claude-4-6-opus, time: 60.40085697174072
+Time for generating all kernels 60.40679335594177
+Evaluating 4 solutions
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_3y9h9vmg
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_fmj4lnyf
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_66voh1pc
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_xpo0hdr9
+Build 'custom' took 0.83 seconds
+build
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_aor0u8cf
+[Test custom task] Start testing of custom
+Build 'custom' took 0.84 seconds
+build
+Build 'custom' took 0.85 seconds
+build
+Build 'custom' took 0.91 seconds
+build
+Correctness tests took 1.00 seconds
+Performance tests took 2.31 seconds
+test_custom_correctness
+[Test Custom Task]
+test_custom_performance
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_hi_odwwd
+[Test custom task] Start testing of custom
+Correctness tests took 1.02 seconds
+Performance tests took 2.35 seconds
+test_custom_correctness
+test_custom_performance
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_j6yykafw
+[Test custom task] Start testing of custom
+Correctness tests took 0.97 seconds
+Performance tests took 2.32 seconds
+test_custom_correctness
+[Test Custom Task]
+test_custom_performance
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_2jrjadcr
+[Test custom task] Start testing of custom
+Correctness tests took 0.98 seconds
+Performance tests took 2.27 seconds
+test_custom_correctness
+test_custom_performance
+Time for evaluating all kernels 14.087488412857056
+Results:
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 3.36,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 3.36,
+        "std": 0.0455,
+        "min": 3.31,
+        "max": 3.85,
+        "median": 3.35,
+        "speedup": 10.089285714285714,
+        "ref_speed": 33.9,
+        "num_trials": 148
+      }
+    }
+  },
+  "runtime_improvement": 10.089285714285714,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 3.36,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 3.36,
+        "std": 0.0189,
+        "min": 3.32,
+        "max": 3.41,
+        "median": 3.35,
+        "speedup": 10.089285714285714,
+        "ref_speed": 33.9,
+        "num_trials": 149
+      }
+    }
+  },
+  "runtime_improvement": 10.089285714285714,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 3.36,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 3.36,
+        "std": 0.0201,
+        "min": 3.31,
+        "max": 3.43,
+        "median": 3.36,
+        "speedup": 10.089285714285714,
+        "ref_speed": 33.9,
+        "num_trials": 148
+      }
+    }
+  },
+  "runtime_improvement": 10.089285714285714,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 2.6,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 2.6,
+        "std": 0.0305,
+        "min": 2.53,
+        "max": 2.82,
+        "median": 2.59,
+        "speedup": 13.038461538461538,
+        "ref_speed": 33.9,
+        "num_trials": 127
+      }
+    }
+  },
+  "runtime_improvement": 13.038461538461538,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_3_v3.txt
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_3_best.txt
+Time total for trial 3 74.52967262268066
+--------- Trial 4---------
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Finished inference with model claude-4-6-opus, time: 55.15145301818848
+Finished inference with model claude-4-6-opus, time: 55.77497982978821
+Finished inference with model claude-4-6-opus, time: 59.1149787902832
+Finished inference with model claude-4-6-opus, time: 67.99040007591248
+Time for generating all kernels 67.99458408355713
+Evaluating 4 solutions
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_uaqpvhsf
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_917iajf2
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_byhnh5no
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_9hpn8ebp
+Build 'custom' took 0.79 seconds
+Build 'custom' took 0.79 seconds
+build
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_5yy017lx
+build
+[Test custom task] Start testing of custom
+Build 'custom' took 0.80 seconds
+build
+Build 'custom' took 0.95 seconds
+build
+Correctness tests took 1.04 seconds
+Performance tests took 2.27 seconds
+test_custom_correctness
+test_custom_performance
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_7aa16u0f
+[Test custom task] Start testing of custom
+Correctness tests took 1.02 seconds
+Performance tests took 2.30 seconds
+test_custom_correctness
+[Test Custom Task]
+test_custom_performance
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_6mfyvygz
+[Test custom task] Start testing of custom
+Correctness tests took 1.06 seconds
+Performance tests took 2.29 seconds
+test_custom_correctness
+test_custom_performance
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_9gx39f74
+[Test custom task] Start testing of custom
+Correctness tests took 1.02 seconds
+Performance tests took 2.30 seconds
+test_custom_correctness
+test_custom_performance
+Time for evaluating all kernels 14.112765789031982
+Results:
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 3.36,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 3.36,
+        "std": 0.0446,
+        "min": 3.32,
+        "max": 3.86,
+        "median": 3.36,
+        "speedup": 10.089285714285714,
+        "ref_speed": 33.9,
+        "num_trials": 148
+      }
+    }
+  },
+  "runtime_improvement": 10.089285714285714,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 3.37,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 3.37,
+        "std": 0.0609,
+        "min": 3.32,
+        "max": 3.86,
+        "median": 3.36,
+        "speedup": 10.059347181008901,
+        "ref_speed": 33.9,
+        "num_trials": 148
+      }
+    }
+  },
+  "runtime_improvement": 10.059347181008903,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 3.36,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 3.36,
+        "std": 0.0451,
+        "min": 3.31,
+        "max": 3.85,
+        "median": 3.36,
+        "speedup": 10.089285714285714,
+        "ref_speed": 33.9,
+        "num_trials": 148
+      }
+    }
+  },
+  "runtime_improvement": 10.089285714285714,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 2.17,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 2.17,
+        "std": 0.0111,
+        "min": 2.16,
+        "max": 2.28,
+        "median": 2.17,
+        "speedup": 15.622119815668203,
+        "ref_speed": 33.9,
+        "num_trials": 153
+      }
+    }
+  },
+  "runtime_improvement": 15.622119815668205,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_4_v3.txt
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_4_best.txt
+Time total for trial 4 82.14636206626892
+--------- Trial 5---------
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Finished inference with model claude-4-6-opus, time: 51.70525288581848
+Finished inference with model claude-4-6-opus, time: 58.80861687660217
+Finished inference with model claude-4-6-opus, time: 59.090744733810425
+Finished inference with model claude-4-6-opus, time: 68.06432151794434
+Time for generating all kernels 68.0693998336792
+Evaluating 4 solutions
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_aic1yisk
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_0g713cc7
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_liht3egk
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_a2lgyx9q
+Build 'custom' took 0.61 seconds
+build
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_a2uv5fbk
+[Test custom task] Start testing of custom
+Build 'custom' took 0.65 seconds
+build
+Build 'custom' took 0.69 seconds
+build
+Build 'custom' took 0.69 seconds
+build
+Correctness tests took 1.08 seconds
+Performance tests took 2.28 seconds
+test_custom_correctness
+test_custom_performance
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_n7ntnx88
+[Test custom task] Start testing of custom
+Correctness tests took 0.99 seconds
+Performance tests took 2.23 seconds
+test_custom_correctness
+test_custom_performance
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_q2tloeyt
+[Test custom task] Start testing of custom
+Correctness tests took 1.05 seconds
+Performance tests took 2.31 seconds
+test_custom_correctness
+test_custom_performance
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_wcvbu6bs
+[Test custom task] Start testing of custom
+Correctness tests took 1.03 seconds
+Performance tests took 2.38 seconds
+test_custom_correctness
+test_custom_performance
+Time for evaluating all kernels 13.982120752334595
+Results:
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 4.83,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 4.83,
+        "std": 0.0148,
+        "min": 4.8,
+        "max": 4.89,
+        "median": 4.83,
+        "speedup": 7.0186335403726705,
+        "ref_speed": 33.9,
+        "num_trials": 207
+      }
+    }
+  },
+  "runtime_improvement": 7.01863354037267,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 4.83,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 4.83,
+        "std": 0.0133,
+        "min": 4.81,
+        "max": 4.89,
+        "median": 4.83,
+        "speedup": 7.0186335403726705,
+        "ref_speed": 33.9,
+        "num_trials": 207
+      }
+    }
+  },
+  "runtime_improvement": 7.01863354037267,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 3.44,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 3.44,
+        "std": 0.0415,
+        "min": 3.38,
+        "max": 3.86,
+        "median": 3.45,
+        "speedup": 9.854651162790697,
+        "ref_speed": 33.9,
+        "num_trials": 145
+      }
+    }
+  },
+  "runtime_improvement": 9.854651162790699,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 2.04,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 2.04,
+        "std": 0.0271,
+        "min": 2.0,
+        "max": 2.3,
+        "median": 2.04,
+        "speedup": 16.61764705882353,
+        "ref_speed": 33.9,
+        "num_trials": 122
+      }
+    }
+  },
+  "runtime_improvement": 16.617647058823525,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_5_v3.txt
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_5_best.txt
+Time total for trial 5 82.08931851387024
+--------- Trial 6---------
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Finished inference with model claude-4-6-opus, time: 50.03845453262329
+Finished inference with model claude-4-6-opus, time: 50.2550950050354
+Finished inference with model claude-4-6-opus, time: 62.5840060710907
+Finished inference with model claude-4-6-opus, time: 68.06379699707031
+Time for generating all kernels 68.06860613822937
+Evaluating 4 solutions
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_54l3wgk2
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_cv0g74t6
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_71ymjjpg
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_p584ao6_
+Build 'custom' took 0.61 seconds
+build
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_ewpwmesn
+[Test custom task] Start testing of custom
+Build 'custom' took 0.68 seconds
+build
+Build 'custom' took 0.78 seconds
+build
+Build 'custom' took 0.83 seconds
+build
+Correctness tests took 1.05 seconds
+Performance tests took 2.23 seconds
+test_custom_correctness
+test_custom_performance
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_5hsy5omw
+[Test custom task] Start testing of custom
+Correctness tests took 1.04 seconds
+Performance tests took 2.23 seconds
+test_custom_correctness
+[Test Custom Task]
+test_custom_performance
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_vfgpet77
+[Test custom task] Start testing of custom
+Correctness tests took 1.00 seconds
+Performance tests took 2.22 seconds
+test_custom_correctness
+[Test Custom Task]
+test_custom_performance
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_ujyv82rn
+[Test custom task] Start testing of custom
+Correctness tests took 1.03 seconds
+Performance tests took 2.50 seconds
+test_custom_correctness
+test_custom_performance
+Time for evaluating all kernels 13.933933973312378
+New elite in cell (2, 3, 3, 0): 6d430cb1-4fb0-436a-9889-ff2499f25da1 (score=82.6336) replaced f12e5585-2a2b-4a68-8025-b3d6234ce6f3 (score=81.4662)
+New best program: 6d430cb1-4fb0-436a-9889-ff2499f25da1 (score=82.6336) replaced f12e5585-2a2b-4a68-8025-b3d6234ce6f3 (score=81.4662)
+Results:
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 11.2,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 11.2,
+        "std": 0.116,
+        "min": 11.1,
+        "max": 11.9,
+        "median": 11.2,
+        "speedup": 3.0267857142857144,
+        "ref_speed": 33.9,
+        "num_trials": 89
+      }
+    }
+  },
+  "runtime_improvement": 3.0267857142857144,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 4.81,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 4.81,
+        "std": 0.0155,
+        "min": 4.77,
+        "max": 4.88,
+        "median": 4.81,
+        "speedup": 7.047817047817048,
+        "ref_speed": 33.9,
+        "num_trials": 207
+      }
+    }
+  },
+  "runtime_improvement": 7.047817047817047,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 1.33,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 1.33,
+        "std": 0.00528,
+        "min": 1.31,
+        "max": 1.36,
+        "median": 1.33,
+        "speedup": 25.488721804511275,
+        "ref_speed": 33.9,
+        "num_trials": 149
+      }
+    }
+  },
+  "runtime_improvement": 25.488721804511275,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 1.31,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 1.31,
+        "std": 0.00408,
+        "min": 1.3,
+        "max": 1.33,
+        "median": 1.31,
+        "speedup": 25.877862595419845,
+        "ref_speed": 33.9,
+        "num_trials": 151
+      }
+    }
+  },
+  "runtime_improvement": 25.877862595419842,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_6_v3.txt
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_6_best.txt
+Time total for trial 6 82.03669881820679
+--------- Trial 7---------
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Finished inference with model claude-4-6-opus, time: 53.675511598587036
+Finished inference with model claude-4-6-opus, time: 59.194934606552124
+Finished inference with model claude-4-6-opus, time: 63.64417290687561
+Finished inference with model claude-4-6-opus, time: 82.08060193061829
+Time for generating all kernels 82.08334136009216
+Evaluating 4 solutions
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_3apzi7i6
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_p57mcq8y
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_o6yzqzih
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_qhmeopqx
+Build 'custom' took 0.94 seconds
+build
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_tzksut9f
+[Test custom task] Start testing of custom
+Build 'custom' took 0.95 seconds
+build
+Build 'custom' took 0.99 seconds
+build
+Build 'custom' took 1.38 seconds
+build
+Correctness tests took 1.04 seconds
+Performance tests took 2.25 seconds
+test_custom_correctness
+[Test Custom Task]
+test_custom_performance
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_2sp2kumv
+[Test custom task] Start testing of custom
+Correctness tests took 0.99 seconds
+Performance tests took 2.25 seconds
+test_custom_correctness
+[Test Custom Task]
+test_custom_performance
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_gmpcfzdv
+[Test custom task] Start testing of custom
+Correctness tests took 1.06 seconds
+Performance tests took 2.22 seconds
+test_custom_correctness
+test_custom_performance
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_kprr65_2
+[Test custom task] Start testing of custom
+Correctness tests took 1.02 seconds
+Performance tests took 2.28 seconds
+test_custom_correctness
+test_custom_performance
+Time for evaluating all kernels 14.083089590072632
+Results:
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 6.02,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 6.02,
+        "std": 0.0997,
+        "min": 5.96,
+        "max": 6.43,
+        "median": 5.99,
+        "speedup": 5.631229235880399,
+        "ref_speed": 33.9,
+        "num_trials": 165
+      }
+    }
+  },
+  "runtime_improvement": 5.631229235880399,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 2.14,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 2.14,
+        "std": 0.0105,
+        "min": 2.13,
+        "max": 2.25,
+        "median": 2.14,
+        "speedup": 15.841121495327101,
+        "ref_speed": 33.9,
+        "num_trials": 154
+      }
+    }
+  },
+  "runtime_improvement": 15.8411214953271,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 2.16,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 2.16,
+        "std": 0.00691,
+        "min": 2.15,
+        "max": 2.19,
+        "median": 2.15,
+        "speedup": 15.694444444444443,
+        "ref_speed": 33.9,
+        "num_trials": 153
+      }
+    }
+  },
+  "runtime_improvement": 15.694444444444445,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 2.16,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 2.16,
+        "std": 0.00953,
+        "min": 2.15,
+        "max": 2.23,
+        "median": 2.16,
+        "speedup": 15.694444444444443,
+        "ref_speed": 33.9,
+        "num_trials": 153
+      }
+    }
+  },
+  "runtime_improvement": 15.694444444444445,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_7_v1.txt
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_7_best.txt
+Time total for trial 7 96.20669865608215
+--------- Trial 8---------
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Finished inference with model claude-4-6-opus, time: 56.955721855163574
+Finished inference with model claude-4-6-opus, time: 59.06899881362915
+Finished inference with model claude-4-6-opus, time: 83.00173878669739
+Finished inference with model claude-4-6-opus, time: 86.01124358177185
+Time for generating all kernels 86.01698660850525
+Evaluating 4 solutions
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_a5_kz205
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_1k17f_ju
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_0cixsca7
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_1e5bz9_8
+Build 'custom' took 0.89 seconds
+build
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_73lwut78
+[Test custom task] Start testing of custom
+Build 'custom' took 0.89 seconds
+build
+Build 'custom' took 0.97 seconds
+build
+Build 'custom' took 0.98 seconds
+build
+Correctness tests took 1.05 seconds
+Performance tests took 2.29 seconds
+test_custom_correctness
+[Test Custom Task]
+test_custom_performance
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_x1ldrhki
+[Test custom task] Start testing of custom
+Correctness tests took 1.00 seconds
+Performance tests took 2.20 seconds
+test_custom_correctness
+test_custom_performance
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_jo54exm7
+[Test custom task] Start testing of custom
+Correctness tests took 1.04 seconds
+Performance tests took 2.26 seconds
+test_custom_correctness
+[Test Custom Task]
+test_custom_performance
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_6zmgdee5
+[Test custom task] Start testing of custom
+Correctness tests took 1.06 seconds
+Performance tests took 2.27 seconds
+test_custom_correctness
+test_custom_performance
+Time for evaluating all kernels 14.068208932876587
+Results:
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 2.78,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 2.78,
+        "std": 0.0172,
+        "min": 2.75,
+        "max": 2.83,
+        "median": 2.78,
+        "speedup": 12.194244604316546,
+        "ref_speed": 33.9,
+        "num_trials": 119
+      }
+    }
+  },
+  "runtime_improvement": 12.194244604316548,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 2.8,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 2.8,
+        "std": 0.0216,
+        "min": 2.75,
+        "max": 2.88,
+        "median": 2.8,
+        "speedup": 12.107142857142858,
+        "ref_speed": 33.9,
+        "num_trials": 177
+      }
+    }
+  },
+  "runtime_improvement": 12.10714285714286,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 2.16,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 2.16,
+        "std": 0.00414,
+        "min": 2.15,
+        "max": 2.18,
+        "median": 2.16,
+        "speedup": 15.694444444444443,
+        "ref_speed": 33.9,
+        "num_trials": 153
+      }
+    }
+  },
+  "runtime_improvement": 15.694444444444445,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 2.59,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 2.59,
+        "std": 0.0482,
+        "min": 2.54,
+        "max": 2.95,
+        "median": 2.58,
+        "speedup": 13.08880308880309,
+        "ref_speed": 33.9,
+        "num_trials": 128
+      }
+    }
+  },
+  "runtime_improvement": 13.088803088803093,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_8_v2.txt
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_8_best.txt
+Time total for trial 8 100.12977814674377
+--------- Trial 9---------
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Finished inference with model claude-4-6-opus, time: 61.819161891937256
+Finished inference with model claude-4-6-opus, time: 64.49130630493164
+Finished inference with model claude-4-6-opus, time: 65.10937428474426
+Finished inference with model claude-4-6-opus, time: 88.6650857925415
+Time for generating all kernels 88.67097997665405
+Evaluating 4 solutions
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_2p9ciw_n
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_ai73_ots
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_1zcau7ed
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_6cera0ma
+Build 'custom' took 0.71 seconds
+build
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_4vt3yxc1
+[Test custom task] Start testing of custom
+Build 'custom' took 0.73 seconds
+build
+Build 'custom' took 0.92 seconds
+build
+Build 'custom' took 0.99 seconds
+build
+Correctness tests took 1.05 seconds
+Performance tests took 2.26 seconds
+test_custom_correctness
+[Test Custom Task]
+test_custom_performance
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_7btp_5o3
+[Test custom task] Start testing of custom
+Correctness tests took 1.02 seconds
+Performance tests took 2.30 seconds
+test_custom_correctness
+test_custom_performance
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task__ovnoojq
+[Test custom task] Start testing of custom
+Correctness tests took 1.03 seconds
+Performance tests took 2.27 seconds
+test_custom_correctness
+test_custom_performance
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_yyii3sl6
+[Test custom task] Start testing of custom
+Correctness tests took 1.03 seconds
+Performance tests took 2.30 seconds
+test_custom_correctness
+test_custom_performance
+Time for evaluating all kernels 13.978386163711548
+Results:
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 2.74,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 2.74,
+        "std": 0.0407,
+        "min": 2.7,
+        "max": 3.21,
+        "median": 2.74,
+        "speedup": 12.372262773722627,
+        "ref_speed": 33.9,
+        "num_trials": 181
+      }
+    }
+  },
+  "runtime_improvement": 12.372262773722628,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 3.26,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 3.26,
+        "std": 0.0113,
+        "min": 3.23,
+        "max": 3.3,
+        "median": 3.26,
+        "speedup": 10.39877300613497,
+        "ref_speed": 33.9,
+        "num_trials": 152
+      }
+    }
+  },
+  "runtime_improvement": 10.398773006134972,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 1.32,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 1.32,
+        "std": 0.00801,
+        "min": 1.31,
+        "max": 1.37,
+        "median": 1.32,
+        "speedup": 25.68181818181818,
+        "ref_speed": 33.9,
+        "num_trials": 125
+      }
+    }
+  },
+  "runtime_improvement": 25.681818181818176,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 2.16,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 2.16,
+        "std": 0.0139,
+        "min": 2.15,
+        "max": 2.26,
+        "median": 2.15,
+        "speedup": 15.694444444444443,
+        "ref_speed": 33.9,
+        "num_trials": 154
+      }
+    }
+  },
+  "runtime_improvement": 15.694444444444445,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_9_v2.txt
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_9_best.txt
+Time total for trial 9 102.69366717338562
+--------- Trial 10---------
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Finished inference with model claude-4-6-opus, time: 66.6731321811676
+Finished inference with model claude-4-6-opus, time: 68.29522895812988
+Finished inference with model claude-4-6-opus, time: 76.61919236183167
+Finished inference with model claude-4-6-opus, time: 77.10095930099487
+Time for generating all kernels 77.10287642478943
+Evaluating 4 solutions
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_b4o4nzqr
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_fufqqbk4
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_if2cpi4t
+[Build Custom Task] Building in temporary directory: /tmp/build_custom_task_fk5mg70j
+Build 'custom' took 0.68 seconds
+build
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_4vuxa4hh
+[Test custom task] Start testing of custom
+Build 'custom' took 0.69 seconds
+build
+Build 'custom' took 0.99 seconds
+Build 'custom' took 0.99 seconds
+build
+build
+Correctness tests took 1.04 seconds
+Performance tests took 2.44 seconds
+test_custom_correctness
+test_custom_performance
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_j_qdzzpz
+[Test custom task] Start testing of custom
+Correctness tests took 0.99 seconds
+Performance tests took 2.33 seconds
+test_custom_correctness
+test_custom_performance
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_4br53qrj
+[Test custom task] Start testing of custom
+Correctness tests took 1.09 seconds
+Performance tests took 2.21 seconds
+test_custom_correctness
+test_custom_performance
+[Test Custom Task]
+[Test Custom Task] Executing in temporary directory: /tmp/test_custom_task_512_vh1g
+[Test custom task] Start testing of custom
+Correctness tests took 1.02 seconds
+Performance tests took 2.27 seconds
+test_custom_correctness
+test_custom_performance
+Time for evaluating all kernels 14.082551717758179
+Results:
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 1.32,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 1.32,
+        "std": 0.00538,
+        "min": 1.31,
+        "max": 1.36,
+        "median": 1.32,
+        "speedup": 25.68181818181818,
+        "ref_speed": 33.9,
+        "num_trials": 125
+      }
+    }
+  },
+  "runtime_improvement": 25.681818181818176,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 1.32,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 1.32,
+        "std": 0.00323,
+        "min": 1.32,
+        "max": 1.34,
+        "median": 1.32,
+        "speedup": 25.68181818181818,
+        "ref_speed": 33.9,
+        "num_trials": 108
+      }
+    }
+  },
+  "runtime_improvement": 25.681818181818176,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 4.05,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 4.05,
+        "std": 0.0394,
+        "min": 4.03,
+        "max": 4.33,
+        "median": 4.04,
+        "speedup": 8.37037037037037,
+        "ref_speed": 33.9,
+        "num_trials": 246
+      }
+    }
+  },
+  "runtime_improvement": 8.370370370370368,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+EvalResult
+{
+  "compiled": true,
+  "correctness": true,
+  "metadata": {
+    "bmg": {
+      "compile_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      },
+      "eval_worker_info": {
+        "nvcc_version": "",
+        "icpx_version": "2025.0.4.20241205",
+        "ocl_driver_version": "25.48.36300.8",
+        "neo_revision": "36300.8",
+        "igc_revision": "",
+        "cpu_info": "Intel(R) Core(TM) i9-14900K",
+        "device_id": "0xe20b",
+        "gpu_name": "Intel Corporation Battlemage G21 [Intel Graphics]",
+        "nvidia_compute_capabilities": "",
+        "git_commit_hash": "1f6068c-dirty",
+        "torch_version": "2.7.0+xpu",
+        "hostname": "odt-huyuan-openvino-ci-74"
+      }
+    }
+  },
+  "runtime": 4.05,
+  "runtime_stats": {
+    "bmg": {
+      "task.py::TestMatmulOCL::test_benchmark": {
+        "mean": 4.05,
+        "std": 0.0308,
+        "min": 4.03,
+        "max": 4.33,
+        "median": 4.04,
+        "speedup": 8.37037037037037,
+        "ref_speed": 33.9,
+        "num_trials": 246
+      }
+    }
+  },
+  "runtime_improvement": 8.370370370370368,
+  "improve_over_compile": -1.0,
+  "perf_score": 5,
+  "profiler_data": {},
+  "template_results": {}
+}
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_10_v0.txt
+Stdout saved at runs/b580_matmul_dpas_v11/stdout_level_None_problem_matmul_dpas_v11_trial_10_best.txt
+Time total for trial 10 91.23393058776855
+--------- Trial 11---------
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Running inference with model claude-4-6-opus
+Request worked but need to wait now for 66997.54751610756 due to GNAI time limit
+Request worked but need to wait now for 66997.54720878601 due to GNAI time limit
+Request worked but need to wait now for 66997.5449051857 due to GNAI time limit
+Request worked but need to wait now for 66997.46308708191 due to GNAI time limit
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 67507 seconds.
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 67507 seconds.
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 67507 seconds.
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 67507 seconds.
+Retrying GNAI request, attempt 2/5...
+Retrying GNAI request, attempt 2/5...
+Retrying GNAI request, attempt 2/5...
+Retrying GNAI request, attempt 2/5...
+Request worked but need to wait now for 0 due to GNAI time limit
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 503 seconds.
+Retrying GNAI request, attempt 3/5...
+Request worked but need to wait now for 0 due to GNAI time limit
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 503 seconds.
+Retrying GNAI request, attempt 3/5...
+Request worked but need to wait now for 0 due to GNAI time limit
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 503 seconds.
+Retrying GNAI request, attempt 3/5...
+Request worked but need to wait now for 0 due to GNAI time limit
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 503 seconds.
+Retrying GNAI request, attempt 3/5...
+Request worked but need to wait now for 0 due to GNAI time limit
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 497 seconds.
+Retrying GNAI request, attempt 4/5...
+Request worked but need to wait now for 0 due to GNAI time limit
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 497 seconds.
+Retrying GNAI request, attempt 4/5...
+Request worked but need to wait now for 0 due to GNAI time limit
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 497 seconds.
+Retrying GNAI request, attempt 4/5...
+Request worked but need to wait now for 0 due to GNAI time limit
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 497 seconds.
+Retrying GNAI request, attempt 4/5...
+Request worked but need to wait now for 0 due to GNAI time limit
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 491 seconds.
+Retrying GNAI request, attempt 5/5...
+Request worked but need to wait now for 0 due to GNAI time limit
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 491 seconds.
+Retrying GNAI request, attempt 5/5...
+Request worked but need to wait now for 0 due to GNAI time limit
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 491 seconds.
+Retrying GNAI request, attempt 5/5...
+Request worked but need to wait now for 0 due to GNAI time limit
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 491 seconds.
+Retrying GNAI request, attempt 5/5...
+Request worked but need to wait now for 0 due to GNAI time limit
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 485 seconds.
+LLM inference generated an exception: "GNAI response missing 'answer' key after 5 retries. Response: {'code': 429, 'message': 'Rate limit of $30 per day exceeded. Retry after 485 seconds.'}"
+Traceback (most recent call last):
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/custom_task_controller.py", line 279, in _run_single
+    llm_response, prompt, parent, model_used, session_id = future.result()
+                                                           ^^^^^^^^^^^^^^^
+  File "/home/openvino-ci-74/miniforge3/envs/kernel_intel/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/openvino-ci-74/miniforge3/envs/kernel_intel/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/home/openvino-ci-74/miniforge3/envs/kernel_intel/lib/python3.12/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/custom_task_controller.py", line 272, in task_function
+    return self.evolve_prompt_and_inference(task_name, reference, trial=trial, custom_task=custom_task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/controller.py", line 297, in evolve_prompt_and_inference
+    llm_response, models_used = self.llm_server(messages, return_model_info=True, trial=trial)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/inference_server.py", line 612, in __call__
+    out = selected_server(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/inference_server.py", line 281, in __call__
+    outputs = self.client(question=question, messages=messages, model=self.model, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/inference_server.py", line 486, in __call__
+    return self.get_single_answer(question, url)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/inference_server.py", line 428, in get_single_answer
+    raise KeyError(f"GNAI response missing 'answer' key after {self.max_retry} retries. Response: {data}")
+KeyError: "GNAI response missing 'answer' key after 5 retries. Response: {'code': 429, 'message': 'Rate limit of $30 per day exceeded. Retry after 485 seconds.'}"
+Request worked but need to wait now for 0 due to GNAI time limit
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 485 seconds.
+LLM inference generated an exception: "GNAI response missing 'answer' key after 5 retries. Response: {'code': 429, 'message': 'Rate limit of $30 per day exceeded. Retry after 485 seconds.'}"
+Traceback (most recent call last):
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/custom_task_controller.py", line 279, in _run_single
+    llm_response, prompt, parent, model_used, session_id = future.result()
+                                                           ^^^^^^^^^^^^^^^
+  File "/home/openvino-ci-74/miniforge3/envs/kernel_intel/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/openvino-ci-74/miniforge3/envs/kernel_intel/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/home/openvino-ci-74/miniforge3/envs/kernel_intel/lib/python3.12/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/custom_task_controller.py", line 272, in task_function
+    return self.evolve_prompt_and_inference(task_name, reference, trial=trial, custom_task=custom_task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/controller.py", line 297, in evolve_prompt_and_inference
+    llm_response, models_used = self.llm_server(messages, return_model_info=True, trial=trial)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/inference_server.py", line 612, in __call__
+    out = selected_server(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/inference_server.py", line 281, in __call__
+    outputs = self.client(question=question, messages=messages, model=self.model, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/inference_server.py", line 486, in __call__
+    return self.get_single_answer(question, url)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/inference_server.py", line 428, in get_single_answer
+    raise KeyError(f"GNAI response missing 'answer' key after {self.max_retry} retries. Response: {data}")
+KeyError: "GNAI response missing 'answer' key after 5 retries. Response: {'code': 429, 'message': 'Rate limit of $30 per day exceeded. Retry after 485 seconds.'}"
+Request worked but need to wait now for 0 due to GNAI time limit
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 484 seconds.
+LLM inference generated an exception: "GNAI response missing 'answer' key after 5 retries. Response: {'code': 429, 'message': 'Rate limit of $30 per day exceeded. Retry after 484 seconds.'}"
+Traceback (most recent call last):
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/custom_task_controller.py", line 279, in _run_single
+    llm_response, prompt, parent, model_used, session_id = future.result()
+                                                           ^^^^^^^^^^^^^^^
+  File "/home/openvino-ci-74/miniforge3/envs/kernel_intel/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/openvino-ci-74/miniforge3/envs/kernel_intel/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/home/openvino-ci-74/miniforge3/envs/kernel_intel/lib/python3.12/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/custom_task_controller.py", line 272, in task_function
+    return self.evolve_prompt_and_inference(task_name, reference, trial=trial, custom_task=custom_task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/controller.py", line 297, in evolve_prompt_and_inference
+    llm_response, models_used = self.llm_server(messages, return_model_info=True, trial=trial)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/inference_server.py", line 612, in __call__
+    out = selected_server(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/inference_server.py", line 281, in __call__
+    outputs = self.client(question=question, messages=messages, model=self.model, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/inference_server.py", line 486, in __call__
+    return self.get_single_answer(question, url)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/inference_server.py", line 428, in get_single_answer
+    raise KeyError(f"GNAI response missing 'answer' key after {self.max_retry} retries. Response: {data}")
+KeyError: "GNAI response missing 'answer' key after 5 retries. Response: {'code': 429, 'message': 'Rate limit of $30 per day exceeded. Retry after 484 seconds.'}"
+Request worked but need to wait now for 0 due to GNAI time limit
+GNAI request error:
+ Rate limit of $30 per day exceeded. Retry after 484 seconds.
+LLM inference generated an exception: "GNAI response missing 'answer' key after 5 retries. Response: {'code': 429, 'message': 'Rate limit of $30 per day exceeded. Retry after 484 seconds.'}"
+Traceback (most recent call last):
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/custom_task_controller.py", line 279, in _run_single
+    llm_response, prompt, parent, model_used, session_id = future.result()
+                                                           ^^^^^^^^^^^^^^^
+  File "/home/openvino-ci-74/miniforge3/envs/kernel_intel/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/home/openvino-ci-74/miniforge3/envs/kernel_intel/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/home/openvino-ci-74/miniforge3/envs/kernel_intel/lib/python3.12/concurrent/futures/thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/custom_task_controller.py", line 272, in task_function
+    return self.evolve_prompt_and_inference(task_name, reference, trial=trial, custom_task=custom_task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/controller.py", line 297, in evolve_prompt_and_inference
+    llm_response, models_used = self.llm_server(messages, return_model_info=True, trial=trial)
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/inference_server.py", line 612, in __call__
+    out = selected_server(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/inference_server.py", line 281, in __call__
+    outputs = self.client(question=question, messages=messages, model=self.model, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/inference_server.py", line 486, in __call__
+    return self.get_single_answer(question, url)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/inference_server.py", line 428, in get_single_answer
+    raise KeyError(f"GNAI response missing 'answer' key after {self.max_retry} retries. Response: {data}")
+KeyError: "GNAI response missing 'answer' key after 5 retries. Response: {'code': 429, 'message': 'Rate limit of $30 per day exceeded. Retry after 484 seconds.'}"
+Job None failed with error: too many inference fails!
+Traceback (most recent call last):
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/custom_task_controller.py", line 166, in run_single
+    return self._run_single(custom_task, self.task_id, self.job_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/river/kernel_foundry/kernelfoundry.internal/kernelgen/custom_task_controller.py", line 289, in _run_single
+    assert len(prompt_list) > 0 and len(custom_kernel_out_list) > 0, "too many inference fails!"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: too many inference fails!
+An error occurred while running the custom task: too many inference fails!
