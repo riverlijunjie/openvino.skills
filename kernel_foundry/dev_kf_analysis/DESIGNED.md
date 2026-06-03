@@ -2,7 +2,7 @@
 
 > Date: 2026-06-01  
 > Version: v0.2  
-> Scope: design a Kernel Foundry-based kernel optimization agent that reuses Kernel Design Agents workflow principles and Kernel Foundry execution infrastructure.  
+> Scope: design a Kernel Foundry-first kernel optimization agent that reuses Kernel Foundry execution infrastructure and adds agentic workflow discipline around it.  
 > Status: design proposal.
 
 ## 1. Vision
@@ -30,6 +30,27 @@ The key design principle is:
 
 > Let the LLM reason, but let deterministic tools decide truth.
 
+### 1.1 Positioning alignment
+
+This design does not introduce an external workflow framework to replace Kernel Foundry. The primary/secondary relationship must be explicit:
+
+- **Kernel Foundry is the core**: it owns task abstraction, kernel generation/evolution, build/test/profile, RAG, database, templates, benchmark, and future runtime integration.
+- **Workflow discipline is the key methodology**: it contributes agent workflow principles such as task contracts, plan-first execution, candidate lineage, evidence records, promotion gates, and human-readable artifacts.
+- **The Kernel Optimization Agent is a KF-first enhancement layer**: it adds a natural-language entry point, agent orchestrator, dynamic test/task updates, anti-gaming validation, E2E promotion, and structured evidence around existing Kernel Foundry capabilities. It is not a separate optimization framework.
+
+Therefore, Kernel Foundry’s role in this design is the **execution environment, source of truth, and persistence system**. Final judgments about correctness, performance, profiling, and promotion must come from Kernel Foundry tool outputs, not from subjective agent reasoning.
+
+### 1.2 Two-level loop design principle
+
+We must avoid misunderstanding one KF `CustomTask` as one single kernel iteration. The real design should use a two-level loop:
+
+- **Inner loop: KF CustomTask evolution loop**  
+  Kernel Foundry performs multiple rounds of kernel generation/mutation, build, correctness tests, performance tests, optional micro/profile feedback, and internal best-kernel selection inside one custom task.
+- **Outer loop: Agent E2E optimization loop**  
+  After each KF custom task inner loop finishes, the agent materializes the best kernel selected by KF into an outer `Candidate`, then performs integration, E2E benchmark, promotion decision, and planning for the next task round.
+
+Key constraint: **E2E tests must not enter the KF custom task inner loop**. E2E is too expensive and should only run in the outer loop on a small number of finalist candidates. The inner loop only runs micro/correctness/performance tests to quickly filter kernels; the outer loop validates real workload impact.
+
 ## 2. Design Goals
 
 ### 2.1 Functional goals
@@ -41,6 +62,7 @@ The key design principle is:
 - Reuse workflow discipline patterns such as task contracts, planning, candidate tracking, evidence records, and promotion gates.
 - Provide E2E evaluation interfaces for runtime/workload-level validation.
 - Support a library of tools, skills, and seed databases.
+- Explicitly fill the current gaps in Kernel Foundry as a batch/search harness: agentic orchestration, candidate lifecycle, dynamic test updates, E2E workload integration, and report/evidence schema.
 
 ### 2.2 Quality goals
 
@@ -51,21 +73,48 @@ The key design principle is:
 - Lower evaluation cost through staged/tiered testing.
 - Extensible backends, search strategies, and hardware knowledge.
 - Reproducible reports and candidate lineage.
+- New agent capabilities must remain compatible with current Kernel Foundry, preferably through adapters, wrappers, feature flags, and optional tool extensions, without breaking existing batch experiments.
+- Optimize time cost by reducing invalid trials, limiting full-profile passes, reusing cached results, and assigning explicit budgets to search, validation, and profiling.
 
 ### 2.3 Non-goals for the first version
 
 - Do not train a new kernel LLM initially.
 - Do not support every runtime backend in the first milestone.
 - Do not replace Kernel Foundry’s existing batch experiments; wrap and reuse them.
+- Do not rewrite Kernel Foundry with an external workflow framework; KF remains the core execution and data plane.
 - Do not make MAP-Elites the mandatory main loop.
+
+### 2.4 Mapping KF limitations to design additions
+
+This design starts from the gaps Kernel Foundry has when evolving from a batch generation/search platform into a user-facing kernel optimization agent. The mapping is:
+
+| Current Kernel Foundry limitation | Design addition | Main sections |
+|---|---|---|
+| Configuration and task entry are engineering-oriented; users cannot easily start optimization from natural language | `PARSE_REQUIREMENT` converts natural language into a `TaskContract`, then loads or generates a KF task | 5.1, 5.2 |
+| Strong batch generation/search, but weak explicit agent planning | Add task contracts, `docs/draft.md`, `docs/plan.md`, and an orchestrator state machine | 4.1, 5.4, 5.5 |
+| Candidate lifecycle is not sufficiently shaped for agent decisions | Separate inner KF `InnerTrial` from outer `Candidate`; only generate outer candidates after a custom task inner loop finishes, and support controlled top-K / Pareto / diverse branch best kernels entering outer E2E | 4.2, 4.2.1, 5 |
+| Tests/harness are usually statically defined with the task and are hard to evolve safely with kernel variants | Add `UPDATE_TASK_TESTS` and `update_task_tests`, treating `TEST_SPEC`, `PERF_SPEC`, and `HARNESS` as versioned blocks | 5.6.1, 6.1.3 |
+| LLM prompts can become overly bloated, causing high token cost and potentially worse generation quality | Optimize prompt construction: dynamically generate smaller and more precise prompts based on requirements, candidate state, and prior feedback; use delta prompts, structured error summaries, static skill caching, curated RAG/history kernels, and explicit token budgets | 5.6, 7.3, 8.8 |
+| Correctness gates can overfit public fixed tests | Add randomized/hidden shapes, output poisoning, reference/custom isolation, profiler sanity checks, and anti-gaming checks | 5.8, 9.2 |
+| Microbenchmark results can diverge from real workload impact | Add `integrate_runtime`, `benchmark_e2e`, and E2E output equivalence | 5.11, 5.12, 6.8, 6.9 |
+| Profiling mainly happens at candidate level, while workload-level profiling and hotspot selection are not first-class stages | Add workload profiling, top-hotspot selection, op contribution ranking, and optimization opportunity estimation in `BASELINE_PROFILE` / `PLAN_OUTER_ROUND`, so the agent first decides which op/kernel to optimize before entering the KF task inner loop | 5.3, 5.4, 13.3 |
+| MCP/tool interfaces are too coarse-grained and currently resemble a single `build_and_test` wrapper, limiting tiered validation and fine-grained agent decisions | Split KF capabilities into stable tool APIs such as `load_task`, `build_kernel`, `verify_correctness`, `benchmark_micro`, `profile_kernel`, and `record_candidate`, while preserving compatibility with existing interfaces | 6, 11, 12 |
+| Profiler feedback lacks a standard mapping to the next strategy | Add structured diagnosis in `profile_kernel`, bound-to-strategy mapping, and profile-guided greedy refinement | 5.10, 8.1 |
+| MAP-Elites descriptors are too coarse, concentrating search in rough small regions and drifting away from optima | Add fine-grained multi-dimensional descriptors, staged dimension activation, surrogate ranking, and trust-region local refinement for fast convergence | 8.5, 8.6 |
+| RAG/DB exists, but cross-run agent memory and strategy statistics are missing | Add `query_memory`, `record_candidate`, strategy statistics, and warm-start | 4.5, 6.6, 6.7, 8.7 |
+| Experiment artifacts exist, but human-auditable reports are insufficient | Add final reports, candidate timelines, evidence schema, and reproduction instructions | 10.2 |
+| New agent capability may break existing KF paths | Use compatibility layers, feature flags, optional schema extensions, and rollback mechanisms to keep existing CLI/batch/evaluator paths working | 3.4, 11, 12 |
+| Optimization runs can be expensive due to full profiles and E2E benchmarks | Add tiered validation, caching, early stopping, profile budgets, async queues, and low-cost surrogate ranking | 8.6, 8.8 |
+
+This table is also the guardrail for the design: every new module should directly enhance an existing KF capability or fill a KF limitation. If a module does not connect to KF tools, data, or execution, it should not enter the core architecture.
 
 ## 3. Architecture Overview
 
-The framework has five layers:
+The framework has five layers, reorganized around Kernel Foundry as an agentic stack:
 
 1. User interface and requirement parser.
-2. Orchestrator agent.
-3. Deterministic tools/environment.
+2. KF-aware orchestrator agent.
+3. Kernel Foundry deterministic tools/environment.
 4. Skills/knowledge assets.
 5. Memory/database/evidence store.
 
@@ -82,7 +131,7 @@ User NL Requirement
                |
                v
 +--------------------------------------------------+
-| Kernel Optimization Orchestrator                  |
+| KF-aware Kernel Optimization Orchestrator          |
 | - plan                                           |
 | - choose target                                  |
 | - choose strategy                                |
@@ -94,7 +143,7 @@ User NL Requirement
        |                                |
        v                                v
 +--------------+                 +---------------+
-| Tools        |                 | Skills        |
+| KF Tools     |                 | Skills        |
 | deterministic|                 | domain knowledge|
 +--------------+                 +---------------+
        |                                |
@@ -113,11 +162,110 @@ User NL Requirement
 +--------------------------------------------------+
 ```
 
+### 3.1 KF-core layering principle
+
+In this architecture, Kernel Foundry is not merely a low-level executor; it is the agent’s core fact plane and data plane:
+
+- Tasks must resolve to `CustomTask`, template tasks, or kernel-eval task workspaces.
+- Build, correctness, benchmark, and profile must run through KF tools or runtime tools wrapped by KF.
+- Candidate, benchmark, profile, RAG, and report artifacts should be written back to the KF run workspace/database.
+- Human-readable workflow artifacts are only the evidence layer of a KF run; they must not replace KF structured results.
+- Agent orchestration only proposes the next action; whether the action succeeds, whether a candidate is correct, and whether it may be promoted are all decided by KF deterministic tools.
+
+This layering avoids two common mistakes: demoting KF to a generic shell-command executor, and letting the workflow layer bypass KF’s existing task/evaluator/profiler/database capabilities.
+
+### 3.2 Architecture refinement: control plane / execution plane / data plane
+
+To reduce coupling and improve maintainability, the five-layer overview should be refined into three cooperating planes:
+
+| Plane | Core responsibility | Key interfaces | Failure handling |
+|---|---|---|---|
+| Control Plane | Requirement parsing, planning, strategy selection, budget control, state-machine progress | `PARSE_REQUIREMENT`, `PLAN`, `SELECT_STRATEGY` | Budget stop, strategy downgrade, human clarification |
+| Execution Plane | Task loading, code changes, build, verification, benchmark, profile, integration | `load_task`, `build_kernel`, `verify_correctness`, `benchmark_micro`, `profile_kernel`, `integrate_runtime` | Automatic rollback, candidate rejection, enter repair |
+| Data Plane | Candidate lineage, performance/correctness evidence, memory retrieval, reports and reproduction | `record_candidate`, `query_memory`, `benchmark_e2e`, report writers | Promotion is rejected if evidence validation fails |
+
+Implementation should keep the control plane side-effect free, the execution plane idempotent and retryable, and the data plane auditable and traceable.
+
+### 3.3 Architecture optimization suggestions
+
+The overview can be further turned into an executable design with a “main loop + fast path + safety gates” structure:
+
+1. **Outer main loop**: `PARSE_REQUIREMENT -> PLAN_OUTER_ROUND -> RUN_KF_CUSTOM_TASK_EVOLUTION -> SELECT_E2E_FINALISTS -> MATERIALIZE_CANDIDATE -> INTEGRATE -> BENCHMARK_E2E -> DECIDE_NEXT_ROUND`.
+2. **Inner fast loop**: `GENERATE_KERNEL -> UPDATE_TASK_TESTS -> BUILD -> VERIFY -> BENCHMARK_MICRO -> PROFILE_OPTIONAL -> SELECT_INNER_BEST`.
+3. **Fast path**: high-confidence template tasks may use `NL -> implicit contract -> task`, but still must produce an auditable contract (see 4.1.1).
+4. **Safety gate**: every inner kernel must pass correctness/performance tests; every outer candidate must have E2E evidence before promotion.
+5. **Convergence gate**: the inner loop converges under a micro budget; the outer loop controls rounds under an E2E budget to prevent expensive evaluation blow-up.
+
+Related diagrams:
+
+- Agent execution flow: `DESIGNED_FLOW.svg`
+- Agent architecture diagram: `DESIGNED_ARCH.svg`
+
+### 3.4 Compatibility principles with current Kernel Foundry
+
+This design introduces new execution logic, tools, skills, metadata schema, and run artifacts, but it must remain compatible with current KF code. The principle is: **incremental extension, no breakage of existing paths**.
+
+| Extension point | Compatibility requirement | Recommended implementation |
+|---|---|---|
+| Execution logic | Existing batch generation, task evaluator, and CLI scripts should not be forcibly rewritten | Add an `AgentOrchestrator` or `agent/` module enabled by config |
+| Tools | Existing `build_and_test` remains usable; new tools are a superset | Add `load_task`, `verify_correctness`, `profile_kernel`, etc. in the MCP/tool server while preserving old interfaces |
+| Task schema | Existing `task.py/config.yaml` tasks continue to run | Extend `TEST_SPEC`, `PERF_SPEC`, `HARNESS` through optional blocks/metadata, falling back to old logic when absent |
+| Database | Existing `Kernel`, `Task`, `Job`, and `JobLog` are not broken | Add optional tables or JSON metadata fields such as `AgentCandidate`, `E2EResult`, and `test_version` |
+| Skills | Skills must not require core evaluator changes | Skills are read-only planner/orchestrator inputs whose outputs must become KF tool calls |
+| Search | Existing MAP-Elites/greedy/batch strategies remain available | Add a strategy selector and enable multidimensional convergence strategies behind feature flags |
+| Reports | Raw logs/artifacts structure remains unchanged | Add `docs/`, `candidates.jsonl`, and `final_report.md` under the run workspace |
+
+Recommended feature flags:
+
+```yaml
+agent_mode: false
+agent_dynamic_tests: false
+agent_e2e_integration: false
+agent_multidim_search: false
+agent_report_artifacts: true
+```
+
+By default, current KF behavior stays unchanged. The agent only takes over the state machine, dynamic test updates, multidimensional search, or E2E integration when the corresponding flag is enabled.
+
+Compatibility acceptance criteria:
+
+- Existing `run_test*.sh`, batch experiments, and kernel-eval tasks behave unchanged when agent flags are off.
+- New tools wrap existing evaluator/profiler components instead of copying an independent execution system.
+- New schema fields are optional and ignorable by old code.
+- If an agent run fails, it can roll back to the original task workspace and the last correct candidate.
+
 ## 4. Core Concepts
 
 ### 4.1 Task contract
 
 Every optimization run starts with a task contract, but that contract is not an external abstraction disconnected from Kernel Foundry; it must be reducible to a Kernel Foundry task, template, evaluator config, or runtime integration target.
+
+### 4.1.1 Can natural language directly generate a KF task and skip TaskContract?
+
+Conclusion: **a fast path can be supported, but contract semantics cannot truly be skipped**. Even if the user does not explicitly see a `TaskContract`, the system must generate and persist an internal `implicit contract` for later validation, budget control, and reproducibility.
+
+Reasons:
+
+- Without a contract, `VERIFY` cannot determine tolerance, shape coverage, or hidden-test constraints.
+- Without a contract, `DECIDE` cannot determine whether promotion criteria are satisfied.
+- Without a contract, a run is hard to reproduce and strategy choices are hard to explain.
+- Without a contract, the system risks generating a compilable kernel whose target is inconsistent or whose validation has been weakened.
+
+Recommended two-mode design:
+
+| Mode | Entry | Contract shown explicitly? | Suitable scenarios |
+|---|---|---|---|
+| Standard mode (default) | `NL -> TaskContract -> KF task` | Yes | New tasks, complex constraints, E2E optimization |
+| Fast Path | `NL -> KF task` | May be hidden from the user, but the system must automatically generate and persist an `implicit contract` | Template tasks, simple constraints, low-risk quick trials |
+
+Tradeoffs:
+
+| Approach | Advantages | Disadvantages |
+|---|---|---|
+| Explicit TaskContract | Clear target, auditable, reproducible, good for budget and risk control | More first-interaction steps and slightly higher upfront cost |
+| Fast Path with internal implicit contract | Faster startup, simpler user experience, good for templated tasks | Higher ambiguity risk; a poor implicit contract amplifies later repair cost |
+
+Design requirement: the fast path only skips explicitly showing the contract at the interaction layer; it must not remove contract semantics at the system layer.
 
 Fields:
 
