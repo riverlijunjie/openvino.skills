@@ -129,6 +129,23 @@ static std::shared_ptr<Model> build_multiply_model(int M, int H) {
 }
 
 // ============================================================================
+// Attention output gate: out = x * sigmoid(y), both [M, H] f16.
+// Matches Qwen3.5/Qwen3.6 gated attention: attn_output * sigmoid(gate), where
+// the gate is the second chunk of q_proj (attn_output_gate=true). H = num_heads*head_dim.
+// ============================================================================
+static std::shared_ptr<Model> build_gate_model(int M, int H) {
+    auto x = std::make_shared<op::v0::Parameter>(element::f16, Shape{size_t(M), size_t(H)});
+    auto y = std::make_shared<op::v0::Parameter>(element::f16, Shape{size_t(M), size_t(H)});
+    x->set_friendly_name("attn_output");
+    y->set_friendly_name("gate");
+    auto sig = std::make_shared<op::v0::Sigmoid>(y);
+    sig->set_friendly_name("gate_sigmoid");
+    auto output = std::make_shared<op::v1::Multiply>(x, sig);
+    output->set_friendly_name("gate_out");
+    return std::make_shared<Model>(OutputVector{output}, ParameterVector{x, y}, "attn_gate");
+}
+
+// ============================================================================
 // Eltwise Add: input1 + input2, both [M, H] f16
 // ============================================================================
 static std::shared_ptr<Model> build_add_model(int M, int H) {
@@ -217,6 +234,7 @@ static void print_usage(const char* prog) {
               << "  rope       <M> <NH> <HD>  RoPE [1,M,NH,HD] with cos/sin\n"
               << "  swish      <M> <H>        SiLU/Swish f16 [M,H]             (SwiGLU gate H=12288)\n"
               << "  multiply   <M> <H>        Eltwise Multiply [M,H] * [M,H]   (SwiGLU gate*up H=12288)\n"
+              << "  gate       <M> <H>        Attn output gate x*sigmoid(y)    (Qwen3.6 attn gate H=4096)\n"
               << "\nOptions:\n"
               << "  --iters N    Timed iterations (default 150)\n"
               << "  --warmup N   Warmup iterations (default 20)\n"
@@ -304,6 +322,16 @@ int main(int argc, char* argv[]) {
         parse_opts(4);
         model = build_multiply_model(M, H);
         desc = "Multiply M=" + std::to_string(M) + " H=" + std::to_string(H);
+        // Bytes: read 2 inputs [M,H]*2 + write output [M,H]*2
+        total_bytes = 3.0 * M * H * 2;
+    }
+    else if (op_name == "gate") {
+        if (argc < 4) { print_usage(argv[0]); return 1; }
+        int M = std::atoi(argv[2]);
+        int H = std::atoi(argv[3]);
+        parse_opts(4);
+        model = build_gate_model(M, H);
+        desc = "Gate M=" + std::to_string(M) + " H=" + std::to_string(H);
         // Bytes: read 2 inputs [M,H]*2 + write output [M,H]*2
         total_bytes = 3.0 * M * H * 2;
     }
