@@ -25,21 +25,33 @@
   },
   "ops": {
     "qkv_fused_full_attn":
-      { "shape": "FC(M, 2048, 5120)", "weight": "INT4 g=128", "calls_per_decode": 10,
-        "note": "Q=16*256=4096, K=2*256=512, V=2*256=512 -> 5120; 10 full-attn layers" },
+      { "shape": "FC(M, 2048, 5120)", "weight": "FP16 (uncompressed)", "calls_per_decode": 10,
+        "note": "Q=16*256=4096, K=2*256=512, V=2*256=512 -> 5120; 10 full-attn layers; uncompressed F16 weights" },
     "o_proj_full_attn":
-      { "shape": "FC(M, 4096, 2048)", "weight": "INT4 g=128", "calls_per_decode": 10,
-        "note": "16*256 -> 2048; 10 full-attn layers" },
+      { "shape": "FC(M, 4096, 2048)", "weight": "FP16 (uncompressed)", "calls_per_decode": 10,
+        "note": "16*256 -> 2048; 10 full-attn layers; uncompressed F16 weights" },
     "paged_attention_full":
       { "config": "NH=16, NKV=2, HD=256, GQA=8, kv_int8", "calls_per_decode": 10 },
-    "linattn_input_proj":
-      { "shape": "FC(M, 2048, 12288)", "weight": "INT4 g=128", "calls_per_decode": 30,
-        "note": "Q=16*128 + K=16*128 + V=32*128 + gate=32*128 = 12288; 30 GDN layers" },
+    "linattn_in_proj_qkv":
+      { "shape": "FC(M, 2048, 8192)", "weight": "INT4 g=128", "calls_per_decode": 30,
+        "note": "Q=16*128=2048 + K=16*128=2048 + V=32*128=4096 = 8192; 30 GDN layers" },
+    "linattn_in_proj_z":
+      { "shape": "FC(M, 2048, 4096)", "weight": "INT4 g=128", "calls_per_decode": 30,
+        "note": "z/gate for RMSNormGated: 32*128=4096; 30 GDN layers" },
+    "linattn_in_proj_a":
+      { "shape": "FC(M, 2048, 32)", "weight": "INT4 g=128", "calls_per_decode": 30,
+        "note": "gate-a (discretization): one per v-head=32; tiny FC, ~32KB weight" },
+    "linattn_in_proj_b":
+      { "shape": "FC(M, 2048, 32)", "weight": "INT4 g=128", "calls_per_decode": 30,
+        "note": "beta (update gate): one per v-head=32; tiny FC, ~32KB weight" },
+    "linattn_out_proj":
+      { "shape": "FC(M, 4096, 2048)", "weight": "INT4 g=128", "calls_per_decode": 30,
+        "note": "output proj: value_dim(4096) -> hidden(2048); 30 GDN layers" },
     "gated_delta_net":
       { "config": "HK=32, K=V=128, kernel=GatedDeltaNet (gdn_bench)", "calls_per_decode": 30 },
     "moe_3gemm_fused":
-      { "config": "H=2048, I=512, NE=256, TK=8, +shared_I=512", "calls_per_decode": 40,
-        "note": "with always-on shared expert (additional dense gate/up/down with I=512)" },
+      { "config": "H=2048, I=512, NE=256, TK=8, shared_I=512, shared_quant=FP16", "calls_per_decode": 40,
+        "note": "routed experts INT4 g=128; always-on shared expert FP16 uncompressed (gate/up/down I=512)" },
     "lm_head":
       { "shape": "FC(1, 2048, 248320)", "weight": "INT8 g=128", "calls_per_decode": 1 },
     "small_ops_per_layer":

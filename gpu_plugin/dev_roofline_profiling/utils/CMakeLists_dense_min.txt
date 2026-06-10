@@ -1,0 +1,27 @@
+cmake_minimum_required(VERSION 3.16)
+project(roofline_bench LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(OpenVINO REQUIRED COMPONENTS Runtime)
+
+# OV_SRC_DIR should point to the OpenVINO source root (for internal/dev_api headers)
+set(OV_SRC_DIR "" CACHE PATH "Path to OpenVINO source tree (for dev_api headers)")
+
+add_executable(fc_bench fc_bench/main.cpp)
+target_link_libraries(fc_bench PRIVATE openvino::runtime)
+
+add_executable(pa_bench pa_bench/main.cpp)
+target_link_libraries(pa_bench PRIVATE openvino::runtime)
+if(OV_SRC_DIR)
+    target_include_directories(pa_bench PRIVATE
+        "${OV_SRC_DIR}/src/core/dev_api"
+        "${OV_SRC_DIR}/src/inference/dev_api"
+    )
+endif()
+
+add_executable(sdpa_bench sdpa_bench/main.cpp)
+target_link_libraries(sdpa_bench PRIVATE openvino::runtime)
+
+add_executable(small_ops_bench small_ops_bench/main.cpp)
+target_link_libraries(small_ops_bench PRIVATE openvino::runtime)

@@ -1,0 +1,40 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: C:\Users\Local_Admin\Downloads\clintercept-3.0.6-win64\Release\opencl.dll
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(NOT supported)
+    clock(steady_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept registry key: SOFTWARE\INTEL\IGFX\CLINTERCEPT
+Trying to load dispatch from: real_opencl.dll
+Couldn't get exported function pointer to: clGetGLContextInfoKHR
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+Total Enqueues: 0
+
+=== PA Benchmark ===
+NH=16 NKV=16 HD=72
+Mode=prefill S_q=2304 S_kv=0 blocks=144 kv_type=f16 impl=ocl iters=40 warmup=8 bufs=4 flush_mb=64
+[PA_BENCH ERROR] Exception from src\inference\src\cpp\core.cpp:120:
+Exception from src\inference\src\dev\plugin.cpp:54:
+Check 'k_head_size % pa_block_size == 0' failed at src\plugins\intel_gpu\src\graph\paged_attention.cpp:182:
+[GPU] k_head_size must be divisible by block_size
+
+
+
+Total Enqueues: 0
+
+CLIntercept is shutting down...
+... shutdown complete.

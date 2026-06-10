@@ -1,7 +1,7 @@
 /**
  * PA Benchmark — Qwen3-8B PagedAttention with FP16/INT8 KV cache
  *
- * Usage: ./pa_bench <mode> <S_q> <S_kv> [iters] [warmup] [num_bufs] [kv_type] [impl]
+ * Usage: ./pa_bench <mode> <S_q> <S_kv> [iters] [warmup] [num_bufs] [kv_type] [impl] [flush_mb]
  *   mode: "decode" (S_q=1) or "prefill" (S_q=S, S_kv=0)
  *   kv_type: "f16" (default) or "i8"
  *   impl: "ocl" (default) or "cm"
@@ -13,6 +13,19 @@
  *            Parameters (matching SDPAToPagedAttention's contract — see
  *            src/plugins/intel_gpu/src/plugin/transformations_pipeline.cpp
  *            use_xattention detection).
+ *   flush_mb: size of the L2/L3 flush buffer in MiB (default 64). Pass 0 to disable.
+ *             Env override: PA_BENCH_FLUSH_MB. Between every PA infer we run a
+ *             Parameter→Relu→Result over a `flush_mb`-MB f16 USM_DEVICE tensor;
+ *             reading+writing 2*flush_mb MiB of VRAM evicts any KV-cache lines
+ *             that the previous PA infer left in the GPU's L2/L3, so each
+ *             measured iteration actually streams KV from DRAM. Without this
+ *             flush, rotating-buffer alone is not enough: when per-buf KV ≈ LLC
+ *             size (e.g. 16 MiB at KV=4096 / NKV=8 / HD=128 / f16 on PTL 12Xe),
+ *             intra-iteration kernel reuse + partial LLC residency inflates
+ *             measured BW past the DRAM peak (reported eff% > 100%).
+ *             The flush kernel compiles to an `activation_*` primitive whose
+ *             name is excluded by parse_logs.py KERNEL_EXCLUDES, so it never
+ *             contaminates the per-kernel PA breakdown.
  *   Run separately for each input size per SKILL.md requirement.
  *
  * Uses OpenVINO's built-in PagedAttentionExtension op directly (not decomposed
@@ -64,7 +77,7 @@ static constexpr int BLOCK_SIZE = 16;  // KV cache block size
  *  [12] max_context_len:    scalar, i32
  *  [13..27] optional:       0-shaped constants
  */
-static std::shared_ptr<ov::Model> build_pa_model(int num_blocks, bool use_cm, int block_size_for_context, int sliding_window_size = 0) {
+static std::shared_ptr<ov::Model> build_pa_model(int num_blocks, bool use_cm, int block_size_for_context) {
     // query dim[1] MUST be static (NH*HD) — GPU plugin reads it to compute heads_num
     auto query       = std::make_shared<op::v0::Parameter>(element::f16,
                            PartialShape{Dimension::dynamic(), int64_t(NH * HD)});
@@ -97,7 +110,7 @@ static std::shared_ptr<ov::Model> build_pa_model(int num_blocks, bool use_cm, in
     // Fixed constants for required inputs
     float scale_val = 1.0f / std::sqrt(float(HD));
     auto scale          = op::v0::Constant::create(element::f32, Shape{}, {scale_val});
-    auto sliding_window = op::v0::Constant::create(element::i32, Shape{}, {sliding_window_size});
+    auto sliding_window = op::v0::Constant::create(element::i32, Shape{}, {0});
     auto alibi_slopes   = op::v0::Constant::create(element::f32, Shape{0}, {});
     int total_context = num_blocks * block_size_for_context;
     auto max_context_len = op::v0::Constant::create(element::i32, Shape{}, {total_context});
@@ -191,6 +204,18 @@ static std::shared_ptr<ov::Model> build_pa_model(int num_blocks, bool use_cm, in
     return std::make_shared<Model>(OutputVector{result0}, params, "pa_bench");
 }
 
+// L2/L3 cache flush model: Parameter(f16,[N]) -> Relu -> Result.
+// Running it streams 2*N*2 bytes of VRAM (read + write), evicting any KV-cache
+// lines that the previous PA infer left in the GPU's on-die caches so the next
+// PA iteration reads KV fresh from DRAM. Mirrors fc_bench's flush helper.
+static std::shared_ptr<ov::Model> build_flush_model(size_t n_elems) {
+    auto p = std::make_shared<op::v0::Parameter>(element::f16, Shape{n_elems});
+    p->set_friendly_name("flush_input");
+    auto r = std::make_shared<op::v0::Relu>(p);
+    r->set_friendly_name("flush_relu");
+    return std::make_shared<Model>(OutputVector{r}, ParameterVector{p}, "pa_l2_flush");
+}
+
 static void fill_f16(Tensor& t, std::mt19937& rng) {
     auto* p = t.data<ov::float16>();
     for (size_t i = 0; i < t.get_size(); i++)
@@ -207,7 +232,7 @@ int main(int argc, char* argv[]) {
     try {
     if (argc < 4) {
         std::cerr << "Usage: " << argv[0] << " <mode:decode|prefill> <S_q> <S_kv>"
-                  << " [iters=100] [warmup=10] [num_bufs=4] [kv_type=f16|i8] [impl=ocl|cm]" << std::endl;
+                  << " [iters=100] [warmup=10] [num_bufs=4] [kv_type=f16|i8] [impl=ocl|cm] [flush_mb=64]" << std::endl;
         return 1;
     }
 
@@ -219,6 +244,14 @@ int main(int argc, char* argv[]) {
     int num_bufs_cli = argc > 6 ? std::atoi(argv[6]) : 0;  // 0 = auto-size
     bool use_i8  = (argc > 7 && std::string(argv[7]) == "i8");
     bool use_cm  = (argc > 8 && std::string(argv[8]) == "cm");
+    // L2/L3 flush size in MiB. CLI arg has priority; otherwise env var PA_BENCH_FLUSH_MB;
+    // otherwise default 64 MiB (>=4x typical Intel iGPU LLC of 16 MiB on PTL 12Xe).
+    int flush_mb = 64;
+    if (argc > 9) {
+        flush_mb = std::atoi(argv[9]);
+    } else if (const char* e = std::getenv("PA_BENCH_FLUSH_MB")) {
+        flush_mb = std::atoi(e);
+    }
 
     // Auto-size num_bufs so the rotating-buffer set comfortably exceeds the GPU
     // last-level cache, defeating cross-iteration cache reuse that would
@@ -263,12 +296,6 @@ int main(int argc, char* argv[]) {
     if (const char* e = std::getenv("PA_NKV")) NKV = std::atoi(e);
     if (const char* e = std::getenv("PA_HD"))  HD  = std::atoi(e);
 
-    // Sliding window size: 0 = disabled (full attention). When > 0, the GPU
-    // plugin's PA kernel masks out KV tokens outside the window, reducing both
-    // compute and memory traffic for sliding-window attention layers.
-    int sliding_window_size = 0;
-    if (const char* e = std::getenv("PA_SW"))  sliding_window_size = std::atoi(e);
-
     // For decode: past_lens = S_kv, new tokens = S_q, total_context = S_kv + S_q
     // For prefill: S_q = S (input_len), S_kv = 0 (no past), total_context = S_q
     //   Force S_kv=0 for prefill so that:
@@ -285,13 +312,13 @@ int main(int argc, char* argv[]) {
     int num_blocks = (total_context + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
     std::cout << "=== PA Benchmark ===" << std::endl;
-    std::cout << "NH=" << NH << " NKV=" << NKV << " HD=" << HD
-              << " SW=" << sliding_window_size << std::endl;
+    std::cout << "NH=" << NH << " NKV=" << NKV << " HD=" << HD << std::endl;
     std::cout << "Mode=" << mode << " S_q=" << S_q << " S_kv=" << S_kv
               << " blocks=" << num_blocks << " kv_type=" << (use_i8 ? "i8" : "f16")
               << " impl=" << (use_cm ? "cm" : "ocl")
               << " iters=" << iters << " warmup=" << warmup
-              << " bufs=" << num_bufs << std::endl;
+              << " bufs=" << num_bufs
+              << " flush_mb=" << flush_mb << std::endl;
 
     // CM XAttention uses a different KV-cache block size internally (block_size_xattn=256)
     // — see src/plugins/intel_gpu/src/plugin/transformations_pipeline.cpp.
@@ -303,12 +330,20 @@ int main(int argc, char* argv[]) {
     }
 
     int block_size_for_context = use_cm ? 256 : BLOCK_SIZE;
-    auto model = build_pa_model(num_blocks, use_cm, block_size_for_context, sliding_window_size);
+    auto model = build_pa_model(num_blocks, use_cm, block_size_for_context);
 
     Core core;
     ov::AnyMap props;
+    // ALWAYS set kv_cache_precision explicitly. The GPU plugin defaults to i8 for
+    // PagedAttention models (see src/plugins/intel_gpu/src/runtime/execution_config.cpp
+    // ~line 293: `m_kv_cache_precision = ov::element::i8;` for is_paged_attention_model).
+    // If we only set it for use_i8=true, then the f16 branch silently runs INT8 KV
+    // and the bytes/BW figures become wrong (kernel streams ~half the assumed bytes,
+    // pushing apparent eff% above 100%).
     if (use_i8) {
         props[ov::hint::kv_cache_precision.name()] = ov::element::i8;
+    } else {
+        props[ov::hint::kv_cache_precision.name()] = ov::element::f16;
     }
     // Note: GPU_USE_CM is internal-only (cannot be set via string AnyMap from public
     // API). Its default is true; if your environment exports OV_GPU_USE_CM=0 the
@@ -450,14 +485,42 @@ int main(int argc, char* argv[]) {
         reqs.push_back(std::move(req));
     }
 
+    // Build + compile the L2/L3 cache flush helper. Single InferRequest streaming
+    // a `flush_mb`-MB f16 buffer through Relu evicts cached KV from on-die caches
+    // between iterations so each measured PA infer reads KV from DRAM. The flush
+    // kernel name (`activation_*`) is on parse_logs.py's KERNEL_EXCLUDES list and
+    // does not contaminate the PA per-kernel breakdown.
+    InferRequest flush_req;
+    bool flush_enabled = flush_mb > 0;
+    if (flush_enabled) {
+        size_t flush_elems = static_cast<size_t>(flush_mb) * 1024ull * 1024ull / 2ull; // f16 = 2B
+        auto fmodel = build_flush_model(flush_elems);
+        auto fcompiled = core.compile_model(fmodel, "GPU");
+        flush_req = fcompiled.create_infer_request();
+        // Use plain host-side Tensor (no RemoteContext) to avoid coupling pa_bench
+        // to USM_DEVICE / RemoteContext path; the GPU plugin still places the
+        // Relu input in VRAM and the kernel reads/writes 2*flush_mb MiB of DRAM.
+        auto fin_port = fcompiled.input();
+        ov::Tensor flush_in(fin_port.get_element_type(), fin_port.get_shape());
+        flush_req.set_input_tensor(flush_in);
+        flush_req.infer();  // warm up the flush primitive
+        std::cout << "L2/L3 flush kernel: " << flush_mb
+                  << " MB f16 Relu between every PA infer." << std::endl;
+    } else {
+        std::cout << "L2/L3 flush kernel DISABLED (flush_mb=0)." << std::endl;
+    }
+
     // Warmup
-    for (int i = 0; i < warmup; i++)
+    for (int i = 0; i < warmup; i++) {
+        if (flush_enabled) flush_req.infer();
         reqs[i % num_bufs].infer();
+    }
 
     // Benchmark
     std::vector<double> latencies;
     latencies.reserve(iters);
     for (int i = 0; i < iters; i++) {
+        if (flush_enabled) flush_req.infer();  // evict KV from L2/L3 before measurement
         auto& req = reqs[i % num_bufs];
         auto t0 = std::chrono::high_resolution_clock::now();
         req.infer();
@@ -492,17 +555,34 @@ int main(int argc, char* argv[]) {
     // Use *logical* past_lens KV bytes (S_kv tokens for decode, S_q for prefill);
     // this matches what the kernel actually streams from DRAM for the attention
     // compute, regardless of the underlying physical block_size (16 for OCL,
-    // 256 for the CM XAttention path). For INT8 KV we add the FP16 group scales
-    // (one per group of HD=128 elements per (NKV-head, token)).
-    int kv_elem_size = use_i8 ? 1 : 2;
+    // 256 for the CM XAttention path).
+    //
+    // CRITICAL: derive the KV element size from the *compiled* model type
+    // (`kc_type` queried earlier), not from the user's CLI flag. The GPU plugin
+    // can silently override the requested precision (e.g. defaults to i8 for PA
+    // models unless `ov::hint::kv_cache_precision` is set explicitly). Using
+    // `use_i8` here when the compiled cache is actually i8 would double the
+    // assumed bytes and inflate measured BW past DRAM peak.
+    const bool compiled_kv_is_int8 = (kc_type == element::i8 || kc_type == element::u8);
+    int kv_elem_size = kc_type.bitwidth() / 8;
+    if (kv_elem_size < 1) kv_elem_size = 1;
     double q_bytes      = double(S_q) * NH * HD * 2;
-    double kv_new_bytes = double(S_q) * NKV * HD * 2 * 2;  // K+V new tokens
+    double kv_new_bytes = double(S_q) * NKV * HD * 2 * 2;  // K+V new tokens (always f16 input)
     double kv_logical_tokens = double(total_context);
-    double kv_cache_bytes = 2.0 * kv_logical_tokens * NKV * HD * kv_elem_size;  // K+V logical
-    if (use_i8) {
-        // INT8 group-128 scale: 1 fp16 per group of HD=128 per (NKV head, token), per K and V.
-        const int groups_per_token = std::max(1, HD / 128);
-        kv_cache_bytes += 2.0 * kv_logical_tokens * NKV * groups_per_token * 2;
+    double kv_cache_bytes = 2.0 * kv_logical_tokens * NKV * HD * kv_elem_size;  // K+V logical data
+    if (compiled_kv_is_int8) {
+        // INT8 KV cache carries per-(head,HD,block) and per-(head,token) scale+zero_point
+        // pairs (2 × fp16 = 4 bytes). The actual GPU layout reports rank-4 shapes
+        // [num_blocks, NKV, HD, BLOCK+4] for K (BY_CHANNEL) and
+        // [num_blocks, NKV, BLOCK, HD+4] for V (BY_TOKEN). The +4 padding adds
+        // 4/BLOCK bytes per K element-row and 4/HD bytes per V element-row of
+        // overhead; total overhead = kv_logical_tokens * NKV * (HD * 4/BLOCK + 4)
+        // for K (BY_CHANNEL) + kv_logical_tokens * NKV * 4 for V (BY_TOKEN).
+        // Use BLOCK_SIZE here (OCL PA path); for CM XAttention the block size is
+        // 256 and the per-token overhead becomes negligible.
+        const double k_overhead = kv_logical_tokens * NKV * (double(HD) * 4.0 / BLOCK_SIZE);
+        const double v_overhead = kv_logical_tokens * NKV * 4.0;
+        kv_cache_bytes += k_overhead + v_overhead;
     }
     double out_bytes    = double(S_q) * NH * HD * 2;
     double total_bytes  = q_bytes + kv_new_bytes + kv_cache_bytes + out_bytes;
