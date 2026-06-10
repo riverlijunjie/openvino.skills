@@ -11,7 +11,7 @@ REM   - extra attn output gate elementwise (attn_output * sigmoid(gate)) H=4096
 REM   - MoE: H=2048 I=512 NE=256 TK=8 + shared_I=512 (always-on shared expert)
 REM   - LM_Head: vocab=248320 (INT8 g=128); body FC INT4 g=128; KV cache INT8
 REM   - PA: NH=16 NKV=2 HD=256 (GQA=8)
-REM   - GatedDeltaNet linear-attention bench (HK=H=32, K=V=128)
+REM   - GatedDeltaNet linear-attention bench (PagedGatedDeltaNet opt; qk_heads=16, v_heads=32, K=V=128)
 REM
 REM DECODE-512 WINDOW: user wants the decoding cost of generating 512 tokens for
 REM each prompt P in {1024,2048,4096,8192}. Only PA grows with KV length over the
@@ -65,10 +65,12 @@ for %%S in (1024 2048 4096 8192) do (
   call :do pa_prefill_S%%S            "%BUILD%\pa_bench.exe" prefill %%S 0 25 5 4 i8
 )
 
-REM ---------- gdn_bench: linear attention (GatedDeltaNet, HK=H=32, K=V=128) ----------
-call :do gdn_decode_T1                "%BUILD%\gdn_bench.exe" 1 1    32 32 128 4000 150 4
+REM ---------- gdn_bench: linear attention (PagedGatedDeltaNet opt kernel) ----------
+REM qk_heads=16, v_heads=32 (GQA group=2), head_dim=128. Paged op -> paged_gated_delta_net_opt.
+REM cache_interval=0 -> single final state snapshot (interval=T), no intermediate paging snapshots.
+call :do gdn_decode_T1                "%BUILD%\gdn_bench.exe" 1 1    16 32 128 4000 150 4 0
 for %%S in (1024 2048 4096 8192) do (
-  call :do gdn_prefill_S%%S           "%BUILD%\gdn_bench.exe" 1 %%S 32 32 128 20 5 2
+  call :do gdn_prefill_S%%S           "%BUILD%\gdn_bench.exe" 1 %%S 16 32 128 20 5 2 0
 )
 
 REM ---------- small ops (hidden=2048; full-attn 16/2 heads HD=256; gate H=4096) ----------

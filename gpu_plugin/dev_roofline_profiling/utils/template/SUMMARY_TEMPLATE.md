@@ -64,6 +64,7 @@ Activation / KV-cache shapes (S = sequence length, B = batch=1):
 | INT8 XMX peak | {{INT8_XMX_PEAK}} TOPS |
 | Memory BW | {{MEM_BW}} GB/s |
 | Ridge point (FP16) | {{RIDGE_POINT}} FLOP/byte |
+| Ridge point (INT8) | {{RIDGE_POINT_INT8}} OP/byte |
 
 ## Data sources
 
@@ -111,6 +112,19 @@ and which are fused away. This is model-specific and should be updated per model
 -->
 {{DECODE_TPOT_ROWS}}
 
+<!-- OPTIONAL: include when decode latency must reflect a full generation window
+(PagedAttention grows with KV across the GEN-token window). `start` = KV at the
+first generated token, `mean` = KV at the mid-window token, `end` = KV at the last.
+Only PA scales with KV; the rest is M=1 constant. Omit for fixed-KV decode reports. -->
+### Decode — full {{GEN_TOKENS}}-token generation window (PA grows with KV)
+
+| prompt P | TPOT start (ms) | TPOT mean (ms) | TPOT end (ms) | {{GEN_TOKENS}}-tok decode (ms) | decode tok/s |
+|---:|---:|---:|---:|---:|---:|
+<!-- One row per prompt length:
+| {{P}} | {{TPOT_START_MS}} | {{TPOT_MEAN_MS}} | {{TPOT_END_MS}} | {{DECODE_WINDOW_MS}} | {{DECODE_TOKS}} |
+-->
+{{DECODE_WINDOW_ROWS}}
+
 ### Decode TPOT — per-op breakdown (ms / % of TPOT)
 
 | op | {{DECODE_KV_HEADERS}} |
@@ -128,6 +142,36 @@ and which are fused away. This is model-specific and should be updated per model
 | {{OP_NAME}} | {{S1_MS}} ({{S1_PCT}}%) | {{S2_MS}} ({{S2_PCT}}%) | ... |
 -->
 {{PREFILL_BREAKDOWN_ROWS}}
+
+## Roofline: theoretical floor vs measured
+
+<!--
+Theoretical floor = sum over analytically-modelable ops of max(bytes/BW, FLOP/XMX-peak)
+— the fastest this HW could run each op given its memory traffic / compute.
+Measured = summed cliloader kernel time of the same ops.
+achieved % = theoretical / measured (100% = on the roofline ceiling).
+Recurrent ops with no analytic byte model (e.g. GatedDeltaNet `*_ref`) are excluded
+from the ratio and reported separately as "unmodeled"; full = measured + unmodeled
+= the real TPOT / TTFT.
+-->
+
+### Decode (per output token)
+
+| prompt P | KV | theoretical (ms) | measured (ms) | achieved % | unmodeled (ms) | full TPOT (ms) |
+|---:|---:|---:|---:|---:|---:|---:|
+<!-- One row per KV/prompt:
+| {{P}} | {{KV}} | {{THEO_MS}} | {{MEAS_MS}} | {{ACHIEVED_PCT}}% | {{UNMODELED_MS}} | {{FULL_TPOT_MS}} |
+-->
+{{DECODE_ROOFLINE_ROWS}}
+
+### Prefill (TTFT over S tokens)
+
+| S | theoretical (ms) | measured (ms) | achieved % | unmodeled (ms) | full TTFT (ms) |
+|---:|---:|---:|---:|---:|---:|
+<!-- One row per S:
+| {{S}} | {{THEO_MS}} | {{MEAS_MS}} | {{ACHIEVED_PCT}}% | {{UNMODELED_MS}} | {{FULL_TTFT_MS}} |
+-->
+{{PREFILL_ROOFLINE_ROWS}}
 
 ## Decode tables (1 query token, KV = context length)
 
@@ -171,45 +215,65 @@ _Note: SwiGLU `multiply` (silu(gate)·up) is fused into the SwiGLU primitive and
 
 <!-- END REPEAT -->
 
+## Op → kernel names (cliloader)
+
+<!--
+Each logical op and the actual GPU kernel(s) it dispatches (one bench process per op).
+List every kernel the op fires, in launch order; launches/call = times each kernel
+fires per single op invocation (per layer). Decode measured at M=1, prefill at the
+largest S — kernel selection can vary with shape. When an op dispatches multiple
+kernels, join the names (and the launch counts) in one cell with <br>.
+Examples: an FC fires `dynamic_quantize_gpu_opt` + `gemm_kernel`; PA decode fires
+`pa_kv_cache_update` + attention + finalization; MoE fires the fused
+`moe_3gemm_swiglu_*` / `grouped_micro_gemm` family + gather/scatter/reorder kernels.
+-->
+
+### Decode (M=1)
+
+| op | kernel name(s) | launches/call |
+|---|---|---:|
+<!-- One row per op; for multi-kernel ops join with <br>:
+| {{OP}} | `{{KERNEL_1}}`<br>`{{KERNEL_2}}` | {{LAUNCHES_1}}<br>{{LAUNCHES_2}} |
+-->
+{{DECODE_OP_KERNEL_ROWS}}
+
+### Prefill (S={{MAX_S}})
+
+| op | kernel name(s) | launches/call |
+|---|---|---:|
+<!-- One row per op (see Decode note above for multi-kernel formatting): -->
+{{PREFILL_OP_KERNEL_ROWS}}
+
 ## Per-kernel decomposition (cliloader kernel names)
 
 <!--
-Each op maps to one or more GPU kernels. Show the actual kernel names from
-cliloader Device Performance Timing. Include dynamic_quantize_gpu_opt,
-pa_kv_cache_update_ref, finalization kernels etc.
+Each op maps to one or more GPU kernels. Show the actual kernel names from cliloader
+Device Performance Timing (dynamic_quantize_gpu_opt, pa_kv_cache_update_ref,
+finalization kernels, etc.). One representative KV/S is shown (not every length),
+sorted by total ms desc and truncated to the top contributors.
 
 For prefill FC: dynamic_quantize_gpu_opt + gemm_kernel
 For PA decode: pa_kv_cache_update_ref + attention_kernel + finalization
 For PA prefill: pa_kv_cache_update_ref + sdpa_micro__prefill
 -->
 
-### Decode sub-kernels
+### Decode sub-kernels — KV={{REP_KV}} (representative)
 
-<!-- REPEAT for each KV in {{KV_LENGTHS}}: -->
-### Decode sub-kernels — KV={{KV}}
-
-| op | kernel name | single ms | launches/call | calls/inf | total ms | % | Eff% |
-|---|---|---:|---:|---:|---:|---:|---:|
-<!-- One row per sub-kernel, sorted by total ms desc:
-| {{OP}} | `{{KERNEL_NAME}}` | {{SINGLE_MS}} | {{LAUNCHES}} | {{CALLS}} | {{TOTAL_MS}} | {{PCT}}% | {{EFF_PCT}}% |
+| op | kernel name | single ms | launches/call | calls/inf | total ms | % |
+|---|---|---:|---:|---:|---:|---:|
+<!-- One row per sub-kernel, sorted by total ms desc (top contributors):
+| {{OP}} | `{{KERNEL_NAME}}` | {{SINGLE_MS}} | {{LAUNCHES}} | {{CALLS}} | {{TOTAL_MS}} | {{PCT}}% |
 -->
 {{DECODE_SUBKERNEL_ROWS}}
 
-<!-- END REPEAT -->
+### Prefill sub-kernels — S={{REP_S}} (representative)
 
-### Prefill sub-kernels
-
-<!-- REPEAT for each S in {{SEQ_LENGTHS}}: -->
-### Prefill sub-kernels — S={{S}}
-
-| op | kernel name | single ms | launches/call | calls/inf | total ms | % | Eff% |
-|---|---|---:|---:|---:|---:|---:|---:|
-<!-- One row per sub-kernel, sorted by total ms desc:
-| {{OP}} | `{{KERNEL_NAME}}` | {{SINGLE_MS}} | {{LAUNCHES}} | {{CALLS}} | {{TOTAL_MS}} | {{PCT}}% | {{EFF_PCT}}% |
+| op | kernel name | single ms | launches/call | calls/inf | total ms | % |
+|---|---|---:|---:|---:|---:|---:|
+<!-- One row per sub-kernel, sorted by total ms desc (top contributors):
+| {{OP}} | `{{KERNEL_NAME}}` | {{SINGLE_MS}} | {{LAUNCHES}} | {{CALLS}} | {{TOTAL_MS}} | {{PCT}}% |
 -->
 {{PREFILL_SUBKERNEL_ROWS}}
-
-<!-- END REPEAT -->
 
 ## Top contributors (sorted by total ms per inference)
 
@@ -230,6 +294,33 @@ For PA prefill: pa_kv_cache_update_ref + sdpa_micro__prefill
 | {{S}} | {{TOP1_OP}} {{TOP1_MS}}ms ({{TOP1_PCT}}%) | {{TOP2_OP}} {{TOP2_MS}}ms ({{TOP2_PCT}}%) | {{TOP3_OP}} {{TOP3_MS}}ms ({{TOP3_PCT}}%) |
 -->
 {{PREFILL_TOP_ROWS}}
+
+## End-to-end (prefill TTFT + {{GEN_TOKENS}}-token decode)
+
+| prompt P | TTFT (ms) | {{GEN_TOKENS}}-tok decode (ms) | total (ms) | avg decode tok/s |
+|---:|---:|---:|---:|---:|
+<!-- One row per prompt length:
+| {{P}} | {{TTFT_MS}} | {{DECODE_WINDOW_MS}} | {{TOTAL_MS}} | {{AVG_DECODE_TOKS}} |
+-->
+{{END_TO_END_ROWS}}
+
+## Key findings
+
+<!--
+3–6 bullets summarizing the headline results: decode tok/s and what bounds it,
+which ops dominate, achieved % of the roofline (decode vs prefill), and any
+kernel-selection / scaling anomalies worth flagging.
+-->
+{{KEY_FINDINGS}}
+
+## Optimization levers (highest ROI first)
+
+<!--
+Ranked, actionable levers tied to the measured bottlenecks (e.g. expert batching,
+INT4 LM-head, fusing unfused ops, speculative decoding). Each bullet: what to change
+and the expected effect.
+-->
+{{OPTIMIZATION_LEVERS}}
 
 ## Comparison with other platforms
 

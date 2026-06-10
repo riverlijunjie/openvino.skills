@@ -44,7 +44,7 @@
       { "shape": "FC(M, 2048, 12288)", "weight": "INT4 g=128", "calls_per_decode": 30,
         "note": "qkv(in_proj_qkv)=2*16*128+32*128=8192 + z(in_proj_z)=4096 = 12288; 30 GDN layers" },
     "gated_delta_net":
-      { "config": "HK=32, K=V=128, kernel=GatedDeltaNet (gdn_bench)", "calls_per_decode": 30 },
+      { "config": "qk_heads=16, v_heads=32 (GQA group=2), K=V=128, kernel=PagedGatedDeltaNet opt (gdn_bench)", "calls_per_decode": 30 },
     "moe_3gemm_fused":
       { "config": "H=2048, I=512, NE=256, TK=8, +shared_I=512", "calls_per_decode": 40,
         "note": "with always-on shared expert (additional dense gate/up/down with I=512)" },

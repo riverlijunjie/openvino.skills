@@ -83,19 +83,19 @@ All ops measured natively on this platform via cliloader Device Performance Timi
 
 | S | TTFT (ms) | TTFT (s) | per-token (ms) | tokens/s |
 |---:|---:|---:|---:|---:|
-| 1024 | 551.3 | 0.551 | 0.538 | 1,857 |
-| 2048 | 810.2 | 0.810 | 0.396 | 2,528 |
-| 4096 | 1,481.4 | 1.481 | 0.362 | 2,765 |
-| 8192 | 2,962.2 | 2.962 | 0.362 | 2,766 |
+| 1024 | 543.0 | 0.543 | 0.530 | 1,886 |
+| 2048 | 794.0 | 0.794 | 0.388 | 2,579 |
+| 4096 | 1,461.9 | 1.462 | 0.357 | 2,802 |
+| 8192 | 2,951.8 | 2.952 | 0.360 | 2,775 |
 
 ### Decode — TPOT (per output token, mid 512-gen window KV = P+256)
 
 | prompt P | KV (mid) | TPOT (ms) | tokens/s |
 |---:|---:|---:|---:|
-| 1024 | 1280 | 21.634 | 46.2 |
-| 2048 | 2304 | 22.103 | 45.2 |
-| 4096 | 4352 | 21.812 | 45.8 |
-| 8192 | 8448 | 22.556 | 44.3 |
+| 1024 | 1280 | 21.208 | 47.2 |
+| 2048 | 2304 | 21.677 | 46.1 |
+| 4096 | 4352 | 21.386 | 46.8 |
+| 8192 | 8448 | 22.131 | 45.2 |
 
 ### Decode — full 512-token generation window (PA grows with KV)
 
@@ -103,44 +103,66 @@ All ops measured natively on this platform via cliloader Device Performance Timi
 
 | prompt P | TPOT start (ms) | TPOT mean (ms) | TPOT end (ms) | 512-tok decode (ms) | decode tok/s |
 |---:|---:|---:|---:|---:|---:|
-| 1024 | 21.512 | 21.634 | 21.745 | 11,076.6 | 46.2 |
-| 2048 | 21.990 | 22.103 | 22.209 | 11,316.5 | 45.2 |
-| 4096 | 21.777 | 21.812 | 21.920 | 11,167.6 | 45.8 |
-| 8192 | 22.569 | 22.556 | 22.580 | 11,548.9 | 44.3 |
+| 1024 | 21.086 | 21.208 | 21.320 | 10,858.6 | 47.2 |
+| 2048 | 21.564 | 21.677 | 21.784 | 11,098.5 | 46.1 |
+| 4096 | 21.351 | 21.386 | 21.494 | 10,949.6 | 46.8 |
+| 8192 | 22.143 | 22.131 | 22.155 | 11,330.9 | 45.2 |
 
 ### Decode TPOT — per-op breakdown (ms / % of TPOT)
 
 | op | P=1024 (KV1280) | P=2048 (KV2304) | P=4096 (KV4352) | P=8192 (KV8448) |
 |---|---:|---:|---:|---:|
-| MoE 3-gemm (TK=8 + shared, NE=256) | 7.612 (35.2%) | 7.612 (34.4%) | 7.612 (34.9%) | 7.612 (33.7%) |
-| LM head (2048->248320, INT8) | 5.157 (23.8%) | 5.157 (23.3%) | 5.157 (23.6%) | 5.157 (22.9%) |
-| FC linattn in_proj (2048->12288) | 3.848 (17.8%) | 3.848 (17.4%) | 3.848 (17.6%) | 3.848 (17.1%) |
-| FC o_proj / GDN out (4096->2048) | 1.849 (8.5%) | 1.849 (8.4%) | 1.849 (8.5%) | 1.849 (8.2%) |
-| FC qkv+gate (2048->9216) | 0.968 (4.5%) | 0.968 (4.4%) | 0.968 (4.4%) | 0.968 (4.3%) |
-| GatedDeltaNet core (HK=32,K=V=128) | 0.956 (4.4%) | 0.956 (4.3%) | 0.956 (4.4%) | 0.956 (4.2%) |
-| rmsnorm (H=2048) | 0.236 (1.1%) | 0.236 (1.1%) | 0.236 (1.1%) | 0.236 (1.0%) |
-| residual add (H=2048) | 0.120 (0.6%) | 0.120 (0.5%) | 0.120 (0.5%) | 0.120 (0.5%) |
+| MoE 3-gemm (TK=8 + shared, NE=256) | 7.612 (35.9%) | 7.612 (35.1%) | 7.612 (35.6%) | 7.612 (34.4%) |
+| LM head (2048->248320, INT8) | 5.157 (24.3%) | 5.157 (23.8%) | 5.157 (24.1%) | 5.157 (23.3%) |
+| FC linattn in_proj (2048->12288) | 3.848 (18.1%) | 3.848 (17.8%) | 3.848 (18.0%) | 3.848 (17.4%) |
+| FC o_proj / GDN out (4096->2048) | 1.849 (8.7%) | 1.849 (8.5%) | 1.849 (8.6%) | 1.849 (8.4%) |
+| FC qkv+gate (2048->9216) | 0.968 (4.6%) | 0.968 (4.5%) | 0.968 (4.5%) | 0.968 (4.4%) |
+| GatedDeltaNet core (qk=16,v=32,K=V=128) | 0.531 (2.5%) | 0.531 (2.4%) | 0.531 (2.5%) | 0.531 (2.4%) |
+| rmsnorm (H=2048) | 0.236 (1.1%) | 0.236 (1.1%) | 0.236 (1.1%) | 0.236 (1.1%) |
+| residual add (H=2048) | 0.120 (0.6%) | 0.120 (0.6%) | 0.120 (0.6%) | 0.120 (0.5%) |
 | q_norm (16x256) | 0.025 (0.1%) | 0.025 (0.1%) | 0.025 (0.1%) | 0.025 (0.1%) |
 | rope_q (16x256) | 0.025 (0.1%) | 0.025 (0.1%) | 0.025 (0.1%) | 0.025 (0.1%) |
 | k_norm (2x256) | 0.025 (0.1%) | 0.025 (0.1%) | 0.025 (0.1%) | 0.025 (0.1%) |
 | rope_k (2x256) | 0.022 (0.1%) | 0.022 (0.1%) | 0.022 (0.1%) | 0.022 (0.1%) |
 | attn gate x*sigmoid(y) (H=4096) | 0.015 (0.1%) | 0.015 (0.1%) | 0.015 (0.1%) | 0.015 (0.1%) |
-| PagedAttention (×10) | 0.774 (3.6%) | 1.243 (5.6%) | 0.952 (4.4%) | 1.697 (7.5%) |
+| PagedAttention (×10) | 0.774 (3.7%) | 1.243 (5.7%) | 0.952 (4.5%) | 1.697 (7.7%) |
 
 ### Prefill TTFT — per-op breakdown (ms / % of TTFT)
 
 | op | S=1024 | S=2048 | S=4096 | S=8192 |
 |---|---:|---:|---:|---:|
-| MoE grouped-gemm (TK=8 + shared) | 403.53 (73.2%) | 512.90 (63.3%) | 834.12 (56.3%) | 1454.62 (49.1%) |
-| PagedAttention prefill (causal, NH=16) | 6.69 (1.2%) | 24.69 (3.0%) | 93.81 (6.3%) | 396.58 (13.4%) |
-| GatedDeltaNet core | 77.48 (14.1%) | 153.56 (19.0%) | 312.06 (21.1%) | 621.34 (21.0%) |
-| FC linattn in_proj (2048->12288) | 29.91 (5.4%) | 57.32 (7.1%) | 118.27 (8.0%) | 238.03 (8.0%) |
-| FC qkv+gate (2048->9216) | 7.34 (1.3%) | 14.21 (1.8%) | 30.64 (2.1%) | 60.94 (2.1%) |
-| FC o_proj / GDN out (4096->2048) | 14.70 (2.7%) | 28.69 (3.5%) | 54.26 (3.7%) | 111.05 (3.7%) |
+| MoE grouped-gemm (TK=8 + shared) | 403.53 (74.3%) | 512.90 (64.6%) | 834.12 (57.1%) | 1454.62 (49.3%) |
+| PagedAttention prefill (causal, NH=16) | 6.69 (1.2%) | 24.69 (3.1%) | 93.81 (6.4%) | 396.58 (13.4%) |
+| GatedDeltaNet core | 69.17 (12.7%) | 137.36 (17.3%) | 292.51 (20.0%) | 610.93 (20.7%) |
+| FC linattn in_proj (2048->12288) | 29.91 (5.5%) | 57.32 (7.2%) | 118.27 (8.1%) | 238.03 (8.1%) |
+| FC qkv+gate (2048->9216) | 7.34 (1.4%) | 14.21 (1.8%) | 30.64 (2.1%) | 60.94 (2.1%) |
+| FC o_proj / GDN out (4096->2048) | 14.70 (2.7%) | 28.69 (3.6%) | 54.26 (3.7%) | 111.05 (3.8%) |
 | rmsnorm (H=2048) | 3.97 (0.7%) | 7.26 (0.9%) | 19.16 (1.3%) | 45.33 (1.5%) |
 | rope_q (16x256) | 1.17 (0.2%) | 2.89 (0.4%) | 6.49 (0.4%) | 13.70 (0.5%) |
 | attn gate x*sigmoid(y) (H=4096) | 1.33 (0.2%) | 3.54 (0.4%) | 7.44 (0.5%) | 15.46 (0.5%) |
-| LM head (last token, 2048->248320) | 5.16 (0.9%) | 5.16 (0.6%) | 5.16 (0.3%) | 5.16 (0.2%) |
+| LM head (last token, 2048->248320) | 5.16 (0.9%) | 5.16 (0.6%) | 5.16 (0.4%) | 5.16 (0.2%) |
+
+## Roofline: theoretical floor vs measured
+
+**Theoretical floor** = sum over analytically-modelable ops of max(bytes / BW, FLOP / XMX-peak) - the fastest this HW could run each op given its memory traffic / compute. **Measured** is the summed cliloader kernel time of the same ops. **achieved % = theoretical / measured** (how close real kernels get to the roofline ceiling; 100% = on the roofline). GatedDeltaNet uses a recurrent `*_opt` kernel (measured with `cache_interval=0`, i.e. a single final state snapshot) with no analytic model, so it is reported separately as *unmodeled GDN* and excluded from the ratio; `full` = measured + unmodeled = the real TPOT / TTFT.
+
+### Decode (per output token, mid 512-gen window KV = P+256)
+
+| prompt P | KV | theoretical (ms) | measured (ms) | achieved % | unmodeled GDN (ms) | full TPOT (ms) |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1024 | 1280 | 17.027 | 20.677 | 82.3% | 0.531 | 21.208 |
+| 2048 | 2304 | 17.127 | 21.146 | 81.0% | 0.531 | 21.677 |
+| 4096 | 4352 | 17.326 | 20.855 | 83.1% | 0.531 | 21.386 |
+| 8192 | 8448 | 17.726 | 21.600 | 82.1% | 0.531 | 22.131 |
+
+### Prefill (TTFT over S tokens)
+
+| S | theoretical (ms) | measured (ms) | achieved % | unmodeled GDN (ms) | full TTFT (ms) |
+|---:|---:|---:|---:|---:|---:|
+| 1024 | 209.6 | 473.8 | 44.2% | 69.2 | 543.0 |
+| 2048 | 247.6 | 656.7 | 37.7% | 137.4 | 794.0 |
+| 4096 | 345.2 | 1,169.3 | 29.5% | 292.5 | 1,461.9 |
+| 8192 | 579.7 | 2,340.9 | 24.8% | 610.9 | 2,951.8 |
 
 ## Decode tables (1 query token, KV = mid 512-gen window context)
 
@@ -153,8 +175,8 @@ All ops measured natively on this platform via cliloader Device Performance Timi
 | FC linattn in_proj (2048->12288) | `gemm_kernel` | 0.1283 | 30 | 3.8481 | 392 | 102.2 | 97% | mem |
 | FC o_proj / GDN out (4096->2048) | `gemm_kernel` | 0.0462 | 40 | 1.8488 | 363 | 94.6 | 90% | mem |
 | FC qkv+gate (2048->9216) | `gemm_kernel` | 0.0968 | 10 | 0.9685 | 390 | 101.5 | 97% | mem |
-| GatedDeltaNet core (HK=32,K=V=128) | `gated_delta_net_ref__8629349849706163749__sa` | 0.0319 | 30 | 0.9565 | — | — | — | recurrent |
 | PagedAttention (i8 KV=1280) | `paged_attention_opt__single_token_15856477779756318941__sa` | 0.0774 | 10 | 0.7743 | 271 | 16.9 | 16% | mem |
+| GatedDeltaNet core (qk=16,v=32,K=V=128) | `paged_gated_delta_net_opt__13079710268314424383__sa` | 0.0177 | 30 | 0.5307 | — | — | — | recurrent |
 | rmsnorm (H=2048) | `rms_gpu_bfyx_opt_12510323107858754751_0_0` | 0.0029 | 80 | 0.2359 | 6 | 2.8 | 3% | mem |
 | residual add (H=2048) | `eltwise_simple_vload8_5822205451716121890_0_0` | 0.0015 | 80 | 0.1198 | 1 | 8.2 | 8% | mem |
 | q_norm (16x256) | `rms_gpu_bfyx_opt_3614857902334376871_0_0` | 0.0025 | 10 | 0.0255 | 13 | 6.4 | 6% | mem |
@@ -162,7 +184,7 @@ All ops measured natively on this platform via cliloader Device Performance Timi
 | k_norm (2x256) | `rms_gpu_bfyx_opt_14080521285413255093_0_0` | 0.0025 | 10 | 0.0246 | 2 | 0.8 | 1% | mem |
 | rope_k (2x256) | `rope_opt__13446196000903736985` | 0.0022 | 10 | 0.0222 | 2 | 0.9 | 1% | mem |
 | attn gate x*sigmoid(y) (H=4096) | `eltwise_simple_vload8_18444383029630729382_0_0` | 0.0015 | 10 | 0.0153 | 13 | 16.0 | 15% | mem |
-| **TOTAL** |  |  |  | **21.634** |  |  |  |  |
+| **TOTAL** |  |  |  | **21.208** |  |  |  |  |
 
 ### Decode — KV=2304 (prompt 2048, mid 512-gen window)
 
@@ -174,7 +196,7 @@ All ops measured natively on this platform via cliloader Device Performance Timi
 | FC o_proj / GDN out (4096->2048) | `gemm_kernel` | 0.0462 | 40 | 1.8488 | 363 | 94.6 | 90% | mem |
 | PagedAttention (i8 KV=2304) | `paged_attention_opt__single_token_15856477779756318941__sa` | 0.1243 | 10 | 1.2428 | 304 | 19.0 | 18% | mem |
 | FC qkv+gate (2048->9216) | `gemm_kernel` | 0.0968 | 10 | 0.9685 | 390 | 101.5 | 97% | mem |
-| GatedDeltaNet core (HK=32,K=V=128) | `gated_delta_net_ref__8629349849706163749__sa` | 0.0319 | 30 | 0.9565 | — | — | — | recurrent |
+| GatedDeltaNet core (qk=16,v=32,K=V=128) | `paged_gated_delta_net_opt__13079710268314424383__sa` | 0.0177 | 30 | 0.5307 | — | — | — | recurrent |
 | rmsnorm (H=2048) | `rms_gpu_bfyx_opt_12510323107858754751_0_0` | 0.0029 | 80 | 0.2359 | 6 | 2.8 | 3% | mem |
 | residual add (H=2048) | `eltwise_simple_vload8_5822205451716121890_0_0` | 0.0015 | 80 | 0.1198 | 1 | 8.2 | 8% | mem |
 | q_norm (16x256) | `rms_gpu_bfyx_opt_3614857902334376871_0_0` | 0.0025 | 10 | 0.0255 | 13 | 6.4 | 6% | mem |
@@ -182,7 +204,7 @@ All ops measured natively on this platform via cliloader Device Performance Timi
 | k_norm (2x256) | `rms_gpu_bfyx_opt_14080521285413255093_0_0` | 0.0025 | 10 | 0.0246 | 2 | 0.8 | 1% | mem |
 | rope_k (2x256) | `rope_opt__13446196000903736985` | 0.0022 | 10 | 0.0222 | 2 | 0.9 | 1% | mem |
 | attn gate x*sigmoid(y) (H=4096) | `eltwise_simple_vload8_18444383029630729382_0_0` | 0.0015 | 10 | 0.0153 | 13 | 16.0 | 15% | mem |
-| **TOTAL** |  |  |  | **22.103** |  |  |  |  |
+| **TOTAL** |  |  |  | **21.677** |  |  |  |  |
 
 ### Decode — KV=4352 (prompt 4096, mid 512-gen window)
 
@@ -193,8 +215,8 @@ All ops measured natively on this platform via cliloader Device Performance Timi
 | FC linattn in_proj (2048->12288) | `gemm_kernel` | 0.1283 | 30 | 3.8481 | 392 | 102.2 | 97% | mem |
 | FC o_proj / GDN out (4096->2048) | `gemm_kernel` | 0.0462 | 40 | 1.8488 | 363 | 94.6 | 90% | mem |
 | FC qkv+gate (2048->9216) | `gemm_kernel` | 0.0968 | 10 | 0.9685 | 390 | 101.5 | 97% | mem |
-| GatedDeltaNet core (HK=32,K=V=128) | `gated_delta_net_ref__8629349849706163749__sa` | 0.0319 | 30 | 0.9565 | — | — | — | recurrent |
 | PagedAttention (i8 KV=4352) | `paged_attention_opt__gqa_single_token_15856477779756318941__sa` | 0.0952 | 10 | 0.9521 | 749 | 46.8 | 45% | mem |
+| GatedDeltaNet core (qk=16,v=32,K=V=128) | `paged_gated_delta_net_opt__13079710268314424383__sa` | 0.0177 | 30 | 0.5307 | — | — | — | recurrent |
 | rmsnorm (H=2048) | `rms_gpu_bfyx_opt_12510323107858754751_0_0` | 0.0029 | 80 | 0.2359 | 6 | 2.8 | 3% | mem |
 | residual add (H=2048) | `eltwise_simple_vload8_5822205451716121890_0_0` | 0.0015 | 80 | 0.1198 | 1 | 8.2 | 8% | mem |
 | q_norm (16x256) | `rms_gpu_bfyx_opt_3614857902334376871_0_0` | 0.0025 | 10 | 0.0255 | 13 | 6.4 | 6% | mem |
@@ -202,7 +224,7 @@ All ops measured natively on this platform via cliloader Device Performance Timi
 | k_norm (2x256) | `rms_gpu_bfyx_opt_14080521285413255093_0_0` | 0.0025 | 10 | 0.0246 | 2 | 0.8 | 1% | mem |
 | rope_k (2x256) | `rope_opt__13446196000903736985` | 0.0022 | 10 | 0.0222 | 2 | 0.9 | 1% | mem |
 | attn gate x*sigmoid(y) (H=4096) | `eltwise_simple_vload8_18444383029630729382_0_0` | 0.0015 | 10 | 0.0153 | 13 | 16.0 | 15% | mem |
-| **TOTAL** |  |  |  | **21.812** |  |  |  |  |
+| **TOTAL** |  |  |  | **21.386** |  |  |  |  |
 
 ### Decode — KV=8448 (prompt 8192, mid 512-gen window)
 
@@ -214,7 +236,7 @@ All ops measured natively on this platform via cliloader Device Performance Timi
 | FC o_proj / GDN out (4096->2048) | `gemm_kernel` | 0.0462 | 40 | 1.8488 | 363 | 94.6 | 90% | mem |
 | PagedAttention (i8 KV=8448) | `paged_attention_opt__gqa_single_token_15856477779756318941__sa` | 0.1697 | 10 | 1.6967 | 816 | 51.0 | 49% | mem |
 | FC qkv+gate (2048->9216) | `gemm_kernel` | 0.0968 | 10 | 0.9685 | 390 | 101.5 | 97% | mem |
-| GatedDeltaNet core (HK=32,K=V=128) | `gated_delta_net_ref__8629349849706163749__sa` | 0.0319 | 30 | 0.9565 | — | — | — | recurrent |
+| GatedDeltaNet core (qk=16,v=32,K=V=128) | `paged_gated_delta_net_opt__13079710268314424383__sa` | 0.0177 | 30 | 0.5307 | — | — | — | recurrent |
 | rmsnorm (H=2048) | `rms_gpu_bfyx_opt_12510323107858754751_0_0` | 0.0029 | 80 | 0.2359 | 6 | 2.8 | 3% | mem |
 | residual add (H=2048) | `eltwise_simple_vload8_5822205451716121890_0_0` | 0.0015 | 80 | 0.1198 | 1 | 8.2 | 8% | mem |
 | q_norm (16x256) | `rms_gpu_bfyx_opt_3614857902334376871_0_0` | 0.0025 | 10 | 0.0255 | 13 | 6.4 | 6% | mem |
@@ -222,7 +244,7 @@ All ops measured natively on this platform via cliloader Device Performance Timi
 | k_norm (2x256) | `rms_gpu_bfyx_opt_14080521285413255093_0_0` | 0.0025 | 10 | 0.0246 | 2 | 0.8 | 1% | mem |
 | rope_k (2x256) | `rope_opt__13446196000903736985` | 0.0022 | 10 | 0.0222 | 2 | 0.9 | 1% | mem |
 | attn gate x*sigmoid(y) (H=4096) | `eltwise_simple_vload8_18444383029630729382_0_0` | 0.0015 | 10 | 0.0153 | 13 | 16.0 | 15% | mem |
-| **TOTAL** |  |  |  | **22.556** |  |  |  |  |
+| **TOTAL** |  |  |  | **22.131** |  |  |  |  |
 
 ## Prefill tables (single forward over S tokens)
 
@@ -230,8 +252,8 @@ All ops measured natively on this platform via cliloader Device Performance Timi
 
 | op | kernel | single ms | calls | total ms | GFLOPS | GB/s | Eff% | bound |
 |---|---|---:|---:|---:|---:|---:|---:|---|
-| MoE grouped-gemm (TK=8 + shared) | `grouped_micro_gemm` | 10.0884 | 40 | 403.5350 | 5,747 | 3.7 | 5% | compute |
-| GatedDeltaNet core | `gated_delta_net_ref__8629349849706163749__sa` | 2.5828 | 30 | 77.4833 | — | — | — | recurrent |
+| MoE grouped-gemm (TK=8 + shared) | `grouped_micro_gemm` | 10.0884 | 40 | 403.5350 | 5,747 | 43.9 | 42% | mem |
+| GatedDeltaNet core | `paged_gated_delta_net_opt__13079710268314424383__sa` | 2.3056 | 30 | 69.1679 | — | — | — | recurrent |
 | FC linattn in_proj (2048->12288) | `gemm_kernel` | 0.9971 | 30 | 29.9141 | 51,688 | 55.1 | 52% | mem |
 | FC o_proj / GDN out (4096->2048) | `gemm_kernel` | 0.3675 | 40 | 14.7016 | 46,743 | 57.4 | 55% | mem |
 | FC qkv+gate (2048->9216) | `gemm_kernel` | 0.7343 | 10 | 7.3433 | 52,639 | 57.5 | 55% | mem |
@@ -240,14 +262,14 @@ All ops measured natively on this platform via cliloader Device Performance Timi
 | rmsnorm (H=2048) | `rms_gpu_bfyx_opt_3188239531497015022_0_0` | 0.0496 | 80 | 3.9666 | 338 | 169.2 | 161% | cache |
 | attn gate x*sigmoid(y) (H=4096) | `eltwise_simple_vload8_12951181864104916429_0_0` | 0.1329 | 10 | 1.3293 | 158 | 189.3 | 180% | cache |
 | rope_q (16x256) | `rope_opt__1263978976134699825` | 0.1173 | 10 | 1.1731 | 358 | 143.0 | 136% | cache |
-| **TOTAL** |  |  |  | **551.290** |  |  |  |  |
+| **TOTAL** |  |  |  | **542.974** |  |  |  |  |
 
 ### Prefill — S=2048
 
 | op | kernel | single ms | calls | total ms | GFLOPS | GB/s | Eff% | bound |
 |---|---|---:|---:|---:|---:|---:|---:|---|
-| MoE grouped-gemm (TK=8 + shared) | `grouped_micro_gemm` | 12.8224 | 40 | 512.8950 | 9,044 | 4.7 | 8% | compute |
-| GatedDeltaNet core | `gated_delta_net_ref__8629349849706163749__sa` | 5.1185 | 30 | 153.5565 | — | — | — | recurrent |
+| MoE grouped-gemm (TK=8 + shared) | `grouped_micro_gemm` | 12.8224 | 40 | 512.8950 | 9,044 | 36.4 | 35% | mem |
+| GatedDeltaNet core | `paged_gated_delta_net_opt__13079710268314424383__sa` | 4.5786 | 30 | 137.3594 | — | — | — | recurrent |
 | FC linattn in_proj (2048->12288) | `gemm_kernel` | 1.9107 | 30 | 57.3196 | 53,950 | 44.1 | 46% | compute |
 | FC o_proj / GDN out (4096->2048) | `gemm_kernel` | 0.7174 | 40 | 28.6948 | 47,897 | 47.0 | 45% | mem |
 | PagedAttention prefill (causal, NH=16) | `sdpa_micro__prefill_15856477779756318941__sa` | 2.4690 | 10 | 24.6897 | 13,917 | 14.4 | 24% | compute |
@@ -256,14 +278,14 @@ All ops measured natively on this platform via cliloader Device Performance Timi
 | LM head (last token, 2048->248320) | `gemm_kernel` | 5.1573 | 1 | 5.1573 | 197 | 100.2 | 95% | mem |
 | attn gate x*sigmoid(y) (H=4096) | `eltwise_simple_vload8_13390302583414783927_0_0` | 0.3545 | 10 | 3.5450 | 118 | 142.0 | 135% | cache |
 | rope_q (16x256) | `rope_opt__13556955710875957727` | 0.2888 | 10 | 2.8881 | 290 | 116.2 | 111% | cache |
-| **TOTAL** |  |  |  | **810.218** |  |  |  |  |
+| **TOTAL** |  |  |  | **794.021** |  |  |  |  |
 
 ### Prefill — S=4096
 
 | op | kernel | single ms | calls | total ms | GFLOPS | GB/s | Eff% | bound |
 |---|---|---:|---:|---:|---:|---:|---:|---|
-| MoE grouped-gemm (TK=8 + shared) | `grouped_micro_gemm` | 20.8531 | 40 | 834.1226 | 11,122 | 5.1 | 9% | compute |
-| GatedDeltaNet core | `gated_delta_net_ref__8629349849706163749__sa` | 10.4020 | 30 | 312.0606 | — | — | — | recurrent |
+| MoE grouped-gemm (TK=8 + shared) | `grouped_micro_gemm` | 20.8531 | 40 | 834.1226 | 11,122 | 24.6 | 23% | mem |
+| GatedDeltaNet core | `paged_gated_delta_net_opt__13079710268314424383__sa` | 9.7503 | 30 | 292.5085 | — | — | — | recurrent |
 | FC linattn in_proj (2048->12288) | `gemm_kernel` | 3.9423 | 30 | 118.2700 | 52,294 | 36.3 | 44% | compute |
 | PagedAttention prefill (causal, NH=16) | `sdpa_micro__prefill_15856477779756318941__sa` | 9.3809 | 10 | 93.8093 | 14,651 | 7.6 | 25% | compute |
 | FC o_proj / GDN out (4096->2048) | `gemm_kernel` | 1.3566 | 40 | 54.2627 | 50,657 | 43.4 | 43% | compute |
@@ -272,14 +294,14 @@ All ops measured natively on this platform via cliloader Device Performance Timi
 | attn gate x*sigmoid(y) (H=4096) | `eltwise_simple_vload8_1600471834299485859_0_0` | 0.7439 | 10 | 7.4392 | 113 | 135.3 | 129% | cache |
 | rope_q (16x256) | `rope_opt__11913003717797137888` | 0.6487 | 10 | 6.4874 | 259 | 103.4 | 99% | mem |
 | LM head (last token, 2048->248320) | `gemm_kernel` | 5.1573 | 1 | 5.1573 | 197 | 100.2 | 95% | mem |
-| **TOTAL** |  |  |  | **1,481.408** |  |  |  |  |
+| **TOTAL** |  |  |  | **1,461.856** |  |  |  |  |
 
 ### Prefill — S=8192
 
 | op | kernel | single ms | calls | total ms | GFLOPS | GB/s | Eff% | bound |
 |---|---|---:|---:|---:|---:|---:|---:|---|
-| MoE grouped-gemm (TK=8 + shared) | `grouped_micro_gemm` | 36.3655 | 40 | 1454.6201 | 12,755 | 5.5 | 11% | compute |
-| GatedDeltaNet core | `gated_delta_net_ref__8629349849706163749__sa` | 20.7113 | 30 | 621.3390 | — | — | — | recurrent |
+| MoE grouped-gemm (TK=8 + shared) | `grouped_micro_gemm` | 36.3655 | 40 | 1454.6201 | 12,755 | 16.6 | 16% | mem |
+| GatedDeltaNet core | `paged_gated_delta_net_opt__13079710268314424383__sa` | 20.3643 | 30 | 610.9276 | — | — | — | recurrent |
 | PagedAttention prefill (causal, NH=16) | `sdpa_micro__prefill_15856477779756318941__sa` | 39.6577 | 10 | 396.5768 | 13,863 | 3.6 | 24% | compute |
 | FC linattn in_proj (2048->12288) | `gemm_kernel` | 7.9343 | 30 | 238.0303 | 51,966 | 32.8 | 44% | compute |
 | FC o_proj / GDN out (4096->2048) | `gemm_kernel` | 2.7763 | 40 | 111.0523 | 49,504 | 39.3 | 42% | compute |
@@ -288,7 +310,45 @@ All ops measured natively on this platform via cliloader Device Performance Timi
 | attn gate x*sigmoid(y) (H=4096) | `eltwise_simple_vload8_10752814223568689025_0_0` | 1.5455 | 10 | 15.4552 | 109 | 130.3 | 124% | cache |
 | rope_q (16x256) | `rope_opt__11688920003865995564` | 1.3705 | 10 | 13.7045 | 245 | 97.9 | 93% | mem |
 | LM head (last token, 2048->248320) | `gemm_kernel` | 5.1573 | 1 | 5.1573 | 197 | 100.2 | 95% | mem |
-| **TOTAL** |  |  |  | **2,962.206** |  |  |  |  |
+| **TOTAL** |  |  |  | **2,951.794** |  |  |  |  |
+
+## Op → kernel names (cliloader)
+
+Each logical op and the actual GPU kernel(s) it dispatches (one bench process per op). Kernels are listed in launch order; `launches/call` is how many times each kernel fires per single op invocation (per layer). Decode is measured at M=1, prefill at S=8192 — kernel selection can vary with shape.
+
+### Decode (M=1)
+
+| op | kernel name(s) | launches/call |
+|---|---|---:|
+| MoE 3-gemm (TK=8 + shared, NE=256) | `moe_3gemm_swiglu_mlp_gate_up_793724151708371423`<br>`moe_3gemm_swiglu_mlp_down_793724151708371423`<br>`gemm_kernel`<br>`moe_3gemm_swiglu_fuse_softmax_topk_793724151708371423`<br>`dynamic_quantize_gpu_opt_2680479405095583548_0_0`<br>`dynamic_quantize_gpu_opt_11767888948171086441_0_0`<br>`eltwise_simple_vload8_12929541252905950109_0_0`<br>`reorder_data_fast_b1_2055831431303789805_0_0`<br>`moe_3gemm_swiglu_mlp_reduce_793724151708371423`<br>`reorder_data_fast_b1_17423095617980708425_0_0` | 1.0<br>1.0<br>4.0<br>1.0<br>3.0<br>1.0<br>1.0<br>1.0<br>1.0<br>1.0 |
+| LM head (2048->248320, INT8) | `gemm_kernel` | 1.0 |
+| FC linattn in_proj (2048->12288) | `gemm_kernel` | 1.0 |
+| FC o_proj / GDN out (4096->2048) | `gemm_kernel` | 1.0 |
+| FC qkv+gate (2048->9216) | `gemm_kernel` | 1.0 |
+| GatedDeltaNet core (qk=16,v=32,K=V=128) | `paged_gated_delta_net_opt__13079710268314424383__sa` | 1.0 |
+| rmsnorm (H=2048) | `rms_gpu_bfyx_opt_12510323107858754751_0_0` | 1.0 |
+| residual add (H=2048) | `eltwise_simple_vload8_5822205451716121890_0_0` | 1.0 |
+| q_norm (16x256) | `rms_gpu_bfyx_opt_3614857902334376871_0_0` | 1.0 |
+| rope_q (16x256) | `rope_opt__4161905052046582694` | 1.0 |
+| k_norm (2x256) | `rms_gpu_bfyx_opt_14080521285413255093_0_0` | 1.0 |
+| rope_k (2x256) | `rope_opt__13446196000903736985` | 1.0 |
+| attn gate x*sigmoid(y) (H=4096) | `eltwise_simple_vload8_18444383029630729382_0_0` | 1.0 |
+| PagedAttention (KV=4352) | `paged_attention_opt__gqa_single_token_15856477779756318941__sa`<br>`paged_attention_opt__single_token_finalization_15856477779756318941__sa`<br>`pa_kv_cache_update_ref__15856477779756318941__sa` | 1.0<br>1.0<br>1.0 |
+
+### Prefill (S=8192)
+
+| op | kernel name(s) | launches/call |
+|---|---|---:|
+| MoE grouped-gemm (TK=8 + shared) | `grouped_micro_gemm`<br>`moe_scatter_reduction_opt_moe_scatter_reduction_ref_12318565695326055078`<br>`moe_gather_ref_prefill_gather_12318565695326055078`<br>`moe_3gemm_swiglu_fuse_prefill_swiglu_12318565695326055078`<br>`gemm_kernel`<br>`dynamic_quantize_gpu_opt_10707039156225127723_0_0`<br>`reorder_data_fast_b1_18330753658507001113_0_0`<br>`reorder_data_fast_b1_7898771992857082467_0_0`<br>`eltwise_simple_vload8_7979511875005307881_0_0`<br>`moe_3gemm_swiglu_fuse_softmax_topk_12318565695326055078`<br>`dynamic_quantize_gpu_opt_2327842525564133992_0_0` | 3.0<br>1.0<br>1.0<br>1.0<br>4.0<br>3.0<br>1.0<br>1.0<br>1.0<br>1.0<br>1.0 |
+| PagedAttention prefill (causal, NH=16) | `sdpa_micro__prefill_15856477779756318941__sa`<br>`pa_kv_cache_update_ref__15856477779756318941__sa` | 1.0<br>1.0 |
+| GatedDeltaNet core | `paged_gated_delta_net_opt__13079710268314424383__sa` | 1.0 |
+| FC linattn in_proj (2048->12288) | `gemm_kernel`<br>`dynamic_quantize_gpu_opt_8502581394328941662_0_0` | 1.0<br>1.0 |
+| FC qkv+gate (2048->9216) | `gemm_kernel`<br>`dynamic_quantize_gpu_opt_8502581394328941662_0_0` | 1.0<br>1.0 |
+| FC o_proj / GDN out (4096->2048) | `gemm_kernel`<br>`dynamic_quantize_gpu_opt_1534384422443530166_0_0` | 1.0<br>1.0 |
+| rmsnorm (H=2048) | `rms_gpu_bfyx_opt_1416219266873627125_0_0` | 1.0 |
+| rope_q (16x256) | `rope_opt__11688920003865995564` | 1.0 |
+| attn gate x*sigmoid(y) (H=4096) | `eltwise_simple_vload8_10752814223568689025_0_0` | 1.0 |
+| LM head (last token, 2048->248320) | `gemm_kernel` | 1.0 |
 
 ## Per-kernel decomposition (cliloader kernel names)
 
@@ -296,19 +356,19 @@ All ops measured natively on this platform via cliloader Device Performance Timi
 
 | op | kernel name | single ms | launches/call | calls/inf | total ms | % |
 |---|---|---:|---:|---:|---:|---:|
-| LM head (2048->248320, INT8) | `gemm_kernel` | 5.1573 | 1.0 | 1 | 5.1573 | 23.6% |
-| FC linattn in_proj (2048->12288) | `gemm_kernel` | 0.1283 | 1.0 | 30 | 3.8481 | 17.6% |
-| MoE 3-gemm (TK=8 + shared, NE=256) | `moe_3gemm_swiglu_mlp_gate_up_793724151708371423` | 0.0954 | 1.0 | 40 | 3.8158 | 17.5% |
-| MoE 3-gemm (TK=8 + shared, NE=256) | `moe_3gemm_swiglu_mlp_down_793724151708371423` | 0.0467 | 1.0 | 40 | 1.8695 | 8.6% |
-| FC o_proj / GDN out (4096->2048) | `gemm_kernel` | 0.0462 | 1.0 | 40 | 1.8488 | 8.5% |
-| MoE 3-gemm (TK=8 + shared, NE=256) | `gemm_kernel` | 0.0320 | 4.0 | 40 | 1.2782 | 5.9% |
-| FC qkv+gate (2048->9216) | `gemm_kernel` | 0.0968 | 1.0 | 10 | 0.9685 | 4.4% |
-| GatedDeltaNet core (HK=32,K=V=128) | `gated_delta_net_ref__8629349849706163749__sa` | 0.0319 | 1.0 | 30 | 0.9565 | 4.4% |
-| PagedAttention | `paged_attention_opt__gqa_single_token_15856477779756318941__sa` | 0.0834 | 1.0 | 10 | 0.8338 | 3.8% |
+| LM head (2048->248320, INT8) | `gemm_kernel` | 5.1573 | 1.0 | 1 | 5.1573 | 24.1% |
+| FC linattn in_proj (2048->12288) | `gemm_kernel` | 0.1283 | 1.0 | 30 | 3.8481 | 18.0% |
+| MoE 3-gemm (TK=8 + shared, NE=256) | `moe_3gemm_swiglu_mlp_gate_up_793724151708371423` | 0.0954 | 1.0 | 40 | 3.8158 | 17.8% |
+| MoE 3-gemm (TK=8 + shared, NE=256) | `moe_3gemm_swiglu_mlp_down_793724151708371423` | 0.0467 | 1.0 | 40 | 1.8695 | 8.7% |
+| FC o_proj / GDN out (4096->2048) | `gemm_kernel` | 0.0462 | 1.0 | 40 | 1.8488 | 8.6% |
+| MoE 3-gemm (TK=8 + shared, NE=256) | `gemm_kernel` | 0.0320 | 4.0 | 40 | 1.2782 | 6.0% |
+| FC qkv+gate (2048->9216) | `gemm_kernel` | 0.0968 | 1.0 | 10 | 0.9685 | 4.5% |
+| PagedAttention | `paged_attention_opt__gqa_single_token_15856477779756318941__sa` | 0.0834 | 1.0 | 10 | 0.8338 | 3.9% |
+| GatedDeltaNet core (qk=16,v=32,K=V=128) | `paged_gated_delta_net_opt__13079710268314424383__sa` | 0.0177 | 1.0 | 30 | 0.5307 | 2.5% |
 | rmsnorm (H=2048) | `rms_gpu_bfyx_opt_12510323107858754751_0_0` | 0.0029 | 1.0 | 80 | 0.2359 | 1.1% |
 | MoE 3-gemm (TK=8 + shared, NE=256) | `moe_3gemm_swiglu_fuse_softmax_topk_793724151708371423` | 0.0058 | 1.0 | 40 | 0.2333 | 1.1% |
 | MoE 3-gemm (TK=8 + shared, NE=256) | `dynamic_quantize_gpu_opt_2680479405095583548_0_0` | 0.0041 | 3.0 | 40 | 0.1644 | 0.8% |
-| residual add (H=2048) | `eltwise_simple_vload8_5822205451716121890_0_0` | 0.0015 | 1.0 | 80 | 0.1198 | 0.5% |
+| residual add (H=2048) | `eltwise_simple_vload8_5822205451716121890_0_0` | 0.0015 | 1.0 | 80 | 0.1198 | 0.6% |
 | MoE 3-gemm (TK=8 + shared, NE=256) | `dynamic_quantize_gpu_opt_11767888948171086441_0_0` | 0.0019 | 1.0 | 40 | 0.0748 | 0.3% |
 | PagedAttention | `paged_attention_opt__single_token_finalization_15856477779756318941__sa` | 0.0060 | 1.0 | 10 | 0.0603 | 0.3% |
 | PagedAttention | `pa_kv_cache_update_ref__15856477779756318941__sa` | 0.0058 | 1.0 | 10 | 0.0580 | 0.3% |
@@ -320,11 +380,11 @@ All ops measured natively on this platform via cliloader Device Performance Timi
 | op | kernel name | single ms | launches/call | calls/inf | total ms | % |
 |---|---|---:|---:|---:|---:|---:|
 | MoE grouped-gemm (TK=8 + shared) | `grouped_micro_gemm` | 16.9996 | 3.0 | 40 | 679.9849 | 23.0% |
-| GatedDeltaNet core | `gated_delta_net_ref__8629349849706163749__sa` | 20.7113 | 1.0 | 30 | 621.3390 | 21.0% |
-| PagedAttention prefill (causal, NH=16) | `sdpa_micro__prefill_15856477779756318941__sa` | 39.4296 | 1.0 | 10 | 394.2965 | 13.3% |
+| GatedDeltaNet core | `paged_gated_delta_net_opt__13079710268314424383__sa` | 20.3643 | 1.0 | 30 | 610.9276 | 20.7% |
+| PagedAttention prefill (causal, NH=16) | `sdpa_micro__prefill_15856477779756318941__sa` | 39.4296 | 1.0 | 10 | 394.2965 | 13.4% |
 | FC linattn in_proj (2048->12288) | `gemm_kernel` | 7.5081 | 1.0 | 30 | 225.2416 | 7.6% |
 | MoE grouped-gemm (TK=8 + shared) | `moe_scatter_reduction_opt_moe_scatter_reduction_ref_12318565695326055078` | 5.3873 | 1.0 | 40 | 215.4929 | 7.3% |
-| MoE grouped-gemm (TK=8 + shared) | `moe_gather_ref_prefill_gather_12318565695326055078` | 5.0628 | 1.0 | 40 | 202.5112 | 6.8% |
+| MoE grouped-gemm (TK=8 + shared) | `moe_gather_ref_prefill_gather_12318565695326055078` | 5.0628 | 1.0 | 40 | 202.5112 | 6.9% |
 | MoE grouped-gemm (TK=8 + shared) | `moe_3gemm_swiglu_fuse_prefill_swiglu_12318565695326055078` | 1.9868 | 1.0 | 40 | 79.4737 | 2.7% |
 | FC o_proj / GDN out (4096->2048) | `gemm_kernel` | 1.8017 | 1.0 | 40 | 72.0692 | 2.4% |
 | MoE grouped-gemm (TK=8 + shared) | `gemm_kernel` | 1.6097 | 4.0 | 40 | 64.3866 | 2.2% |
@@ -344,35 +404,36 @@ All ops measured natively on this platform via cliloader Device Performance Timi
 
 | KV | top1 (ms,%) | top2 | top3 |
 |---:|---|---|---|
-| 1280 | MoE 3-gemm (TK=8 + shared, NE=256) 7.612ms (35%) | LM head (2048->248320, INT8) 5.157ms (24%) | FC linattn in_proj (2048->12288) 3.848ms (18%) |
-| 2304 | MoE 3-gemm (TK=8 + shared, NE=256) 7.612ms (34%) | LM head (2048->248320, INT8) 5.157ms (23%) | FC linattn in_proj (2048->12288) 3.848ms (17%) |
-| 4352 | MoE 3-gemm (TK=8 + shared, NE=256) 7.612ms (35%) | LM head (2048->248320, INT8) 5.157ms (24%) | FC linattn in_proj (2048->12288) 3.848ms (18%) |
+| 1280 | MoE 3-gemm (TK=8 + shared, NE=256) 7.612ms (36%) | LM head (2048->248320, INT8) 5.157ms (24%) | FC linattn in_proj (2048->12288) 3.848ms (18%) |
+| 2304 | MoE 3-gemm (TK=8 + shared, NE=256) 7.612ms (35%) | LM head (2048->248320, INT8) 5.157ms (24%) | FC linattn in_proj (2048->12288) 3.848ms (18%) |
+| 4352 | MoE 3-gemm (TK=8 + shared, NE=256) 7.612ms (36%) | LM head (2048->248320, INT8) 5.157ms (24%) | FC linattn in_proj (2048->12288) 3.848ms (18%) |
 | 8448 | MoE 3-gemm (TK=8 + shared, NE=256) 7.612ms (34%) | LM head (2048->248320, INT8) 5.157ms (23%) | FC linattn in_proj (2048->12288) 3.848ms (17%) |
 
 ### Prefill
 
 | S | top1 (ms,%) | top2 | top3 |
 |---:|---|---|---|
-| 1024 | MoE grouped-gemm (TK=8 + shared) 403.5ms (73%) | GatedDeltaNet core 77.5ms (14%) | FC linattn in_proj (2048->12288) 29.9ms (5%) |
-| 2048 | MoE grouped-gemm (TK=8 + shared) 512.9ms (63%) | GatedDeltaNet core 153.6ms (19%) | FC linattn in_proj (2048->12288) 57.3ms (7%) |
-| 4096 | MoE grouped-gemm (TK=8 + shared) 834.1ms (56%) | GatedDeltaNet core 312.1ms (21%) | FC linattn in_proj (2048->12288) 118.3ms (8%) |
-| 8192 | MoE grouped-gemm (TK=8 + shared) 1454.6ms (49%) | GatedDeltaNet core 621.3ms (21%) | PagedAttention prefill (causal, NH=16) 396.6ms (13%) |
+| 1024 | MoE grouped-gemm (TK=8 + shared) 403.5ms (74%) | GatedDeltaNet core 69.2ms (13%) | FC linattn in_proj (2048->12288) 29.9ms (6%) |
+| 2048 | MoE grouped-gemm (TK=8 + shared) 512.9ms (65%) | GatedDeltaNet core 137.4ms (17%) | FC linattn in_proj (2048->12288) 57.3ms (7%) |
+| 4096 | MoE grouped-gemm (TK=8 + shared) 834.1ms (57%) | GatedDeltaNet core 292.5ms (20%) | FC linattn in_proj (2048->12288) 118.3ms (8%) |
+| 8192 | MoE grouped-gemm (TK=8 + shared) 1454.6ms (49%) | GatedDeltaNet core 610.9ms (21%) | PagedAttention prefill (causal, NH=16) 396.6ms (13%) |
 
 ## End-to-end (prefill TTFT + 512-token decode)
 
 | prompt P | TTFT (ms) | 512-tok decode (ms) | total (ms) | avg decode tok/s |
 |---:|---:|---:|---:|---:|
-| 1024 | 551.3 | 11,076.6 | 11,627.9 | 46.2 |
-| 2048 | 810.2 | 11,316.5 | 12,126.7 | 45.2 |
-| 4096 | 1,481.4 | 11,167.6 | 12,649.0 | 45.8 |
-| 8192 | 2,962.2 | 11,548.9 | 14,511.1 | 44.3 |
+| 1024 | 543.0 | 10,858.6 | 11,401.6 | 47.2 |
+| 2048 | 794.0 | 11,098.5 | 11,892.5 | 46.1 |
+| 4096 | 1,461.9 | 10,949.6 | 12,411.5 | 46.8 |
+| 8192 | 2,951.8 | 11,330.9 | 14,282.7 | 45.2 |
 
 ## Key findings
 
-- **Decode throughput is flat at ~44–46 tok/s across all prompt lengths.** The per-token budget is 20.9 ms of KV-independent work; PagedAttention over the 512-token window only moves TPOT by ~0.7–1.7 ms, so prompt length barely affects decode.
+- **Decode throughput is flat at ~45–47 tok/s across all prompt lengths.** The per-token budget is 20.4 ms of KV-independent work; PagedAttention over the 512-token window only moves TPOT by ~0.7–1.7 ms, so prompt length barely affects decode.
 - **Three ops own ~80% of decode:** MoE, LM-head, and linear-attn in_proj — all memory-bound INT4/INT8 weight streaming at 90–97% of 105 GB/s.
+- **Decode reaches ~82% of the memory roofline** (modelable ops); the remaining gap is mostly MoE (~74%) and PagedAttention (~50%). **Prefill reaches ~44% of its roofline at S=1024, falling to ~25% at S=8192**: MoE grouped-gemm is **memory-bound** — it streams all 256 experts' INT4 weights every layer — yet hits only ~16–42% of weight BW (small per-expert token groups, gather/scatter and INT4 dequant overhead).
 - **PA kernel heuristic switch at KV≥4096** (`paged_attention_opt__single_token` → `gqa_single_token`) makes PA-decode non-monotonic: the 4096-prompt window is *faster* than the 2048-prompt window.
-- **Prefill (TTFT) is MoE/GDN/PA-bound and grows super-linearly** (0.55 s → 2.96 s for 1K → 8K). PA prefill is quadratic (causal); MoE grouped-gemm dominates the rest.
+- **Prefill (TTFT) is MoE/GDN/PA-bound and grows super-linearly** (0.54 s → 2.95 s for 1K → 8K). PA prefill is quadratic (causal); MoE grouped-gemm dominates the rest.
 
 ## Optimization levers (highest decode ROI first)
 
@@ -391,7 +452,7 @@ moe_bench.exe        1 1    2048 512 256 8 128 100 10 4 64 512   :: MoE TK=8 + s
 fc_bench.exe         1 2048   9216 128 5000 200 8 u4 64          :: qkv+gate fused
 fc_bench.exe         1 2048  12288 128 1500 100 4 u4 64          :: linear-attn in_proj
 fc_bench.exe         1 2048 248320 128  300  30 4 u8 64          :: LM-head (INT8)
-gdn_bench.exe        1 1     32 32 128 4000 150 4                :: GatedDeltaNet core
+gdn_bench.exe        1 1     16 32 128 4000 150 4 0              :: GatedDeltaNet (paged opt, cache_interval=0)
 small_ops_bench.exe  gate    1 4096 --iters 5000 --warmup 200    :: attn output gate
 :: decode PA — 512-token window sweep (KV = P / P+256 / P+512)
 pa_bench.exe decode  1 <KV> 8000 200 4 i8   (PA_NH=16 PA_NKV=2 PA_HD=256)
@@ -413,6 +474,6 @@ python3 build_report.py ptl_metrics.json > SUMMARY_qwen3_6_%DATE%.md
 - **GatedDeltaNet bench covers the core op only**; depthwise conv1d (k=4) not modeled (negligible), in_proj counted as `fc_linattn`, out_proj as `fc_o` (4096→2048). It is a recurrent state op with no clean analytic byte/flop model, so `bound=recurrent` and Eff/GFLOPS/GB/s are shown as `—` (only the measured latency is meaningful).
 - `bound=cache`: tiny eltwise/norm/rope micro-benches are L2/L3-resident, so their achieved BW exceeds the 110 GB/s streaming spec; in real inference they are fused into the adjacent matmul/attention and contribute <2% — only their latency is used.
 - The attention output gate is benched with a `gate` proxy op (x·sigmoid(y), H=4096).
-- Decode FC/MoE/LM-head are memory-bound (weights dominate at M=1); prefill FC/MoE are INT8 XMX compute-bound at large S; PA prefill (S≥2048) is FP16 micro-kernel compute-bound.
+- Decode FC/MoE/LM-head are memory-bound (weights dominate at M=1). Prefill **MoE is still memory-bound** — with mm·TK ≥ NE every layer streams all 256 experts' weights once (the byte model uses min(NE, mm·TK) experts, not TK); prefill **FC** is INT8 XMX compute-bound at large S; PA prefill (S≥2048) is FP16 micro-kernel compute-bound.
 - PA decode is memory-bound (INT8 KV cache + FP16 Q/out); lm_head runs once per token.
 - q_norm/k_norm and residual-add are <0.1% of TTFT and omitted from prefill totals.

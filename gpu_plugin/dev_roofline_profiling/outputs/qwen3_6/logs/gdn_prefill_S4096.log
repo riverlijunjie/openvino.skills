@@ -24,25 +24,26 @@ Timer Started!
 ... loading complete.
 Total Enqueues: 0
 
-=== GDN Benchmark ===
-B=1 T=4096 HK=32 H=32 K=128 iters=20 warmup=5 bufs=2
-Median_ms: 16.6454
-Avg_ms: 16.6807
-GFLOPS: 1032.11
-BW_GBs: 8.22084
-AI: 125.548
+=== Paged GDN Benchmark ===
+T=4096 qk_heads=16 v_heads=32 head_dim=128 num_blocks=2 interval=4096 iters=20 warmup=5 bufs=2
+Median_ms: 14.4054
+Avg_ms: 14.0479
+GFLOPS: 1192.6
+BW_GBs: 7.31544
+AI: 163.025
 TotalFLOPs: 1.71799e+10
-TotalBytes: 1.36839e+08
-Total Enqueues: 225
+TotalBytes: 1.05382e+08
+Total Enqueues: 313
 
 
 Device Performance Timing Results for Intel(R) Arc(TM) B390 GPU (96CUs, 2400MHz):
 
-Total Time (ns): 406454951
+Total Time (ns): 335913790
 
-                               Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
-                clEnqueueMemcpyINTEL( HtoH ),     50,      19475758,    4.79%,        389515,         23750,        814635
-                clEnqueueMemcpyINTEL( MtoD ),    150,     126928684,   31.23%,        846191,          9427,       2595520
-gated_delta_net_ref__8629349849706163749__sa,     25,     260050509,   63.98%,      10402020,      10242083,      11259791
+                                      Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+                         clEnqueueMemFillINTEL( H ),      1,        388229,    0.12%,        388229,        388229,        388229
+                       clEnqueueMemcpyINTEL( HtoH ),     12,       8874786,    2.64%,        739565,        704218,        793125
+                       clEnqueueMemcpyINTEL( MtoD ),    275,      82893702,   24.68%,        301431,           989,       1753281
+paged_gated_delta_net_opt__13079710268314424383__sa,     25,     243757073,   72.57%,       9750282,       9542916,      10733750
 CLIntercept is shutting down...
 ... shutdown complete.

@@ -114,10 +114,23 @@ def fc_flops(mm, k, n):
     return 2 * mm * k * n
 
 
-def moe_bytes(mm):
+def moe_bytes(mm, n_experts=None):
+    """Weight + activation traffic for one MoE layer.
+
+    n_experts = number of DISTINCT routed experts whose INT4 weights must stream
+    from VRAM. With top-k routing there are mm*TK token->expert assignments over
+    NE experts, so the count saturates at NE:
+      - decode (mm=1): only TK experts are hit  -> TK weight matrices read;
+      - prefill (mm tokens, mm*TK >= NE): all NE experts are hit -> the grouped
+        gemm loads every expert's weights once (NE matrices), i.e. NE/TK x more
+        weight traffic than a single token. Using TK here would undercount
+        prefill weight reads by 32x and wrongly mark MoE compute-bound.
+    The shared expert is always-on (+1)."""
+    if n_experts is None:
+        n_experts = min(NE, mm * TK)
     pe = lambda inter: 3 * H * inter // 2 + 3 * (H // G) * inter * 2 + 3 * (H // G) * inter // 2
     act = (H + (TK * I + SI) * 2) * 2 * mm
-    return TK * pe(I) + pe(SI) + act
+    return n_experts * pe(I) + pe(SI) + act
 
 
 def moe_flops(mm):
@@ -167,7 +180,7 @@ def decode_ops():
             NL, fc_bytes_i4(1, LIN_VDIM, H), fc_flops(1, LIN_VDIM, H), "mem"),
         ("fc_qkv_decode_M1", f"FC qkv+gate (2048->{QKV})", top_kernel("fc_qkv_decode_M1"),
             NL_F, fc_bytes_i4(1, H, QKV), fc_flops(1, H, QKV), "mem"),
-        ("gdn_decode_T1", "GatedDeltaNet core (HK=32,K=V=128)", top_kernel("gdn_decode_T1"),
+        ("gdn_decode_T1", "GatedDeltaNet core (qk=16,v=32,K=V=128)", top_kernel("gdn_decode_T1"),
             NL_L, 0, 0, "recurrent"),  # recurrent state op: no clean analytic roofline
         ("so_rmsnorm_h2048_decode", "rmsnorm (H=2048)", top_kernel("so_rmsnorm_h2048_decode"),
             2 * NL, H * 4, H * 8, "mem"),
@@ -223,6 +236,54 @@ def prefill_ops(S):
 
 def prefill_total_ms(S):
     return sum(m(k) * c for k, _l, c, _b, _f, _pk in prefill_ops(S))
+
+
+# ---- roofline floor (theoretical lower-bound time) --------------------------
+def op_theoretical_ms(by, fl, peak_kind, measured_ms):
+    """Ideal lower-bound time for ONE op call on this HW = max(bytes/BW, FLOP/XMX-peak).
+    Cache-resident micro-ops that measure faster than the DRAM floor are capped at
+    their measured time so they stay neutral (achieved=100%) in the roll-up."""
+    t_mem = by / (BW * 1e6)
+    if peak_kind == "int8":
+        t_cmp = fl / (INT8 * 1e9)
+    elif peak_kind == "fp16":
+        t_cmp = fl / (FP16 * 1e9)
+    else:
+        t_cmp = 0.0
+    t = max(t_mem, t_cmp)
+    return min(t, measured_ms) if measured_ms else t
+
+
+def decode_roofline(kv):
+    """(theoretical_ms, measured_ms, recurrent_ms) over one decode token.
+    theoretical/measured cover only analytically-modelable ops; recurrent (GDN)
+    is summed separately. measured + recurrent == full TPOT."""
+    theo = meas = rec = 0.0
+    for key, _l, _kn, calls, by, fl, bd in decode_ops():
+        ms = m(key)
+        if bd == "recurrent" or (by == 0 and fl == 0):
+            rec += ms * calls
+            continue
+        theo += op_theoretical_ms(by, fl, bd, ms) * calls
+        meas += ms * calls
+    pms = m(f"pa_decode_kv{kv}")
+    theo += op_theoretical_ms(pa_bytes_dec(kv), pa_flops_dec(kv), "mem", pms) * NL_F
+    meas += pms * NL_F
+    return theo, meas, rec
+
+
+def prefill_roofline(S):
+    """(theoretical_ms, measured_ms, recurrent_ms) over a TTFT pass.
+    measured + recurrent == full TTFT."""
+    theo = meas = rec = 0.0
+    for key, _l, calls, by, fl, pk in prefill_ops(S):
+        ms = m(key)
+        if pk == "recurrent" or (by == 0 and fl == 0):
+            rec += ms * calls
+            continue
+        theo += op_theoretical_ms(by, fl, pk, ms) * calls
+        meas += ms * calls
+    return theo, meas, rec
 
 
 # ---------------------------------------------------------------- render helpers
@@ -473,6 +534,48 @@ def main():
         W(f"| {lbl} | " + " | ".join(cells) + " |")
     W()
 
+    # ----- roofline: theoretical floor vs measured ----------------------------
+    W("## Roofline: theoretical floor vs measured")
+    W()
+    W("**Theoretical floor** = sum over analytically-modelable ops of "
+      "max(bytes / BW, FLOP / XMX-peak) - the fastest this HW could run each op given its "
+      "memory traffic / compute. **Measured** is the summed cliloader kernel time of the same "
+      "ops. **achieved % = theoretical / measured** (how close real kernels get to the roofline "
+      "ceiling; 100% = on the roofline). GatedDeltaNet uses a recurrent `*_opt` kernel (measured with "
+      "`cache_interval=0`, i.e. a single final state snapshot) with no "
+      "analytic model, so it is reported separately as *unmodeled GDN* and excluded from the "
+      "ratio; `full` = measured + unmodeled = the real TPOT / TTFT.")
+    W()
+    W("### Decode (per output token, mid 512-gen window KV = P+256)")
+    W()
+    W("| prompt P | KV | theoretical (ms) | measured (ms) | achieved % | "
+      "unmodeled GDN (ms) | full TPOT (ms) |")
+    W("|---:|---:|---:|---:|---:|---:|---:|")
+    dec_roof = []
+    for P, kv in zip(PROMPTS, DEC_KV):
+        theo, meas, rec = decode_roofline(kv)
+        full = meas + rec
+        ach = 100 * theo / meas if meas else 0.0
+        W(f"| {P} | {kv} | {theo:.3f} | {meas:.3f} | {ach:.1f}% | {rec:.3f} | {full:.3f} |")
+        dec_roof.append(dict(prompt=P, kv=kv, theoretical_ms=theo, measured_ms=meas,
+                             achieved_pct=ach, unmodeled_gdn_ms=rec, full_tpot_ms=full))
+    W()
+    W("### Prefill (TTFT over S tokens)")
+    W()
+    W("| S | theoretical (ms) | measured (ms) | achieved % | unmodeled GDN (ms) | full TTFT (ms) |")
+    W("|---:|---:|---:|---:|---:|---:|")
+    pre_roof = []
+    for S in PROMPTS:
+        theo, meas, rec = prefill_roofline(S)
+        full = meas + rec
+        ach = 100 * theo / meas if meas else 0.0
+        W(f"| {S} | {theo:,.1f} | {meas:,.1f} | {ach:.1f}% | {rec:,.1f} | {full:,.1f} |")
+        pre_roof.append(dict(S=S, theoretical_ms=theo, measured_ms=meas,
+                             achieved_pct=ach, unmodeled_gdn_ms=rec, full_ttft_ms=full))
+    W()
+    perf["roofline_decode"] = dec_roof
+    perf["roofline_prefill"] = pre_roof
+
     # ----- decode tables (one per KV) -----------------------------------------
     W("## Decode tables (1 query token, KV = mid 512-gen window context)")
     W()
@@ -529,6 +632,37 @@ def main():
         W(f"| **TOTAL** |  |  |  | **{total_ms:,.3f}** |  |  |  |  |")
         W()
         pre_top[S] = sorted([(r[0], r[4]) for r in rows], key=lambda x: x[1], reverse=True)[:3]
+
+    # ----- op -> kernel name map ----------------------------------------------
+    W("## Op → kernel names (cliloader)")
+    W()
+    W("Each logical op and the actual GPU kernel(s) it dispatches (one bench process per "
+      "op). Kernels are listed in launch order; `launches/call` is how many times each "
+      "kernel fires per single op invocation (per layer). Decode is measured at M=1, prefill "
+      "at S=8192 — kernel selection can vary with shape.")
+    W()
+
+    def kmap_table(op_list):
+        W("| op | kernel name(s) | launches/call |")
+        W("|---|---|---:|")
+        for lbl, key in op_list:
+            sk = subk(key)
+            if not sk:
+                W(f"| {lbl} | `-` | — |")
+                continue
+            names = "<br>".join(f"`{nm}`" for nm, _s, _l in sk)
+            launches = "<br>".join(f"{lpc:.1f}" for _nm, _s, lpc in sk)
+            W(f"| {lbl} | {names} | {launches} |")
+
+    W("### Decode (M=1)")
+    W()
+    kmap_table([(lbl, key) for key, lbl, _kn, _ca, _b, _f, _bd in decode_ops()]
+               + [("PagedAttention (KV=4352)", "pa_decode_kv4352")])
+    W()
+    W("### Prefill (S=8192)")
+    W()
+    kmap_table([(lbl, key) for key, lbl, _ca, _b, _f, _pk in prefill_ops(8192)])
+    W()
 
     # ----- per-kernel decomposition -------------------------------------------
     W("## Per-kernel decomposition (cliloader kernel names)")
@@ -613,6 +747,12 @@ def main():
       "512-token window only moves TPOT by ~0.7–1.7 ms, so prompt length barely affects decode.")
     W("- **Three ops own ~80% of decode:** MoE, LM-head, and linear-attn in_proj — all "
       f"memory-bound INT4/INT8 weight streaming at 90–97% of {BW:g} GB/s.")
+    W(f"- **Decode reaches ~{dec_roof[0]['achieved_pct']:.0f}% of the memory roofline** "
+      "(modelable ops); the remaining gap is mostly MoE (~74%) and PagedAttention (~50%). "
+      f"**Prefill reaches ~{pre_roof[0]['achieved_pct']:.0f}% of its roofline at S=1024, falling "
+      f"to ~{pre_roof[-1]['achieved_pct']:.0f}% at S=8192**: MoE grouped-gemm is **memory-bound** "
+      "— it streams all 256 experts' INT4 weights every layer — yet hits only ~16–42% of weight "
+      "BW (small per-expert token groups, gather/scatter and INT4 dequant overhead).")
     W("- **PA kernel heuristic switch at KV≥4096** (`paged_attention_opt__single_token` → "
       "`gqa_single_token`) makes PA-decode non-monotonic: the 4096-prompt window is *faster* "
       "than the 2048-prompt window.")
@@ -646,7 +786,7 @@ def main():
     W("fc_bench.exe         1 2048   9216 128 5000 200 8 u4 64          :: qkv+gate fused")
     W("fc_bench.exe         1 2048  12288 128 1500 100 4 u4 64          :: linear-attn in_proj")
     W("fc_bench.exe         1 2048 248320 128  300  30 4 u8 64          :: LM-head (INT8)")
-    W("gdn_bench.exe        1 1     32 32 128 4000 150 4                :: GatedDeltaNet core")
+    W("gdn_bench.exe        1 1     16 32 128 4000 150 4 0              :: GatedDeltaNet (paged opt, cache_interval=0)")
     W("small_ops_bench.exe  gate    1 4096 --iters 5000 --warmup 200    :: attn output gate")
     W(":: decode PA — 512-token window sweep (KV = P / P+256 / P+512)")
     W("pa_bench.exe decode  1 <KV> 8000 200 4 i8   (PA_NH=16 PA_NKV=2 PA_HD=256)")
@@ -678,8 +818,10 @@ def main():
       f"achieved BW exceeds the {BW_SPEC:g} GB/s streaming spec; in real inference they are "
       "fused into the adjacent matmul/attention and contribute <2% — only their latency is used.")
     W("- The attention output gate is benched with a `gate` proxy op (x·sigmoid(y), H=4096).")
-    W("- Decode FC/MoE/LM-head are memory-bound (weights dominate at M=1); prefill FC/MoE are "
-      "INT8 XMX compute-bound at large S; PA prefill (S≥2048) is FP16 micro-kernel compute-bound.")
+    W("- Decode FC/MoE/LM-head are memory-bound (weights dominate at M=1). Prefill **MoE is still "
+      "memory-bound** — with mm·TK ≥ NE every layer streams all 256 experts' weights once (the byte "
+      "model uses min(NE, mm·TK) experts, not TK); prefill **FC** is INT8 XMX compute-bound at large "
+      "S; PA prefill (S≥2048) is FP16 micro-kernel compute-bound.")
     W("- PA decode is memory-bound (INT8 KV cache + FP16 Q/out); lm_head runs once per token.")
     W("- q_norm/k_norm and residual-add are <0.1% of TTFT and omitted from prefill totals.")
 
