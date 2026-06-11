@@ -1,0 +1,52 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: /home/intel/river/clintercept-3.0.6-Linux/bin/libOpenCL.so
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(supported)
+    clock(high_resolution_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept config file: clintercept.conf
+Trying to load dispatch from: ./real_libOpenCL.so
+Couldn't load library: ./real_libOpenCL.so
+Trying to load dispatch from: /usr/lib/x86_64-linux-gnu/libOpenCL.so.1
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+MoE bench: B=1 S=2048 H=2048 I=512 NE=256 TK=8 g=128 iters=5 warm=2 bufs=2 flush=64MB shared_I=512 [shared expert ENABLED]
+[FUSION OK] Runtime node: MOE3GemmFusedCompressed_1451 layer_type=moe_3gemm_fused_compressed
+[SHARED-EXPERT NOT FUSED] residual node: SharedUpMatMul layer_type=FullyConnected
+[SHARED-EXPERT NOT FUSED] residual node: SharedGateMatMul layer_type=FullyConnected
+[SHARED-EXPERT NOT FUSED] residual node: SharedDownMatMul layer_type=FullyConnected
+[FUSION FAILED] shared-expert MatMuls survived as separate nodes;
+  FuseMOESharedExpert did not absorb them into MOE3GemmFusedCompressed.
+  Runtime graph dump to /tmp/moe_bench_rt.xml for inspection.
+Total Enqueues: 44
+
+
+Device Performance Timing Results for Intel(R) Graphics (32CUs, 2450MHz):
+
+Total Time (ns): 46298939
+
+                        Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+           clEnqueueMemFillINTEL( D ),     13,       1621660,    3.50%,        124743,          1250,        524791
+           clEnqueueMemFillINTEL( H ),     21,        934575,    2.02%,         44503,          1354,        235416
+reorder_data_10874067313741283676_0_0,      1,         11875,    0.03%,         11875,         11875,         11875
+reorder_data_12486780373790261273_0_0,      2,       1975832,    4.27%,        987916,        980312,        995520
+reorder_data_16022839877993764540_0_0,      2,      14573228,   31.48%,       7286614,       4182187,      10391041
+reorder_data_16689418473281460955_0_0,      2,         42708,    0.09%,         21354,         20208,         22500
+reorder_data_17272847932025132170_0_0,      1,      25707291,   55.52%,      25707291,      25707291,      25707291
+reorder_data_17327803160701346994_0_0,      1,       1415208,    3.06%,       1415208,       1415208,       1415208
+ reorder_data_6328007144139477641_0_0,      1,         16562,    0.04%,         16562,         16562,         16562
+CLIntercept is shutting down...
+... shutdown complete.

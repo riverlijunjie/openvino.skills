@@ -1,0 +1,44 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: /home/intel/river/clintercept-3.0.6-Linux/bin/libOpenCL.so
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(supported)
+    clock(high_resolution_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept config file: clintercept.conf
+Trying to load dispatch from: ./real_libOpenCL.so
+Couldn't load library: ./real_libOpenCL.so
+Trying to load dispatch from: /usr/lib/x86_64-linux-gnu/libOpenCL.so.1
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+Unknown op: gate
+Usage: /home/intel/river/roofline_test_utils/build/small_ops_bench <op> <params...> [--iters N] [--warmup N] [--bufs N]
+
+Ops:
+  rmsnorm    <M> <H>        RMSNorm [M,H] with gamma [H]     (input_layernorm H=4096)
+  rmsnorm3d  <M> <NH> <HD>  RMSNorm [M,NH,HD] reduced on HD   (q_norm NH=32 HD=128; k_norm NH=8 HD=128)
+  add        <M> <H>        Eltwise Add [M,H] + [M,H]        (residual H=4096)
+  rope       <M> <NH> <HD>  RoPE [1,M,NH,HD] with cos/sin
+  swish      <M> <H>        SiLU/Swish f16 [M,H]             (SwiGLU gate H=12288)
+  multiply   <M> <H>        Eltwise Multiply [M,H] * [M,H]   (SwiGLU gate*up H=12288)
+
+Options:
+  --iters N    Timed iterations (default 150)
+  --warmup N   Warmup iterations (default 20)
+  --bufs N     Rotating buffers (default 8)
+Total Enqueues: 0
+
+CLIntercept is shutting down...
+... shutdown complete.

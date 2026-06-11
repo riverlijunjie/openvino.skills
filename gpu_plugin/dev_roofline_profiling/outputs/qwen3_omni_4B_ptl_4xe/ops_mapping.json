@@ -1,0 +1,141 @@
+{
+  "model": "Qwen3-Omni-4B-Instruct-multilingual-int4",
+  "source_config": "~/workspace/remote_debug/qwen3_omni/models/Qwen3-Omni-4B-Instruct-multilingual-int4/config.json",
+  "platform": "PTL 12Xe (Intel iGPU, 2400 MHz, 110 GB/s)",
+  "sweep": {
+    "prefill_S": [512, 1024, 4096, 8192],
+    "decode_kv": [512, 1024, 4096, 8192],
+    "output_tokens": 512
+  },
+  "weight_compression": {
+    "matmul":  "INT4 g128 + FP16 scales / FP16 act",
+    "lm_head": "INT8 g128 + FP16 scales / FP16 act",
+    "kv_cache": "INT8 (PA OCL block_size=16, K [num_blocks,NKV,HD,16], V [num_blocks,NKV,16,HD], +4B scale/zp per block-K and per-token-V)",
+    "encoder_weights": "INT4 g128 (audio/vision/talker/code2wav follow same matmul quant per dir name '-int4')"
+  },
+  "sdpa": {
+    "text_decoder": "PagedAttention OCL + micro_kernel; split into pa_kv_cache_update_ref + paged_attention_opt__single_token (+ single_token_finalization, gqa variant)",
+    "audio_encoder": "Bidirectional MHA, measured via PA prefill (causal) × 2 lower bound",
+    "vision_encoder": "Bidirectional MHA, measured via PA prefill (causal) × 2 lower bound",
+    "talker_decoder": "PA OCL micro_kernel (GQA 16:8)",
+    "code2wav": "Bidirectional MHA, S small (chunk-based)"
+  },
+
+  "components": {
+    "thinker_text_decoder": {
+      "role": "Main 4B LLM. Receives tokenized text + audio/vision embedding tokens; emits text tokens.",
+      "arch": {
+        "hidden": 2560, "layers": 36,
+        "NH": 32, "NKV": 8, "HD": 128,
+        "Q_dim": 4096, "KV_dim": 1024,
+        "intermediate": 9728, "vocab": 151936,
+        "tie_word_embeddings": true,
+        "hidden_act": "silu",
+        "rope_theta": 1000000,
+        "mrope_section": [24, 20, 20]
+      },
+      "kernels_per_inference": {
+        "fc_qkv":      {"M_prefill": "S", "M_decode": 1, "K": 2560, "N": 6144,   "calls": 36, "w": "i4_g128"},
+        "fc_o":        {"M_prefill": "S", "M_decode": 1, "K": 4096, "N": 2560,   "calls": 36, "w": "i4_g128"},
+        "fc_gate":     {"M_prefill": "S", "M_decode": 1, "K": 2560, "N": 9728,   "calls": 36, "w": "i4_g128"},
+        "fc_up":       {"M_prefill": "S", "M_decode": 1, "K": 2560, "N": 9728,   "calls": 36, "w": "i4_g128"},
+        "fc_down":     {"M_prefill": "S", "M_decode": 1, "K": 9728, "N": 2560,   "calls": 36, "w": "i4_g128"},
+        "fc_lm_head":  {"M_prefill": 1,   "M_decode": 1, "K": 2560, "N": 151936, "calls": 1,  "w": "i8_g128"},
+        "pa":          {"NH": 32, "NKV": 8, "HD": 128, "calls": 36, "kv": "i8"},
+        "rmsnorm":     {"H": 2560, "calls": 73, "comment": "2 per layer + final"},
+        "rmsnorm3d_q": {"NH": 32, "HD": 128, "calls": 36},
+        "rmsnorm3d_k": {"NH": 8,  "HD": 128, "calls": 36},
+        "rope_q":      {"NH": 32, "HD": 128, "calls": 36},
+        "rope_k":      {"NH": 8,  "HD": 128, "calls": 36},
+        "residual_add":{"H": 2560, "calls": 72}
+      }
+    },
+
+    "audio_encoder": {
+      "role": "Whisper-style mel encoder. Runs ONCE per inference. Bidirectional MHA, no KV cache. Output projected to thinker hidden=2560.",
+      "arch": {
+        "d_model": 1280, "layers": 32,
+        "NH": 20, "NKV": 20, "HD": 64,
+        "ffn": 5120, "num_mel_bins": 128,
+        "max_source_positions": 1500, "S": 1500,
+        "output_dim": 2560,
+        "downsample_hidden": 480
+      },
+      "kernels_per_inference": {
+        "enc_fc_qkv":   {"M": 1500, "K": 1280, "N": 3840,  "calls": 32, "w": "i4_g128"},
+        "enc_fc_o":     {"M": 1500, "K": 1280, "N": 1280,  "calls": 32, "w": "i4_g128"},
+        "enc_fc_fc1":   {"M": 1500, "K": 1280, "N": 5120,  "calls": 32, "w": "i4_g128"},
+        "enc_fc_fc2":   {"M": 1500, "K": 5120, "N": 1280,  "calls": 32, "w": "i4_g128"},
+        "enc_outproj":  {"M": 1500, "K": 1280, "N": 2560,  "calls": 1,  "w": "i4_g128"},
+        "enc_sdpa":     {"NH": 20, "NKV": 20, "HD": 64, "calls": 32, "mask": "bidirectional"}
+      }
+    },
+
+    "vision_encoder": {
+      "role": "SigLIP-style ViT. Runs ONCE per inference (if image input). Bidirectional MHA. 768×768 → 48×48 patches (S=2304) → spatial_merge=2 → 576 vision tokens. Deepstack indices [8,16,24].",
+      "arch": {
+        "hidden": 1152, "depth": 27,
+        "NH": 16, "NKV": 16, "HD": 72,
+        "ffn": 4304, "patch_size": 16,
+        "image_size": 768, "S": 2304,
+        "out_hidden_size": 2560,
+        "hidden_act": "gelu_pytorch_tanh"
+      },
+      "kernels_per_inference": {
+        "vis_fc_qkv":   {"M": 2304, "K": 1152, "N": 3456,  "calls": 27, "w": "i4_g128"},
+        "vis_fc_o":     {"M": 2304, "K": 1152, "N": 1152,  "calls": 27, "w": "i4_g128"},
+        "vis_fc_fc1":   {"M": 2304, "K": 1152, "N": 4304,  "calls": 27, "w": "i4_g128"},
+        "vis_fc_fc2":   {"M": 2304, "K": 4304, "N": 1152,  "calls": 27, "w": "i4_g128"},
+        "vis_merge_proj": {"M": 576, "K": 4608, "N": 2560, "calls": 1, "w": "i4_g128", "comment": "spatial_merge=2 concatenates 4 patches -> 4*1152=4608"},
+        "vis_sdpa":     {"NH": 16, "NKV": 16, "HD": 72, "calls": 27, "mask": "bidirectional"}
+      }
+    },
+
+    "talker_decoder": {
+      "role": "Audio output autoregressive decoder over codec tokens. Runs once per output text token if enable_audio_output=true. Produces codec tokens.",
+      "arch": {
+        "hidden": 2560, "layers": 28,
+        "NH": 16, "NKV": 8, "HD": 128,
+        "Q_dim": 2048, "KV_dim": 1024,
+        "intermediate": 3072, "vocab": 3072,
+        "accept_hidden_layer": 14, "seconds_per_chunk": 2,
+        "hidden_act": "silu"
+      },
+      "kernels_per_inference": {
+        "talker_fc_qkv":  {"M_decode": 1, "K": 2560, "N": 4096, "calls": 28, "w": "i4_g128"},
+        "talker_fc_o":    {"M_decode": 1, "K": 2048, "N": 2560, "calls": 28, "w": "i4_g128"},
+        "talker_fc_gate": {"M_decode": 1, "K": 2560, "N": 3072, "calls": 28, "w": "i4_g128"},
+        "talker_fc_up":   {"M_decode": 1, "K": 2560, "N": 3072, "calls": 28, "w": "i4_g128"},
+        "talker_fc_down": {"M_decode": 1, "K": 3072, "N": 2560, "calls": 28, "w": "i4_g128"},
+        "talker_lm_head": {"M_decode": 1, "K": 2560, "N": 3072, "calls": 1,  "w": "f16", "comment": "tiny vocab; profile as f16"},
+        "talker_pa":      {"NH": 16, "NKV": 8, "HD": 128, "calls": 28, "kv": "i8"}
+      }
+    },
+
+    "talker_code_predictor": {
+      "role": "Sub-network inside talker. 5 layers, predicts code groups per token.",
+      "arch": {
+        "hidden": 1024, "layers": 5,
+        "NH": 16, "NKV": 8, "HD": 128,
+        "intermediate": 3072, "vocab": 2048,
+        "num_code_groups": 16
+      },
+      "kernels_per_inference": "Small overhead; aggregated into talker total."
+    },
+
+    "code2wav": {
+      "role": "Flow-matching audio waveform decoder. Streams codec tokens to waveform. Operates on small windows; per-chunk overhead.",
+      "arch": {
+        "hidden": 1024, "layers": 8,
+        "NH": 16, "NKV": 16, "HD": 64,
+        "intermediate": 3072, "decoder_dim": 1536,
+        "num_quantizers": 16, "codebook_size": 2048,
+        "max_position_embeddings": 8000,
+        "sliding_window": 72,
+        "upsample_rates": [8, 5, 4, 3],
+        "upsampling_ratios": [2, 2]
+      },
+      "kernels_per_inference": "Small overhead per audio chunk; theoretical only."
+    }
+  }
+}

@@ -1,0 +1,53 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: /home/intel/river/clintercept-3.0.6-Linux/bin/libOpenCL.so
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(supported)
+    clock(high_resolution_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept config file: clintercept.conf
+Trying to load dispatch from: ./real_libOpenCL.so
+Couldn't load library: ./real_libOpenCL.so
+Trying to load dispatch from: /usr/lib/x86_64-linux-gnu/libOpenCL.so.1
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+=== FC Benchmark (precision=u8) ===
+M=1 K=2048 N=248320 group_size=128 iters=300 warmup=30 bufs=4 flush_mb=64
+Dynamic quantization: OFF (decode mode, group_size=0)
+Input tensors allocated in USM_DEVICE (VRAM) via RemoteContext.
+L2/L3 flush kernel: 64 MB f16 Relu between every FC infer.
+Median_ms: 5.23228
+Min_ms: 5.18563
+Avg_ms: 5.23208
+GFLOPS: 194.393
+BW_GBs: 98.8109
+AI: 1.96732
+WeightBytes: 5.08559e+08
+TotalBytes: 5.17006e+08
+TotalFLOPs: 1.01712e+09
+Total Enqueues: 995
+
+
+Device Performance Timing Results for Intel(R) Graphics (32CUs, 2450MHz):
+
+Total Time (ns): 2139849105
+
+                         Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+activation_opt_1460339482998420630_0_0,    331,     418010700,   19.53%,       1262872,       1247395,       1466562
+            clEnqueueMemFillINTEL( H ),      3,       1153123,    0.05%,        384374,         18437,       1011666
+                           gemm_kernel,    330,    1717656845,   80.27%,       5205020,       5158229,       5878020
+  reorder_data_9313156656768673169_0_0,      1,       3028437,    0.14%,       3028437,       3028437,       3028437
+CLIntercept is shutting down...
+... shutdown complete.

@@ -1,0 +1,55 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: /home/intel/river/clintercept-3.0.6-Linux/bin/libOpenCL.so
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(supported)
+    clock(high_resolution_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept config file: clintercept.conf
+Trying to load dispatch from: ./real_libOpenCL.so
+Couldn't load library: ./real_libOpenCL.so
+Trying to load dispatch from: /usr/lib/x86_64-linux-gnu/libOpenCL.so.1
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+=== PA Benchmark ===
+NH=32 NKV=8 HD=128
+Mode=prefill S_q=2048 S_kv=0 blocks=128 kv_type=i8 impl=ocl iters=60 warmup=10 bufs=4
+KV cache key type=i8 shape=[?,8,128,20]
+KV cache val type=i8 shape=[?,8,16,132]
+Resolved KC shape: [128,8,128,20]
+Median_ms: 9.15013
+Min_ms: 8.78314
+Avg_ms: 9.14793
+GFLOPS: 3940.39
+BW_GBs: 5.04942
+AI: 780.364
+TotalFLOPs: 3.60551e+10
+TotalBytes: 4.62029e+07
+Total Enqueues: 823
+
+
+Device Performance Timing Results for Intel(R) Graphics (32CUs, 2450MHz):
+
+Total Time (ns): 605545189
+
+                                  Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+                     clEnqueueMemFillINTEL( H ),      1,        248750,    0.04%,        248750,        248750,        248750
+                   clEnqueueMemcpyINTEL( HtoH ),     52,      17214611,    2.84%,        331050,        326614,        339010
+                   clEnqueueMemcpyINTEL( MtoD ),    490,      96037655,   15.86%,        195995,          1354,        920729
+                   clEnqueueMemcpyINTEL( MtoH ),    140,        209651,    0.03%,          1497,          1354,          2760
+pa_kv_cache_update_ref__7226791864492574839__sa,     70,      11288095,    1.86%,        161258,        156250,        205312
+    sdpa_micro__prefill_7226791864492574839__sa,     70,     480546427,   79.36%,       6864948,       6661041,      12429479
+CLIntercept is shutting down...
+... shutdown complete.

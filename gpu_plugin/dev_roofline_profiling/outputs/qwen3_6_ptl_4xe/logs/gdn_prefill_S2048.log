@@ -1,0 +1,47 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: /home/intel/river/clintercept-3.0.6-Linux/bin/libOpenCL.so
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(supported)
+    clock(high_resolution_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept config file: clintercept.conf
+Trying to load dispatch from: ./real_libOpenCL.so
+Couldn't load library: ./real_libOpenCL.so
+Trying to load dispatch from: /usr/lib/x86_64-linux-gnu/libOpenCL.so.1
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+=== GDN Benchmark ===
+B=1 T=2048 HK=16 H=32 K=128 iters=5 warmup=2 bufs=2
+Median_ms: 12.0424
+Avg_ms: 12.0823
+GFLOPS: 713.307
+BW_GBs: 4.37545
+AI: 163.025
+TotalFLOPs: 8.58993e+09
+TotalBytes: 5.26909e+07
+Total Enqueues: 63
+
+
+Device Performance Timing Results for Intel(R) Graphics (32CUs, 2450MHz):
+
+Total Time (ns): 87865179
+
+                               Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+                clEnqueueMemcpyINTEL( HtoH ),     14,       2460721,    2.80%,        175765,         20104,        335833
+                clEnqueueMemcpyINTEL( MtoD ),     42,      13280086,   15.11%,        316192,          8593,       1463802
+gated_delta_net_ref__6731807365818514617__sa,      7,      72124372,   82.09%,      10303481,       9454583,      12860312
+CLIntercept is shutting down...
+... shutdown complete.

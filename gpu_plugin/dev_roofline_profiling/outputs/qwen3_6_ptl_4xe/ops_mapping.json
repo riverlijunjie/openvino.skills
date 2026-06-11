@@ -1,0 +1,57 @@
+{
+  "model": "Qwen3.6-35B-A3B (qwen3_5_moe arch + attention output gate)",
+  "note": "model_type=qwen3_5_moe, architectures=Qwen3_5MoeForConditionalGeneration. Text decoder only (vision_config ignored). Difference vs qwen3_5_moe template: attn_output_gate=true => q_proj outputs [query|gate] (2*NH*HD), so fused QKV+gate FC width = 2*16*256 + 2*2*256 = 9216 (not 5120), plus an extra elementwise attention output gate (attn_output * sigmoid(gate)) on H=NH*HD=4096 in the 10 full-attention layers.",
+  "config": {
+    "vocab_size": 248320,
+    "hidden_size": 2048,
+    "num_hidden_layers": 40,
+    "num_full_attention_layers": 10,
+    "num_linear_attention_layers": 30,
+    "layer_pattern": "linear_attention x 3 then full_attention x 1, repeated (full_attention_interval=4)",
+    "num_attention_heads": 16,
+    "num_key_value_heads": 2,
+    "head_dim": 256,
+    "partial_rotary_factor": 0.25,
+    "attn_output_gate": true,
+    "linear_num_key_heads": 16,
+    "linear_num_value_heads": 32,
+    "linear_key_head_dim": 128,
+    "linear_value_head_dim": 128,
+    "linear_conv_kernel_dim": 4,
+    "moe_intermediate_size": 512,
+    "shared_expert_intermediate_size": 512,
+    "num_experts": 256,
+    "num_experts_per_tok": 8,
+    "rope_theta": 10000000,
+    "weight_quant_body": "INT4 g=128 (asymmetric)",
+    "weight_quant_lm_head": "INT8 g=128",
+    "kv_cache_quant": "INT8",
+    "activation_dtype": "FP16"
+  },
+  "ops": {
+    "qkv_gate_fused_full_attn":
+      { "shape": "FC(M, 2048, 9216)", "weight": "INT4 g=128", "calls_per_decode": 10,
+        "note": "query=16*256=4096, gate=16*256=4096 (attn_output_gate), K=2*256=512, V=2*256=512 -> 9216; 10 full-attn layers" },
+    "attn_output_gate":
+      { "shape": "Eltwise gate(M, 4096) = attn_output * sigmoid(gate)", "calls_per_decode": 10,
+        "note": "H=NH*HD=4096; applied to attn_output before o_proj in full-attn layers only" },
+    "o_proj_full_attn":
+      { "shape": "FC(M, 4096, 2048)", "weight": "INT4 g=128", "calls_per_decode": 10,
+        "note": "16*256 -> 2048; 10 full-attn layers" },
+    "paged_attention_full":
+      { "config": "NH=16, NKV=2, HD=256, GQA=8, kv_int8", "calls_per_decode": 10 },
+    "linattn_input_proj":
+      { "shape": "FC(M, 2048, 12288)", "weight": "INT4 g=128", "calls_per_decode": 30,
+        "note": "qkv(in_proj_qkv)=2*16*128+32*128=8192 + z(in_proj_z)=4096 = 12288; 30 GDN layers" },
+    "gated_delta_net":
+      { "config": "qk_heads=16, v_heads=32 (GQA group=2), K=V=128, kernel=PagedGatedDeltaNet opt (gdn_bench)", "calls_per_decode": 30 },
+    "moe_3gemm_fused":
+      { "config": "H=2048, I=512, NE=256, TK=8, +shared_I=512", "calls_per_decode": 40,
+        "note": "with always-on shared expert (additional dense gate/up/down with I=512)" },
+    "lm_head":
+      { "shape": "FC(1, 2048, 248320)", "weight": "INT8 g=128", "calls_per_decode": 1 },
+    "small_ops_per_layer":
+      ["rmsnorm_x2", "qk_norm_x2 (full_attn only)", "rope_q (full_attn only)",
+       "rope_k (full_attn only)", "attn_output_gate (full_attn only)", "add_x2"]
+  }
+}
