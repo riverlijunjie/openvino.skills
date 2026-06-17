@@ -1,0 +1,99 @@
+{
+  "_doc": "Compact, faithful copy of optimization_aware_prompts.json. Indexed [dimension][backend][level]. Level 0 is intentionally empty (naive). Used by optimization_classifier.py (to read level meanings) and evolve_loop.build_prompt (to emit a 'Required Optimizations' section for a target cell).",
+  "memory": {
+    "cuda": {
+      "0": "",
+      "1": "Vectorized & Coalesced Access: replace scalar loads/stores with float4/float2 to issue fewer, wider transactions; ensure adjacent threads touch adjacent addresses; respect 16-byte alignment via reinterpret_cast<float4*>.",
+      "2": "Shared-Memory (SMEM) Tiling: collaboratively load reused data into __shared__ tiles (16x16 or 32x32), __syncthreads() after the load and before reuse, pad to TILE+1 to avoid bank conflicts.",
+      "3": "Register Blocking + Multi-Level Caching: each thread computes a THREAD_M x THREAD_N output tile held in registers; combine with SMEM tiling; #pragma unroll inner loops; double-buffer to hide latency."
+    },
+    "sycl": {
+      "0": "",
+      "1": "Vectorized & Coalesced Access: use sycl::vec<T,N> (N=4/8/16) and vec::load/store; adjacent work-items access adjacent columns; align to the native SIMD width.",
+      "2": "SLM Tiling: cache reused data in sycl::local_accessor tiles; sycl::group_barrier(grp) after load and before reuse; pad to TILE+1. NOTE: local_accessor<T,N> requires N in {1,2,3}.",
+      "3": "Register Blocking + async copy: per-work-item register tile; sycl::group::async_work_group_copy / joint_prefetch to overlap; double buffering."
+    },
+    "triton": {
+      "0": "",
+      "1": "Use tl.load/tl.store with masks and contiguous offsets; choose BLOCK_SIZE so accesses coalesce.",
+      "2": "Block-pointer tiling: tl.make_block_ptr to load 2D tiles; reuse across the program; keep tiles in SRAM.",
+      "3": "tl.make_block_ptr + tl.advance with num_stages>=3 for software-pipelined multi-buffered loads."
+    },
+    "opencl": {
+      "0": "",
+      "1": "Vector types (float4/8/16) + vload/vstore; consecutive get_global_id(0) -> consecutive addresses; align to vector boundaries.",
+      "2": "__local memory tiling with barrier(CLK_LOCAL_MEM_FENCE); pad to TILE+1 to avoid bank conflicts.",
+      "3": "async_work_group_copy into __local + per-work-item register tiles; #pragma unroll."
+    }
+  },
+  "compute": {
+    "cuda": {
+      "0": "",
+      "1": "Kernel Fusion: fuse sequential element-wise ops into one kernel to kill intermediate global writes; use fmaf() for fused multiply-add.",
+      "2": "Single-Pass Online Algorithms: online softmax (scale=exp(m_old-m_new); l=l*scale+exp(x-m_new)); Welford variance; Kahan compensated sum.",
+      "3": "Blocked/Tiled Algorithms (Flash-Attention style) with Tensor Cores: process in blocks keeping running (m_i,l_i,acc); recompute instead of storing O(N^2)."
+    },
+    "sycl": {
+      "0": "",
+      "1": "Fuse ops in one kernel; use sycl::fma; cache intermediates in registers.",
+      "2": "Single-pass online algorithms (online softmax / Welford) using sycl::reduce_over_group for partials.",
+      "3": "Blocked algorithms with running accumulators; consider joint_matrix for matmul-shaped inner loops."
+    },
+    "triton": {
+      "0": "",
+      "1": "Fuse element-wise chains; use tl.math / libdevice; prefer fused multiply-add.",
+      "2": "Streaming reductions with tl.max/tl.sum along the block axis; online softmax across K-blocks.",
+      "3": "Flash-Attention block loop: maintain (m_i, l_i, acc) across K/V blocks; rescale on new max."
+    },
+    "opencl": {
+      "0": "",
+      "1": "Fuse kernels; use mad()/fma(); native_* math when precision allows.",
+      "2": "Single-pass online softmax / Welford using sub_group reductions.",
+      "3": "Blocked accumulation with running statistics; recompute to bound memory."
+    }
+  },
+  "parallelism": {
+    "cuda": {
+      "0": "",
+      "1": "Block-Level Cooperative reductions: replace atomics with O(log N) tree reductions in shared memory.",
+      "2": "Warp-Level Collectives: __shfl_xor_sync / __shfl_sync reductions and broadcasts -- no shared memory, no __syncthreads.",
+      "3": "Hierarchical block->warp->thread decomposition; each level reuses data; minimize cross-level sync."
+    },
+    "sycl": {
+      "0": "",
+      "1": "Work-group tree reductions with sycl::group_barrier instead of global atomics.",
+      "2": "Sub-group collectives: sycl::reduce_over_group(sg,val,op) / group_broadcast / shift_group_left|right. op must be a predefined function object (sycl::plus<float>()), NOT a lambda. Never use .shuffle().",
+      "3": "Hierarchical parallel_for_work_group: group -> sub-group -> work-item tiling."
+    },
+    "triton": {
+      "0": "",
+      "1": "Reduce along the block axis with tl.sum/tl.max rather than atomics.",
+      "2": "Use larger programs with multiple elements each; tune num_warps.",
+      "3": "@triton.autotune over BLOCK_M/N/K, num_warps, num_stages; key on problem dims; consider persistent kernels."
+    },
+    "opencl": {
+      "0": "",
+      "1": "Tree reductions in __local with barrier() instead of global atomics.",
+      "2": "Sub-group functions (OpenCL 2.0+): sub_group_reduce_add, sub_group_broadcast, intel_sub_group_shuffle.",
+      "3": "Hierarchical work-group -> sub-group -> work-item decomposition; reqd_work_group_size hint."
+    }
+  },
+  "explicit_simd": {
+    "cuda_tensor_cores": "WMMA: nvcuda::wmma fragment<> + load_matrix_sync / mma_sync / store_matrix_sync; stage through shared memory; half/bf16 inputs.",
+    "sycl_esimd": "ESIMD: simd<T,N> types, block_load/block_store, [[intel::sycl_explicit_simd]]; on Xe use DPAS for matmul inner loops; LSC loads with cache hints.",
+    "opencl": "intel_sub_group_block_read/write for wide loads; cl_intel_subgroups extensions."
+  },
+  "antipatterns": {
+    "cuda": "Bank conflicts in shared memory; warp divergence; over-use of __syncthreads; uncoalesced strided global access; getCurrentCUDAStream misuse.",
+    "sycl": "range<N>/nd_range<N>/local_accessor<T,N> with N>=4 (compile error -- linearize instead); .shuffle() member fns (invalid in SYCL 2020); capturing constexpr in device lambdas (lambda-size mismatch); unnamed kernels.",
+    "triton": "tl.program_id(axis) with axis>2; nested functions; break/continue in loops; chained comparisons.",
+    "opencl": "Bank conflicts; wavefront divergence; excessive barriers; unaligned vector loads."
+  },
+  "dimension_guidance": {
+    "_doc": "How to read profiler verdicts onto the ladder.",
+    "memory_bound": "raise memory_opt: add vectorization (L1) then SMEM/SLM tiling (L2) then register blocking (L3).",
+    "compute_bound": "raise compute_opt (fusion->online->blocked) and parallelism_opt (warp/sub-group collectives).",
+    "low_occupancy": "tune block/work-group size; reduce register/shared pressure; raise parallelism_opt.",
+    "high_stall_or_bank_conflicts": "fix antipatterns first (padding, divergence, sync) before climbing levels."
+  }
+}

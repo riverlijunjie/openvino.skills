@@ -1,0 +1,60 @@
+# run_optimize_evolve.yaml — "make it FAST": evolutionary search over a correct kernel.
+# Island MAP-Elites + optimization-aware prompting + QD gradient. Seed from a correct kernel.
+#   python scripts/run_custom_task.py custom_task=/abs/my_task task_origin=local +experiment=...
+task_name: my_op
+job_name: my_op_evolve
+
+language: SYCL
+gpu_arch: lnl
+
+# evolutionary search: wide (branches) × deep (iters)
+evolve_mode: true
+branches_per_iteration: 4
+max_iters: 20
+stop_once_correct: false
+start_from_best: true          # seed iteration 0 from the best kernel found so far (DB)
+store_generated_kernels_in_db: true
+
+# ensemble at temperature 0.3 → diverse candidates per generation
+inference:
+  _target_: kernelgen.inference_server.LLMEnsemble
+  servers:
+    - {_target_: kernelgen.inference_server.InferenceServer, server_type: intel_gnai, model_name: claude-4-5-sonnet, temperature: 0.3, max_tokens: 6500}
+    - {_target_: kernelgen.inference_server.InferenceServer, server_type: intel_gnai, model_name: gpt-4.1,          temperature: 0.3, max_tokens: 6500}
+    - {_target_: kernelgen.inference_server.InferenceServer, server_type: intel_gnai, model_name: gpt-5.2,          temperature: 0.3, max_tokens: 6500}
+  weights: uniform
+
+# optimization-aware prompting: inject the target cell's techniques into each prompt
+use_optimization_aware_prompting: true
+use_exploration_prompts: true
+exploration_strategy: mutate   # mutate | diversify | intensify | esimd_upgrade
+enable_esimd_exploration: false
+
+# QD gradient: steer exploration toward axes that are paying off / under-explored
+use_gradient_tracking: true
+gradient_sampling_weight: 0.3
+gradient_config:
+  fitness_weight: 0.4
+  improvement_rate_weight: 0.4
+  exploration_weight: 0.2
+  max_history: 10000
+  max_cell_cache: 256
+  checkpoint_interval: 100
+
+test_reference: true           # real speedup = gmean(ref/custom)
+
+# MAP-Elites + island archive (overrides for database/evolve_db_optimization_aware.yaml)
+database:
+  config:
+    population_size: 1000
+    num_islands: 4
+    programs_per_island: 10
+    num_inspirations: 2
+    num_top_programs: 1
+    exploration_ratio: 0.2
+    exploitation_ratio: 0.7
+    feature_dimensions: [memory_opt, compute_opt, parallelism_opt]
+    feature_bins: {memory_opt: 4, compute_opt: 4, parallelism_opt: 4}
+    migration_interval: 10
+    migration_rate: 0.1
+    random_seed: 42

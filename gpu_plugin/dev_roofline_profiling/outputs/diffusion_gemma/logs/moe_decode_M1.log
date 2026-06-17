@@ -1,0 +1,60 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: C:\Users\Local_Admin\Downloads\clintercept-3.0.6-win64\Release\opencl.dll
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(NOT supported)
+    clock(steady_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept registry key: SOFTWARE\INTEL\IGFX\CLINTERCEPT
+Trying to load dispatch from: real_opencl.dll
+Couldn't get exported function pointer to: clGetGLContextInfoKHR
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+Total Enqueues: 0
+
+MoE bench: B=1 S=1 H=2816 I=704 NE=128 TK=8 g=64 iters=500 warm=50 bufs=4 flush=64MB shared_I=0 [no shared expert]
+[FUSION OK] Runtime node: ReduceSum_91_Reshape/MOECompressed layer_type=moe_3gemm_fused_compressed
+[INPUT SEED] filled 4 USM_DEVICE input buffer(s) with random f32 in [-1,1] (B*S*H=2816 elems each)
+warmup 50 iters...
+measuring 500 iters...
+total host wallclock = 856.97 ms (1.71394 ms/iter host-side)
+=> rely on cliloader DevicePerformanceTiming for fused MoE kernel avg
+Total Enqueues: 5533
+
+
+Device Performance Timing Results for Intel(R) Arc(TM) B390 GPU (96CUs, 2400MHz):
+
+Total Time (ns): 844729148
+
+                                          Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+                  activation_opt_477147924471330069_0_0,    550,     683207679,   80.88%,       1242195,       1211979,       1837395
+                             clEnqueueMemFillINTEL( D ),     10,         30724,    0.00%,          3072,          1145,          7500
+                             clEnqueueMemFillINTEL( H ),     12,       1297391,    0.15%,        108115,          1041,       1078437
+                                   clEnqueueWriteBuffer,      4,         12550,    0.00%,          3137,          2395,          4739
+       dynamic_quantize_gpu_opt_3902222617495451630_0_0,    550,        952753,    0.11%,          1732,          1562,          5833
+                                            gemm_kernel,    550,       2536990,    0.30%,          4612,          4166,         12187
+moe_3gemm_swiglu_fuse_softmax_topk_18406223677706649241,    550,       2460110,    0.29%,          4472,          4270,          8437
+         moe_3gemm_swiglu_mlp_down_15634035839538328442,    550,      48251553,    5.71%,         87730,         84687,        203020
+      moe_3gemm_swiglu_mlp_gate_up_15634035839538328442,    550,      97401647,   11.53%,        177093,        172708,        403958
+       moe_3gemm_swiglu_mlp_reduce_15634035839538328442,    550,        675396,    0.08%,          1227,           937,          6458
+                  reorder_data_14367539815288999332_0_0,      2,       2960312,    0.35%,       1480156,       1473958,       1486354
+                  reorder_data_14666591081452198000_0_0,      1,        259479,    0.03%,        259479,        259479,        259479
+                  reorder_data_15034121570960639161_0_0,      1,       2436458,    0.29%,       2436458,       2436458,       2436458
+                  reorder_data_16510829185963112185_0_0,      1,          7500,    0.00%,          7500,          7500,          7500
+                   reorder_data_2326647296185722913_0_0,      2,       1019895,    0.12%,        509947,        506250,        513645
+          reorder_data_fast_b1_11828813544549278260_0_0,    550,        516735,    0.06%,           939,           729,          6666
+           reorder_data_fast_b1_3959972019941092865_0_0,    550,        701976,    0.08%,          1276,           937,          6041
+CLIntercept is shutting down...
+... shutdown complete.

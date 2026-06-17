@@ -1,0 +1,48 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: C:\Users\Local_Admin\Downloads\clintercept-3.0.6-win64\Release\opencl.dll
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(NOT supported)
+    clock(steady_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept registry key: SOFTWARE\INTEL\IGFX\CLINTERCEPT
+Trying to load dispatch from: real_opencl.dll
+Couldn't get exported function pointer to: clGetGLContextInfoKHR
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+Total Enqueues: 0
+
+=== Small Ops Benchmark ===
+Gate M=4096 H=4096 iters=300 warmup=30 bufs=4
+Input tensors allocated in USM_DEVICE (VRAM) via RemoteContext.
+Median_us: 1309.5
+Min_us: 1254.7
+Avg_us: 1322.11
+BW_GBs: 76.8716
+TotalBytes: 1.00663e+08
+Total Enqueues: 662
+
+
+Device Performance Timing Results for Intel(R) Arc(TM) B390 GPU (96CUs, 2400MHz):
+
+Total Time (ns): 398188060
+
+                                Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+       activation_opt_9677735344331394771_0_0,    330,     145300496,   36.49%,        440304,        414270,        819375
+                   clEnqueueMemFillINTEL( D ),      1,        214479,    0.05%,        214479,        214479,        214479
+                   clEnqueueMemFillINTEL( H ),      1,        391562,    0.10%,        391562,        391562,        391562
+eltwise_simple_vload8_1600471834299485859_0_0,    330,     252281523,   63.36%,        764489,        723541,       1062500
+CLIntercept is shutting down...
+... shutdown complete.

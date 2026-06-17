@@ -1,0 +1,15 @@
+# ── TASK DEFINITION ──────────────────────────────────────────────────────────
+task_name: my_op            # TODO: name of the kernel task (e.g. relu, matmul, softmax)
+job_name: my_op_v1          # TODO: name of this run / experiment
+
+# ── TARGET PLATFORM ──────────────────────────────────────────────────────────
+gpu_arch: bmg               # Intel: bmg|lnl|ptl|dg2  ·  NVIDIA: Hopper|Ada|Ampere
+language: SYCL              # SYCL | CUDA | triton | OCL
+
+# ── EVALUATION ───────────────────────────────────────────────────────────────
+test_reference: true        # benchmark the reference too → enables real speedup (ref/custom)
+has_reference_build_step: false   # false when the reference is plain PyTorch (no compile)
+
+hyperparameters:
+  buildtime: null           # dict passed to build() in task.py (e.g. template params)
+  runtime: null             # dict exposed to tests via the `hyperparams` fixture

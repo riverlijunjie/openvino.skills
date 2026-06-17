@@ -14,6 +14,7 @@ across the full window (start P / mean P+256 / end P+512).
 Run:  python3 build_report.py [ptl_metrics.json] > SUMMARY_qwen3_6_<date>.md
 """
 import json
+import os
 import sys
 import datetime
 from pathlib import Path
@@ -55,7 +56,7 @@ SI = CFG["shared_expert_intermediate_size"]  # 512
 NE = CFG["num_experts"]                    # 256
 TK = CFG["num_experts_per_tok"]            # 8
 VOCAB = CFG["vocab_size"]                   # 248320
-G = 128
+G = int(os.environ.get("WEIGHT_GROUP_SIZE", "128"))   # weight-compression group size (g128 default; g64 override)
 BLOCK = 16
 
 PROMPTS = [1024, 2048, 4096, 8192]
@@ -331,7 +332,7 @@ def _c(v, p=1, suffix=""):
 # ============================================================================
 def main():
     perf = {"model": "Qwen3.6-35B-A3B", "platform": "PTL_12Xe_B390",
-            "gen_tokens": GEN, "prompts": PROMPTS}
+            "weight_group_size": G, "gen_tokens": GEN, "prompts": PROMPTS}
 
     # ----- header --------------------------------------------------------------
     W(f"# Qwen3.6-35B-A3B — Roofline on {PLAT_NAME} ({DATE})")
@@ -385,16 +386,16 @@ def main():
         return tot
 
     total_w = 0.0
-    total_w += wrow("Embedding (gather)", VOCAB, H, "INT8 g128", 1)
-    total_w += wrow("FC_QKV+gate (full-attn)", H, QKV, "INT4 g128", NL_F)
-    total_w += wrow("FC_O / GDN out_proj", LIN_VDIM, H, "INT4 g128", NL)
-    total_w += wrow("Lin-attn in_proj (GDN)", H, LIN_PROJ, "INT4 g128", NL_L)
-    total_w += wrow("MoE expert gate+up", H, 2 * I, "INT4 g128", NL * NE)
-    total_w += wrow("MoE expert down", I, H, "INT4 g128", NL * NE)
-    total_w += wrow("MoE shared gate+up", H, 2 * SI, "INT4 g128", NL)
-    total_w += wrow("MoE shared down", SI, H, "INT4 g128", NL)
+    total_w += wrow("Embedding (gather)", VOCAB, H, f"INT8 g{G}", 1)
+    total_w += wrow("FC_QKV+gate (full-attn)", H, QKV, f"INT4 g{G}", NL_F)
+    total_w += wrow("FC_O / GDN out_proj", LIN_VDIM, H, f"INT4 g{G}", NL)
+    total_w += wrow("Lin-attn in_proj (GDN)", H, LIN_PROJ, f"INT4 g{G}", NL_L)
+    total_w += wrow("MoE expert gate+up", H, 2 * I, f"INT4 g{G}", NL * NE)
+    total_w += wrow("MoE expert down", I, H, f"INT4 g{G}", NL * NE)
+    total_w += wrow("MoE shared gate+up", H, 2 * SI, f"INT4 g{G}", NL)
+    total_w += wrow("MoE shared down", SI, H, f"INT4 g{G}", NL)
     total_w += wrow("MoE router", H, NE, "FP16", NL)
-    total_w += wrow("LM_Head", H, VOCAB, "INT8 g128", 1)
+    total_w += wrow("LM_Head", H, VOCAB, f"INT8 g{G}", 1)
     W(f"| **Total static weights** |  |  |  |  | **{total_w / 1000:,.2f} GB** |")
     W()
     perf["total_weights_gb"] = total_w / 1000
@@ -807,7 +808,7 @@ def main():
     W("- Each op profiled in its own process via cliloader Device Performance Timing (mean "
       "kernel time per iteration); cache flush between iters so weights stream from VRAM. Totals "
       "are an upper-bound roofline, not a traced wall-clock.")
-    W("- FC weight bytes count INT4/INT8 weight + FP16 scale/zp(g128) + FP16 act + FP16 out.")
+    W(f"- FC weight bytes count INT4/INT8 weight + FP16 scale/zp(g{G}) + FP16 act + FP16 out.")
     W("- **Shared expert is unfused on this build**; the MoE figure times the routed "
       "`MOE3GemmFusedCompressed` plus 3 shared FCs together — the real per-layer cost here.")
     W("- **GatedDeltaNet bench covers the core op only**; depthwise conv1d (k=4) not modeled "
@@ -825,8 +826,10 @@ def main():
     W("- PA decode is memory-bound (INT8 KV cache + FP16 Q/out); lm_head runs once per token.")
     W("- q_norm/k_norm and residual-add are <0.1% of TTFT and omitted from prefill totals.")
 
-    (OUT / "performance_metrics.json").write_text(json.dumps(perf, indent=2))
-    print(f"\n_performance_metrics.json written to {OUT / 'performance_metrics.json'}_",
+    out_suffix = os.environ.get("OUT_SUFFIX", "")
+    perf_path = OUT / f"performance_metrics{out_suffix}.json"
+    perf_path.write_text(json.dumps(perf, indent=2))
+    print(f"\n_performance_metrics.json written to {perf_path}_",
           file=sys.stderr)
 
 
