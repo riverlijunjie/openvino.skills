@@ -1,0 +1,36 @@
+# run_translation.yaml — "get it CORRECT": port a reference op to a working kernel.
+# Single lineage, iterative fix-it. No archive/islands. Use for first-pass correctness.
+#   python scripts/run_custom_task.py custom_task=/abs/my_task task_origin=local +experiment=...
+# (or pass these as Hydra CLI overrides).
+task_name: my_op
+job_name: my_op_translation
+
+language: SYCL
+gpu_arch: lnl
+
+# one strong model, low temperature → best single answer rather than diversity
+inference:
+  servers:
+    - _target_: kernelgen.inference_server.InferenceServer
+      server_type: intel_gnai
+      model_name: gpt-5.2
+      temperature: 0.0
+      max_tokens: 6500
+
+use_feedback_llm: true        # a 2nd LLM digests the eval log into targeted fixes
+
+evolve_mode: false            # no evolutionary search
+max_iters: 10
+branches_per_iteration: 1
+stop_once_correct: true       # stop the moment a kernel compiles + passes
+
+test_reference: true
+
+# Optional: few-shot similar correct translations via RAG
+prompt:
+  rag:
+    - _target_: kernelgen.database.rag_pytorch_to_sycl.RagPytorchToSycl
+      top_k: 1
+      restrict_to_correct: true
+      min_runtime_improvement: 1.1
+      rag_mode: closest_match

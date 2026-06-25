@@ -1,0 +1,42 @@
+{
+  "_comment": "Default GGUF kernel benchmark config. Shapes mirror Qwen3-class projection matrices (the models OV's GGUF FC baseline targets). Edit `cases` to add shapes / formats / dtypes. Each case: kernel in {opt,transcode,dp4a}; format = one of the 10 baseline gguf_* types; K (reduction, multiple of block_elem), N (out channels), M (activation rows; opt/dp4a only). Per-case overrides: iters, warmup, flush_l2, in_dt, out_dt, seed.",
+  "hw": {},
+  "flush_mib": 128,
+  "iters": 50,
+  "warmup": 10,
+  "flush_l2": true,
+  "out": "../results/report.json",
+
+  "cases": [
+    {"_grp": "opt GEMV decode (M=1) -- Q4_K across Qwen3-8B projection shapes",
+     "kernel": "opt", "format": "gguf_q4_k", "K": 4096,  "N": 4096,  "M": 1},
+    {"kernel": "opt", "format": "gguf_q4_k", "K": 4096,  "N": 1024,  "M": 1},
+    {"kernel": "opt", "format": "gguf_q4_k", "K": 4096,  "N": 12288, "M": 1},
+    {"kernel": "opt", "format": "gguf_q4_k", "K": 12288, "N": 4096,  "M": 1},
+
+    {"_grp": "opt GEMV decode -- format sweep at a fixed 4096x4096 shape",
+     "kernel": "opt", "format": "gguf_q4_0",   "K": 4096, "N": 4096, "M": 1},
+    {"kernel": "opt", "format": "gguf_q8_0",   "K": 4096, "N": 4096, "M": 1},
+    {"kernel": "opt", "format": "gguf_q3_k",   "K": 4096, "N": 4096, "M": 1},
+    {"kernel": "opt", "format": "gguf_q5_k",   "K": 4096, "N": 4096, "M": 1},
+    {"kernel": "opt", "format": "gguf_q6_k",   "K": 4096, "N": 4096, "M": 1},
+    {"kernel": "opt", "format": "gguf_iq2_xs", "K": 4096, "N": 4096, "M": 1},
+    {"kernel": "opt", "format": "gguf_iq2_s",  "K": 4096, "N": 4096, "M": 1},
+    {"kernel": "opt", "format": "gguf_iq3_xxs","K": 4096, "N": 4096, "M": 1},
+    {"kernel": "opt", "format": "gguf_iq3_s",  "K": 4096, "N": 4096, "M": 1},
+
+    {"_grp": "opt GEMV small batch (M=4) -- still memory bound",
+     "kernel": "opt", "format": "gguf_q6_k", "K": 4096, "N": 4096, "M": 4},
+
+    {"_grp": "dp4a int8-activation decode path (Q5_K / Q6_K) at Qwen3-8B shapes",
+     "kernel": "dp4a", "format": "gguf_q6_k", "K": 4096,  "N": 4096, "M": 1},
+    {"kernel": "dp4a", "format": "gguf_q6_k", "K": 12288, "N": 4096, "M": 1},
+    {"kernel": "dp4a", "format": "gguf_q5_k", "K": 4096,  "N": 4096, "M": 1},
+
+    {"_grp": "transcode (prefill weight repack) -- i4 and i8 targets",
+     "kernel": "transcode", "format": "gguf_q4_k", "K": 4096, "N": 4096},
+    {"kernel": "transcode", "format": "gguf_q6_k", "K": 4096, "N": 4096},
+    {"kernel": "transcode", "format": "gguf_iq3_xxs", "K": 4096, "N": 4096},
+    {"kernel": "transcode", "format": "gguf_iq2_s", "K": 4096, "N": 4096}
+  ]
+}

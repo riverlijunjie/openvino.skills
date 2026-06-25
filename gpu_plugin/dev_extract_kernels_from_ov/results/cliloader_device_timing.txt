@@ -1,0 +1,73 @@
+  [PASS] fc_gguf_opt(GEMV)          gguf_q4_k     | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+  [PASS] fc_gguf_opt(GEMV)          gguf_q4_k     | K=4096 N=1024 M=1 in_dt=f16 out_dt=f16
+  [PASS] fc_gguf_opt(GEMV)          gguf_q4_k     | K=4096 N=12288 M=1 in_dt=f16 out_dt=f16
+  [PASS] fc_gguf_opt(GEMV)          gguf_q4_k     | K=12288 N=4096 M=1 in_dt=f16 out_dt=f16
+  [PASS] fc_gguf_opt(GEMV)          gguf_q4_0     | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+  [PASS] fc_gguf_opt(GEMV)          gguf_q8_0     | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+  [PASS] fc_gguf_opt(GEMV)          gguf_q3_k     | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+  [PASS] fc_gguf_opt(GEMV)          gguf_q5_k     | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+  [PASS] fc_gguf_opt(GEMV)          gguf_q6_k     | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+  [PASS] fc_gguf_opt(GEMV)          gguf_iq2_xs   | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+  [PASS] fc_gguf_opt(GEMV)          gguf_iq2_s    | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+  [PASS] fc_gguf_opt(GEMV)          gguf_iq3_xxs  | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+  [PASS] fc_gguf_opt(GEMV)          gguf_iq3_s    | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+  [PASS] fc_gguf_opt(GEMV)          gguf_q6_k     | K=4096 N=4096 M=4 in_dt=f16 out_dt=f16
+  [PASS] fc_gguf_dp4a(+prequant)    gguf_q6_k     | K=4096 N=4096 M=1 out_dt=f16 NROW=4
+  [PASS] fc_gguf_dp4a(+prequant)    gguf_q6_k     | K=12288 N=4096 M=1 out_dt=f16 NROW=4
+  [PASS] fc_gguf_dp4a(+prequant)    gguf_q5_k     | K=4096 N=4096 M=1 out_dt=f16 NROW=1
+  [PASS] fc_gguf_transcode          gguf_q4_k     | K=4096 N=4096 target=i4 qmax=7
+  [PASS] fc_gguf_transcode          gguf_q6_k     | K=4096 N=4096 target=i8 qmax=127
+  [PASS] fc_gguf_transcode          gguf_iq3_xxs  | K=4096 N=4096 target=i4 qmax=7
+  [PASS] fc_gguf_transcode          gguf_iq2_s    | K=4096 N=4096 target=i8 qmax=127
+Total Time (ns): 1871868147
+        clEnqueueNDRangeKernel( fc_gguf_dp4a_gguf_q5_k_K4096_N4096 ),    121,        322949,    0.02%,          2669,          1582,         67862
+       clEnqueueNDRangeKernel( fc_gguf_dp4a_gguf_q6_k_K12288_N4096 ),    121,        238238,    0.01%,          1968,          1499,         12686
+        clEnqueueNDRangeKernel( fc_gguf_dp4a_gguf_q6_k_K4096_N4096 ),    121,        259547,    0.01%,          2145,          1520,         19536
+     clEnqueueNDRangeKernel( fc_gguf_opt_gguf_iq2_s_K4096_N4096_M1 ),     61,        392127,    0.02%,          6428,          2197,        238233
+    clEnqueueNDRangeKernel( fc_gguf_opt_gguf_iq2_xs_K4096_N4096_M1 ),     61,        377924,    0.02%,          6195,          2216,        230334
+     clEnqueueNDRangeKernel( fc_gguf_opt_gguf_iq3_s_K4096_N4096_M1 ),     61,        458647,    0.02%,          7518,          2180,        312118
+   clEnqueueNDRangeKernel( fc_gguf_opt_gguf_iq3_xxs_K4096_N4096_M1 ),     61,        441600,    0.02%,          7239,          2194,        294526
+      clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q3_k_K4096_N4096_M1 ),     61,        642394,    0.03%,         10531,          2190,        492699
+      clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q4_0_K4096_N4096_M1 ),     61,       1473485,    0.08%,         24155,          2012,       1317336
+     clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q4_k_K12288_N4096_M1 ),     61,        393352,    0.02%,          6448,          1589,        247818
+      clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q4_k_K4096_N1024_M1 ),     61,        350100,    0.02%,          5739,          2120,        209251
+     clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q4_k_K4096_N12288_M1 ),     61,        364055,    0.02%,          5968,          2174,        219098
+      clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q4_k_K4096_N4096_M1 ),     61,       1332952,    0.07%,         21851,          1555,       1195344
+      clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q5_k_K4096_N4096_M1 ),     61,       3501021,    0.19%,         57393,          2174,       3354080
+      clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q6_k_K4096_N4096_M1 ),     61,        282685,    0.02%,          4634,          1608,        146860
+      clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q6_k_K4096_N4096_M4 ),     61,        280788,    0.02%,          4603,          1590,        144828
+      clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q8_0_K4096_N4096_M1 ),     61,        363411,    0.02%,          5957,          2195,        214382
+    clEnqueueNDRangeKernel( fc_gguf_prequant_gguf_q5_k_K4096_N4096 ),     61,        517773,    0.03%,          8488,          2180,        357624
+   clEnqueueNDRangeKernel( fc_gguf_prequant_gguf_q6_k_K12288_N4096 ),     61,        295768,    0.02%,          4848,          1635,        135146
+    clEnqueueNDRangeKernel( fc_gguf_prequant_gguf_q6_k_K4096_N4096 ),     61,        292793,    0.02%,          4799,          1622,        133119
+  clEnqueueNDRangeKernel( fc_gguf_transcode_gguf_iq2_s_K4096_N4096 ),     61,        554758,    0.03%,          9094,          1572,        226688
+clEnqueueNDRangeKernel( fc_gguf_transcode_gguf_iq3_xxs_K4096_N4096 ),     61,        676242,    0.04%,         11085,          1573,        335784
+   clEnqueueNDRangeKernel( fc_gguf_transcode_gguf_q4_k_K4096_N4096 ),     61,       1232152,    0.07%,         20199,          1598,        883655
+   clEnqueueNDRangeKernel( fc_gguf_transcode_gguf_q6_k_K4096_N4096 ),     61,       1075310,    0.06%,         17628,          1590,        732716
+Device Performance Timing Results for Intel(R) Arc(TM) B580 Graphics (160CUs, 2900MHz):
+Total Time (ns): 1676673136
+                                                     cache_flush SIMD32 REG128 GWS[ 1048576 ] LWS[ NULL ],   2400,    1111519411,   66.29%,        463133,        326770,       1517812
+                  fc_gguf_dp4a_gguf_q5_k_K4096_N4096 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],    121,       8943908,    0.53%,         73916,         33541,        109166
+                 fc_gguf_dp4a_gguf_q6_k_K12288_N4096 SIMD16 REG128 GWS[ 16384 x 1 x 1 ] LWS[ 16 x 1 x 1 ],    121,      60080364,    3.58%,        496531,        262500,       1859270
+                  fc_gguf_dp4a_gguf_q6_k_K4096_N4096 SIMD16 REG128 GWS[ 16384 x 1 x 1 ] LWS[ 16 x 1 x 1 ],    121,      24430778,    1.46%,        201907,         83645,        645312
+               fc_gguf_opt_gguf_iq2_s_K4096_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,       6711850,    0.40%,        110030,         71458,        124270
+              fc_gguf_opt_gguf_iq2_xs_K4096_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,       8065499,    0.48%,        132221,         84687,        153854
+               fc_gguf_opt_gguf_iq3_s_K4096_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,      10891430,    0.65%,        178548,         97187,        221458
+             fc_gguf_opt_gguf_iq3_xxs_K4096_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,      11918095,    0.71%,        195378,        112187,        244375
+     fc_gguf_opt_gguf_q3_k_K4096_N4096_M1 SIMD16 REG128 SPILL=1600 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,      10645807,    0.63%,        174521,        105729,        215104
+                fc_gguf_opt_gguf_q4_0_K4096_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,      17202686,    1.03%,        282011,        137291,        409583
+               fc_gguf_opt_gguf_q4_k_K12288_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,      25076120,    1.50%,        411083,        211458,        641770
+                fc_gguf_opt_gguf_q4_k_K4096_N1024_M1 SIMD16 REG128 GWS[ 16384 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,       1848514,    0.11%,         30303,         24166,         37395
+              fc_gguf_opt_gguf_q4_k_K4096_N12288_M1 SIMD16 REG128 GWS[ 196608 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,      21605394,    1.29%,        354186,        183541,        536770
+                fc_gguf_opt_gguf_q4_k_K4096_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,      14497992,    0.86%,        237672,         78958,        481041
+                fc_gguf_opt_gguf_q5_k_K4096_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,       6028936,    0.36%,         98835,         83750,        105312
+                fc_gguf_opt_gguf_q6_k_K4096_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,      20546641,    1.23%,        336830,        114270,        718854
+                fc_gguf_opt_gguf_q6_k_K4096_N4096_M4 SIMD16 REG128 GWS[ 65536 x 4 x 1 ] LWS[ 16 x 1 x 1 ],     61,      55748203,    3.32%,        913904,        357604,       2475520
+                fc_gguf_opt_gguf_q8_0_K4096_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,      18494453,    1.10%,        303187,        200833,        408645
+                 fc_gguf_prequant_gguf_q5_k_K4096_N4096 SIMD32 REG128 GWS[ 128 x 1 x 1 ] LWS[ 1 x 1 x 1 ],     61,        621645,    0.04%,         10190,          5312,         16041
+                fc_gguf_prequant_gguf_q6_k_K12288_N4096 SIMD32 REG128 GWS[ 384 x 1 x 1 ] LWS[ 1 x 1 x 1 ],     61,        854452,    0.05%,         14007,          5416,         45000
+                 fc_gguf_prequant_gguf_q6_k_K4096_N4096 SIMD32 REG128 GWS[ 128 x 1 x 1 ] LWS[ 1 x 1 x 1 ],     61,        970597,    0.06%,         15911,          4895,         43541
+  fc_gguf_transcode_gguf_iq2_s_K4096_N4096 SIMD32 REG128 TPM=16384 GWS[ 4096 x 16 x 1 ] LWS[ 16 x 1 x 1 ],     61,      43233309,    2.58%,        708742,        673958,        755833
+fc_gguf_transcode_gguf_iq3_xxs_K4096_N4096 SIMD32 REG128 TPM=16384 GWS[ 4096 x 16 x 1 ] LWS[ 16 x 1 x 1 ],     61,      63118937,    3.76%,       1034736,        639895,       1865729
+   fc_gguf_transcode_gguf_q4_k_K4096_N4096 SIMD32 REG128 TPM=16384 GWS[ 4096 x 16 x 1 ] LWS[ 16 x 1 x 1 ],     61,      47359351,    2.82%,        776382,        641562,        998229
+   fc_gguf_transcode_gguf_q6_k_K4096_N4096 SIMD32 REG128 TPM=16384 GWS[ 4096 x 16 x 1 ] LWS[ 16 x 1 x 1 ],     61,      60435396,    3.60%,        990744,        725416,       1819479

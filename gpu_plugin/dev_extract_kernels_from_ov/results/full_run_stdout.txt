@@ -1,0 +1,191 @@
+### Running under cliloader: /tmp/opencl-intercept-layer/build/cliloader/cliloader
+  _create_built_program_from_source_cached(
+/mnt/river/ovmx/openvino.pipeline.mx/.github/skills/dev_extract_kernels_from_ov/harness/bench.py:251: RuntimeWarning: divide by zero encountered in divide
+  inv = np.where(amax > 0, qmax / amax, 0.0)
+====================================================================================================
+Device : Intel(R) Arc(TM) B580 Graphics
+HW peak: FP32 14.85 TFLOPS | INT8(dp4a) 59.39 TOPS | BW 456 GB/s | L2 18.0 MiB
+Bench  : iters=50 warmup=10 flush_l2=True (flush buffer 128 MiB)
+====================================================================================================
+  [PASS] fc_gguf_opt(GEMV)          gguf_q4_k     | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+        time(median)=0.1069 ms  BW=88.4 GB/s (19.4% of peak)  GFLOPS=314  roofline=19.4%  bound=memory
+        correctness: rel_l2_err=0.0002075, cosine=1
+  [PASS] fc_gguf_opt(GEMV)          gguf_q4_k     | K=4096 N=1024 M=1 in_dt=f16 out_dt=f16
+        time(median)=0.0318 ms  BW=74.6 GB/s (16.4% of peak)  GFLOPS=264  roofline=16.4%  bound=memory
+        correctness: rel_l2_err=0.0002104, cosine=1
+  [PASS] fc_gguf_opt(GEMV)          gguf_q4_k     | K=4096 N=12288 M=1 in_dt=f16 out_dt=f16
+        time(median)=0.2151 ms  BW=131.8 GB/s (28.9% of peak)  GFLOPS=468  roofline=28.9%  bound=memory
+        correctness: rel_l2_err=0.000208, cosine=1
+  [PASS] fc_gguf_opt(GEMV)          gguf_q4_k     | K=12288 N=4096 M=1 in_dt=f16 out_dt=f16
+        time(median)=0.3104 ms  BW=91.3 GB/s (20.0% of peak)  GFLOPS=324  roofline=20.0%  bound=memory
+        correctness: rel_l2_err=0.0002046, cosine=1
+  [PASS] fc_gguf_opt(GEMV)          gguf_q4_0     | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+        time(median)=0.2531 ms  BW=37.3 GB/s (8.2% of peak)  GFLOPS=133  roofline=8.2%  bound=memory
+        correctness: rel_l2_err=0.0002137, cosine=1
+  [PASS] fc_gguf_opt(GEMV)          gguf_q8_0     | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+        time(median)=0.3605 ms  BW=49.5 GB/s (10.9% of peak)  GFLOPS=93  roofline=10.9%  bound=memory
+        correctness: rel_l2_err=0.0002085, cosine=1
+  [PASS] fc_gguf_opt(GEMV)          gguf_q3_k     | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+        time(median)=0.1929 ms  BW=37.5 GB/s (8.2% of peak)  GFLOPS=174  roofline=8.2%  bound=memory
+        correctness: rel_l2_err=0.0002083, cosine=1
+  [PASS] fc_gguf_opt(GEMV)          gguf_q5_k     | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+        time(median)=0.1027 ms  BW=112.5 GB/s (24.7% of peak)  GFLOPS=327  roofline=24.7%  bound=memory
+        correctness: rel_l2_err=0.0002094, cosine=1
+  [PASS] fc_gguf_opt(GEMV)          gguf_q6_k     | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+        time(median)=0.1595 ms  BW=86.4 GB/s (18.9% of peak)  GFLOPS=210  roofline=18.9%  bound=memory
+        correctness: rel_l2_err=0.0002052, cosine=1
+  [PASS] fc_gguf_opt(GEMV)          gguf_iq2_xs   | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+        time(median)=0.1374 ms  BW=35.4 GB/s (7.8% of peak)  GFLOPS=244  roofline=7.8%  bound=memory
+        correctness: rel_l2_err=0.0002084, cosine=1
+  [PASS] fc_gguf_opt(GEMV)          gguf_iq2_s    | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+        time(median)=0.1139 ms  BW=47.3 GB/s (10.4% of peak)  GFLOPS=295  roofline=10.4%  bound=memory
+        correctness: rel_l2_err=0.0001995, cosine=1
+  [PASS] fc_gguf_opt(GEMV)          gguf_iq3_xxs  | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+        time(median)=0.2148 ms  BW=30.0 GB/s (6.6% of peak)  GFLOPS=156  roofline=6.6%  bound=memory
+        correctness: rel_l2_err=0.0002076, cosine=1
+  [PASS] fc_gguf_opt(GEMV)          gguf_iq3_s    | K=4096 N=4096 M=1 in_dt=f16 out_dt=f16
+        time(median)=0.1950 ms  BW=37.1 GB/s (8.1% of peak)  GFLOPS=172  roofline=8.1%  bound=memory
+        correctness: rel_l2_err=0.000203, cosine=1
+  [PASS] fc_gguf_opt(GEMV)          gguf_q6_k     | K=4096 N=4096 M=4 in_dt=f16 out_dt=f16
+        time(median)=0.3609 ms  BW=38.3 GB/s (8.4% of peak)  GFLOPS=372  roofline=8.4%  bound=memory
+        correctness: rel_l2_err=0.0002064, cosine=1
+  [PASS] fc_gguf_dp4a(+prequant)    gguf_q6_k     | K=4096 N=4096 M=1 out_dt=f16 NROW=4
+        time(median)=0.1026 ms  BW=134.3 GB/s (29.4% of peak)  GFLOPS=327  roofline=29.4%  bound=memory
+        correctness: rel_l2_err=0.0002077, cosine=1, prequant_q_match=1, prequant_scale_rel=1.859e-08
+  [PASS] fc_gguf_dp4a(+prequant)    gguf_q6_k     | K=12288 N=4096 M=1 out_dt=f16 NROW=4
+        time(median)=0.2821 ms  BW=146.4 GB/s (32.1% of peak)  GFLOPS=357  roofline=32.1%  bound=memory
+        correctness: rel_l2_err=0.0002096, cosine=1, prequant_q_match=1, prequant_scale_rel=1.322e-08
+  [PASS] fc_gguf_dp4a(+prequant)    gguf_q5_k     | K=4096 N=4096 M=1 out_dt=f16 NROW=1
+        time(median)=0.0608 ms  BW=189.8 GB/s (41.6% of peak)  GFLOPS=552  roofline=41.6%  bound=memory
+        correctness: rel_l2_err=0.000208, cosine=1, prequant_q_match=1, prequant_scale_rel=1.859e-08
+  [PASS] fc_gguf_transcode          gguf_q4_k     | K=4096 N=4096 target=i4 qmax=7
+        time(median)=0.6702 ms  BW=28.2 GB/s (6.2% of peak)  GFLOPS=25  roofline=6.2%  bound=memory
+        correctness: int_code_match=1, scale_rel_l2=0.0003597, recon_err_rel_amax=0.07207
+  [PASS] fc_gguf_transcode          gguf_q6_k     | K=4096 N=4096 target=i8 qmax=127
+        time(median)=0.7400 ms  BW=42.7 GB/s (9.4% of peak)  GFLOPS=23  roofline=9.4%  bound=memory
+        correctness: int_code_match=1, scale_rel_l2=0.0003699, recon_err_rel_amax=0.007837
+  [PASS] fc_gguf_transcode          gguf_iq3_xxs  | K=4096 N=4096 target=i4 qmax=7
+        time(median)=0.6547 ms  BW=24.2 GB/s (5.3% of peak)  GFLOPS=26  roofline=5.3%  bound=memory
+        correctness: int_code_match=1, scale_rel_l2=0.0003644, recon_err_rel_amax=0.06605
+  [PASS] fc_gguf_transcode          gguf_iq2_s    | K=4096 N=4096 target=i8 qmax=127
+        time(median)=0.7026 ms  BW=33.0 GB/s (7.2% of peak)  GFLOPS=24  roofline=7.2%  bound=memory
+        correctness: int_code_match=1, scale_rel_l2=0.0003493, recon_err_rel_amax=0.171
+
+Wrote report -> ../results/report.json
+
+21/21 cases passed correctness.
+Total Enqueues: 4076
+
+
+Leak Checking:
+
+No cl_context leaks detected.
+No cl_command_queue leaks detected.
+No cl_mem leaks detected.
+No cl_program leaks detected.
+No cl_kernel leaks detected.
+No cl_event leaks detected.
+
+Host Performance Timing Results:
+
+Total Time (ns): 1871868147
+
+                                                       Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+                                       (chrome trace flush overhead),   2748,      30031603,    1.60%,         10928,          1452,         69969
+                                            (device timing overhead),   2748,      26577114,    1.42%,          9671,            18,         22578
+                                                      clBuildProgram,     25,      12677304,    0.68%,        507092,        252966,       2368836
+                                                      clCreateBuffer,     71,      95500570,    5.10%,       1345078,           192,       8393919
+                                  clCreateCommandQueueWithProperties,      1,       2583438,    0.14%,       2583438,       2583438,       2583438
+                                                     clCreateContext,      1,         15628,    0.00%,         15628,         15628,         15628
+                                                      clCreateKernel,     25,         82651,    0.00%,          3306,          1766,          4421
+                                           clCreateProgramWithBinary,     25,       1126110,    0.06%,         45044,         24295,         62130
+                               clEnqueueNDRangeKernel( cache_flush ),   2400,       5178268,    0.28%,          2157,          1516,         21907
+        clEnqueueNDRangeKernel( fc_gguf_dp4a_gguf_q5_k_K4096_N4096 ),    121,        322949,    0.02%,          2669,          1582,         67862
+       clEnqueueNDRangeKernel( fc_gguf_dp4a_gguf_q6_k_K12288_N4096 ),    121,        238238,    0.01%,          1968,          1499,         12686
+        clEnqueueNDRangeKernel( fc_gguf_dp4a_gguf_q6_k_K4096_N4096 ),    121,        259547,    0.01%,          2145,          1520,         19536
+     clEnqueueNDRangeKernel( fc_gguf_opt_gguf_iq2_s_K4096_N4096_M1 ),     61,        392127,    0.02%,          6428,          2197,        238233
+    clEnqueueNDRangeKernel( fc_gguf_opt_gguf_iq2_xs_K4096_N4096_M1 ),     61,        377924,    0.02%,          6195,          2216,        230334
+     clEnqueueNDRangeKernel( fc_gguf_opt_gguf_iq3_s_K4096_N4096_M1 ),     61,        458647,    0.02%,          7518,          2180,        312118
+   clEnqueueNDRangeKernel( fc_gguf_opt_gguf_iq3_xxs_K4096_N4096_M1 ),     61,        441600,    0.02%,          7239,          2194,        294526
+      clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q3_k_K4096_N4096_M1 ),     61,        642394,    0.03%,         10531,          2190,        492699
+      clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q4_0_K4096_N4096_M1 ),     61,       1473485,    0.08%,         24155,          2012,       1317336
+     clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q4_k_K12288_N4096_M1 ),     61,        393352,    0.02%,          6448,          1589,        247818
+      clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q4_k_K4096_N1024_M1 ),     61,        350100,    0.02%,          5739,          2120,        209251
+     clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q4_k_K4096_N12288_M1 ),     61,        364055,    0.02%,          5968,          2174,        219098
+      clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q4_k_K4096_N4096_M1 ),     61,       1332952,    0.07%,         21851,          1555,       1195344
+      clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q5_k_K4096_N4096_M1 ),     61,       3501021,    0.19%,         57393,          2174,       3354080
+      clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q6_k_K4096_N4096_M1 ),     61,        282685,    0.02%,          4634,          1608,        146860
+      clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q6_k_K4096_N4096_M4 ),     61,        280788,    0.02%,          4603,          1590,        144828
+      clEnqueueNDRangeKernel( fc_gguf_opt_gguf_q8_0_K4096_N4096_M1 ),     61,        363411,    0.02%,          5957,          2195,        214382
+    clEnqueueNDRangeKernel( fc_gguf_prequant_gguf_q5_k_K4096_N4096 ),     61,        517773,    0.03%,          8488,          2180,        357624
+   clEnqueueNDRangeKernel( fc_gguf_prequant_gguf_q6_k_K12288_N4096 ),     61,        295768,    0.02%,          4848,          1635,        135146
+    clEnqueueNDRangeKernel( fc_gguf_prequant_gguf_q6_k_K4096_N4096 ),     61,        292793,    0.02%,          4799,          1622,        133119
+  clEnqueueNDRangeKernel( fc_gguf_transcode_gguf_iq2_s_K4096_N4096 ),     61,        554758,    0.03%,          9094,          1572,        226688
+clEnqueueNDRangeKernel( fc_gguf_transcode_gguf_iq3_xxs_K4096_N4096 ),     61,        676242,    0.04%,         11085,          1573,        335784
+   clEnqueueNDRangeKernel( fc_gguf_transcode_gguf_q4_k_K4096_N4096 ),     61,       1232152,    0.07%,         20199,          1598,        883655
+   clEnqueueNDRangeKernel( fc_gguf_transcode_gguf_q6_k_K4096_N4096 ),     61,       1075310,    0.06%,         17628,          1590,        732716
+                                     clEnqueueReadBuffer( blocking ),     31,       7976106,    0.43%,        257293,         15562,       1560964
+                                    clEnqueueWriteBuffer( blocking ),      1,      28540299,    1.52%,      28540299,      28540299,      28540299
+                                                            clFinish,   1462,    1235026396,   65.98%,        844751,          1490,       2973561
+                                                    clGetContextInfo,    204,         31235,    0.00%,           153,            34,          1445
+                                                      clGetDeviceIDs,      2,           524,    0.00%,           262,           106,           418
+                                                     clGetDeviceInfo,    338,         32553,    0.00%,            96,            20,           324
+                                             clGetEventProfilingInfo,   2400,        116362,    0.01%,            48,            31,            91
+                                                     clGetKernelInfo,    125,         14006,    0.00%,           112,            24,           589
+                                                  clGetMemObjectInfo,     32,         11550,    0.00%,           360,            33,          1720
+                                                    clGetPlatformIDs,      2,            54,    0.00%,            27,            22,            32
+                                                   clGetPlatformInfo,    310,         32471,    0.00%,           104,            22,           974
+                                               clGetProgramBuildInfo,     50,          9562,    0.00%,           191,            33,           484
+                                                    clGetProgramInfo,     50,         16877,    0.00%,           337,            47,          1008
+                                               clReleaseCommandQueue,      1,        139624,    0.01%,        139624,        139624,        139624
+                                                    clReleaseContext,     26,          5429,    0.00%,           208,           101,           330
+                                                      clReleaseEvent,   4076,        761684,    0.04%,           186,            20,          2331
+                                                     clReleaseKernel,     25,       4160325,    0.22%,        166413,         76978,        370209
+                                                  clReleaseMemObject,     71,       8160400,    0.44%,        114935,            79,        514116
+                                                    clReleaseProgram,     25,          5023,    0.00%,           200,           105,           312
+                                                     clRetainContext,     25,          6110,    0.00%,           244,            69,           451
+                                                      clSetKernelArg,  12495,        992787,    0.05%,            79,            34,          3107
+                                                     clWaitForEvents,   1253,     395936013,   21.15%,        315990,          1311,       2741306
+
+Device Performance Timing Results for Intel(R) Arc(TM) B580 Graphics (160CUs, 2900MHz):
+
+Total Time (ns): 1676673136
+
+                                                                                            Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+                                                     cache_flush SIMD32 REG128 GWS[ 1048576 ] LWS[ NULL ],   2400,    1111519411,   66.29%,        463133,        326770,       1517812
+                                                                     clEnqueueReadBuffer( 1048576 bytes ),      4,        300102,    0.02%,         75025,         74322,         75781
+                                                                       clEnqueueReadBuffer( 12288 bytes ),      1,          8489,    0.00%,          8489,          8489,          8489
+                                                                        clEnqueueReadBuffer( 1536 bytes ),      1,          3958,    0.00%,          3958,          3958,          3958
+                                                                    clEnqueueReadBuffer( 16777216 bytes ),      2,       2501561,    0.15%,       1250780,       1230989,       1270572
+                                                                        clEnqueueReadBuffer( 2048 bytes ),      1,          1718,    0.00%,          1718,          1718,          1718
+                                                                       clEnqueueReadBuffer( 24576 bytes ),      1,          4479,    0.00%,          4479,          4479,          4479
+                                                                       clEnqueueReadBuffer( 32768 bytes ),      1,          7864,    0.00%,          7864,          7864,          7864
+                                                                        clEnqueueReadBuffer( 4096 bytes ),      2,          7655,    0.00%,          3827,          2239,          5416
+                                                                         clEnqueueReadBuffer( 512 bytes ),      2,          6405,    0.00%,          3202,          1718,          4687
+                                                                        clEnqueueReadBuffer( 8192 bytes ),     14,         46347,    0.00%,          3310,          1614,          6718
+                                                                     clEnqueueReadBuffer( 8388608 bytes ),      2,       1242343,    0.07%,        621171,        612656,        629687
+                                                                  clEnqueueWriteBuffer( 134217728 bytes ),      1,      21692447,    1.29%,      21692447,      21692447,      21692447
+                  fc_gguf_dp4a_gguf_q5_k_K4096_N4096 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],    121,       8943908,    0.53%,         73916,         33541,        109166
+                 fc_gguf_dp4a_gguf_q6_k_K12288_N4096 SIMD16 REG128 GWS[ 16384 x 1 x 1 ] LWS[ 16 x 1 x 1 ],    121,      60080364,    3.58%,        496531,        262500,       1859270
+                  fc_gguf_dp4a_gguf_q6_k_K4096_N4096 SIMD16 REG128 GWS[ 16384 x 1 x 1 ] LWS[ 16 x 1 x 1 ],    121,      24430778,    1.46%,        201907,         83645,        645312
+               fc_gguf_opt_gguf_iq2_s_K4096_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,       6711850,    0.40%,        110030,         71458,        124270
+              fc_gguf_opt_gguf_iq2_xs_K4096_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,       8065499,    0.48%,        132221,         84687,        153854
+               fc_gguf_opt_gguf_iq3_s_K4096_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,      10891430,    0.65%,        178548,         97187,        221458
+             fc_gguf_opt_gguf_iq3_xxs_K4096_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,      11918095,    0.71%,        195378,        112187,        244375
+     fc_gguf_opt_gguf_q3_k_K4096_N4096_M1 SIMD16 REG128 SPILL=1600 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,      10645807,    0.63%,        174521,        105729,        215104
+                fc_gguf_opt_gguf_q4_0_K4096_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,      17202686,    1.03%,        282011,        137291,        409583
+               fc_gguf_opt_gguf_q4_k_K12288_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,      25076120,    1.50%,        411083,        211458,        641770
+                fc_gguf_opt_gguf_q4_k_K4096_N1024_M1 SIMD16 REG128 GWS[ 16384 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,       1848514,    0.11%,         30303,         24166,         37395
+              fc_gguf_opt_gguf_q4_k_K4096_N12288_M1 SIMD16 REG128 GWS[ 196608 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,      21605394,    1.29%,        354186,        183541,        536770
+                fc_gguf_opt_gguf_q4_k_K4096_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,      14497992,    0.86%,        237672,         78958,        481041
+                fc_gguf_opt_gguf_q5_k_K4096_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,       6028936,    0.36%,         98835,         83750,        105312
+                fc_gguf_opt_gguf_q6_k_K4096_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,      20546641,    1.23%,        336830,        114270,        718854
+                fc_gguf_opt_gguf_q6_k_K4096_N4096_M4 SIMD16 REG128 GWS[ 65536 x 4 x 1 ] LWS[ 16 x 1 x 1 ],     61,      55748203,    3.32%,        913904,        357604,       2475520
+                fc_gguf_opt_gguf_q8_0_K4096_N4096_M1 SIMD16 REG128 GWS[ 65536 x 1 x 1 ] LWS[ 16 x 1 x 1 ],     61,      18494453,    1.10%,        303187,        200833,        408645
+                 fc_gguf_prequant_gguf_q5_k_K4096_N4096 SIMD32 REG128 GWS[ 128 x 1 x 1 ] LWS[ 1 x 1 x 1 ],     61,        621645,    0.04%,         10190,          5312,         16041
+                fc_gguf_prequant_gguf_q6_k_K12288_N4096 SIMD32 REG128 GWS[ 384 x 1 x 1 ] LWS[ 1 x 1 x 1 ],     61,        854452,    0.05%,         14007,          5416,         45000
+                 fc_gguf_prequant_gguf_q6_k_K4096_N4096 SIMD32 REG128 GWS[ 128 x 1 x 1 ] LWS[ 1 x 1 x 1 ],     61,        970597,    0.06%,         15911,          4895,         43541
+  fc_gguf_transcode_gguf_iq2_s_K4096_N4096 SIMD32 REG128 TPM=16384 GWS[ 4096 x 16 x 1 ] LWS[ 16 x 1 x 1 ],     61,      43233309,    2.58%,        708742,        673958,        755833
+fc_gguf_transcode_gguf_iq3_xxs_K4096_N4096 SIMD32 REG128 TPM=16384 GWS[ 4096 x 16 x 1 ] LWS[ 16 x 1 x 1 ],     61,      63118937,    3.76%,       1034736,        639895,       1865729
+   fc_gguf_transcode_gguf_q4_k_K4096_N4096 SIMD32 REG128 TPM=16384 GWS[ 4096 x 16 x 1 ] LWS[ 16 x 1 x 1 ],     61,      47359351,    2.82%,        776382,        641562,        998229
+   fc_gguf_transcode_gguf_q6_k_K4096_N4096 SIMD32 REG128 TPM=16384 GWS[ 4096 x 16 x 1 ] LWS[ 16 x 1 x 1 ],     61,      60435396,    3.60%,        990744,        725416,       1819479
