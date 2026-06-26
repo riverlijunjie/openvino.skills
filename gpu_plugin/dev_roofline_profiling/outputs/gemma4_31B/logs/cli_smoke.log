@@ -1,0 +1,54 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: C:\Users\Local_Admin\Downloads\clintercept-3.0.6-win64\Release\opencl.dll
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(NOT supported)
+    clock(steady_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept registry key: SOFTWARE\INTEL\IGFX\CLINTERCEPT
+Trying to load dispatch from: real_opencl.dll
+Couldn't get exported function pointer to: clGetGLContextInfoKHR
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+Total Enqueues: 0
+
+=== FC Benchmark (precision=u4) ===
+M=1 K=8192 N=5376 group_size=128 iters=300 warmup=30 bufs=8 flush_mb=64
+Dynamic quantization: OFF (decode mode, group_size=0)
+Input tensors allocated in USM_DEVICE (VRAM) via RemoteContext.
+L2/L3 flush kernel: 64 MB f16 Relu between every FC infer.
+Median_ms: 0.2703
+Min_ms: 0.2536
+Avg_ms: 0.276467
+GFLOPS: 325.862
+BW_GBs: 84.1116
+AI: 3.87416
+WeightBytes: 2.20201e+07
+TotalBytes: 2.27354e+07
+TotalFLOPs: 8.80804e+07
+Total Enqueues: 995
+
+
+Device Performance Timing Results for Intel(R) Arc(TM) B390 GPU (96CUs, 2400MHz):
+
+Total Time (ns): 477980560
+
+                        Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+activation_opt_477147924471330069_0_0,    331,     403493202,   84.42%,       1219012,       1194583,       1726145
+           clEnqueueMemFillINTEL( H ),      3,       1143124,    0.24%,        381041,          3437,       1104375
+                          gemm_kernel,    330,      73267776,   15.33%,        222023,        217395,        521770
+reorder_data_13563398879331515445_0_0,      1,         76458,    0.02%,         76458,         76458,         76458
+CLIntercept is shutting down...
+... shutdown complete.

@@ -29,6 +29,12 @@
 #include <openvino/op/parameter.hpp>
 #include <openvino/op/constant.hpp>
 #include <openvino/op/result.hpp>
+#include <openvino/op/shape_of.hpp>
+#include <openvino/op/gather.hpp>
+#include <openvino/op/concat.hpp>
+#include <openvino/op/unsqueeze.hpp>
+#include <openvino/op/broadcast.hpp>
+#include <openvino/op/reshape.hpp>
 #include <iostream>
 #include <random>
 #include <string>
@@ -43,6 +49,33 @@ static int NKV = 8;    // num kv heads (GQA)
 static int HD  = 128;  // head dim
 static constexpr int B = 1;
 
+// GQA key/value head expansion (repeat_kv). Converted models with
+// num_kv_heads < num_heads materialize KV to num_heads before opset13
+// ScaledDotProductAttention, whose core shape inference requires the
+// query/key head dims to be NUMPY-broadcastable. x: [B, NKV, S, HD] ->
+// [B, NH, S, HD] by repeating each KV head G = NH/NKV times.
+static Output<Node> repeat_kv(const Output<Node>& x) {
+    if (NH == NKV)
+        return x;
+    const int g = NH / NKV;
+    auto shape = std::make_shared<op::v3::ShapeOf>(x, element::i64);  // [B,NKV,S,HD]
+    auto axis0 = op::v0::Constant::create(element::i64, Shape{}, {0});
+    auto idxB = op::v0::Constant::create(element::i64, Shape{1}, {0});
+    auto idxS = op::v0::Constant::create(element::i64, Shape{1}, {2});
+    auto dimB = std::make_shared<op::v8::Gather>(shape, idxB, axis0);  // [1]
+    auto dimS = std::make_shared<op::v8::Gather>(shape, idxS, axis0);  // [1]
+    auto cNKV = op::v0::Constant::create(element::i64, Shape{1}, {NKV});
+    auto cG = op::v0::Constant::create(element::i64, Shape{1}, {g});
+    auto cHD = op::v0::Constant::create(element::i64, Shape{1}, {HD});
+    auto cNH = op::v0::Constant::create(element::i64, Shape{1}, {NH});
+    auto unsq_axis = op::v0::Constant::create(element::i64, Shape{1}, {2});
+    auto x5 = std::make_shared<op::v0::Unsqueeze>(x, unsq_axis);  // [B,NKV,1,S,HD]
+    auto target5 = std::make_shared<op::v0::Concat>(OutputVector{dimB, cNKV, cG, dimS, cHD}, 0);
+    auto bc = std::make_shared<op::v3::Broadcast>(x5, target5);  // [B,NKV,G,S,HD]
+    auto target4 = std::make_shared<op::v0::Concat>(OutputVector{dimB, cNH, dimS, cHD}, 0);
+    return std::make_shared<op::v1::Reshape>(bc, target4, false);  // [B,NH,S,HD]
+}
+
 static std::shared_ptr<ov::Model> build_sdpa_model(bool causal, bool with_mask) {
     auto q = std::make_shared<op::v0::Parameter>(element::f16,
                  PartialShape{B, NH, Dimension::dynamic(), HD});
@@ -54,6 +87,10 @@ static std::shared_ptr<ov::Model> build_sdpa_model(bool causal, bool with_mask) 
     k->set_friendly_name("key");
     v->set_friendly_name("value");
 
+    // Expand KV heads to NH for GQA (no-op when NH == NKV).
+    Output<Node> k_exp = repeat_kv(k);
+    Output<Node> v_exp = repeat_kv(v);
+
     std::shared_ptr<ov::op::v13::ScaledDotProductAttention> sdpa;
     ParameterVector params{q, k, v};
     if (with_mask) {
@@ -61,9 +98,9 @@ static std::shared_ptr<ov::Model> build_sdpa_model(bool causal, bool with_mask) 
                         PartialShape{Dimension::dynamic(), Dimension::dynamic()});
         mask->set_friendly_name("attn_mask");
         params.push_back(mask);
-        sdpa = std::make_shared<ov::op::v13::ScaledDotProductAttention>(q, k, v, mask, causal);
+        sdpa = std::make_shared<ov::op::v13::ScaledDotProductAttention>(q, k_exp, v_exp, mask, causal);
     } else {
-        sdpa = std::make_shared<ov::op::v13::ScaledDotProductAttention>(q, k, v, causal);
+        sdpa = std::make_shared<ov::op::v13::ScaledDotProductAttention>(q, k_exp, v_exp, causal);
     }
 
     auto result = std::make_shared<op::v0::Result>(sdpa->output(0));

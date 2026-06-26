@@ -59,6 +59,7 @@ When profile roofline, first require to understand below prequistites:
         - vlsdpa kernels: it cm kernel implement.
   - FC_Q, FC_K and FC_V will be fused into one gemm kernel: FC_QKV
   - gdn test should use cache_interval = 0
+  - For Speculative decoding or MTP, we should assign the token number of each token generation.
   - If didn't find cliloder, you need download it from https://github.com/intel/opencl-intercept-layer/releases/tag/v3.0.6
 
 Then do proofline analysis with below steps:

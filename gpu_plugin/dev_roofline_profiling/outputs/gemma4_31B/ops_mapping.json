@@ -1,0 +1,198 @@
+{
+  "model": "google/gemma-4-31B-it (Gemma4 dense, text decoder)",
+  "platform": "PTL 12Xe (Intel Arc B390 iGPU @ 2400 MHz, treated as PTL Xe3, 110 GB/s)",
+  "config": {
+    "hidden_size": 5376,
+    "num_hidden_layers": 60,
+    "layer_pattern": "5:1 sliding:full (positions (i+1)%6==0 are full => 50 sliding + 10 full)",
+    "num_attention_heads": 32,
+    "num_key_value_heads": 16,
+    "num_global_key_value_heads": 4,
+    "head_dim": 256,
+    "global_head_dim": 512,
+    "intermediate_size": 21504,
+    "moe_intermediate_size": null,
+    "num_experts": null,
+    "enable_moe_block": false,
+    "hidden_activation": "gelu_pytorch_tanh",
+    "sliding_window": 1024,
+    "attention_k_eq_v": true,
+    "tie_word_embeddings": true,
+    "final_logit_softcapping": 30.0,
+    "vocab_size": 262144,
+    "max_position_embeddings": 262144,
+    "rope": {
+      "sliding_attention": {"rope_type": "default", "rope_theta": 10000.0},
+      "full_attention": {"rope_type": "proportional", "rope_theta": 1000000.0, "partial_rotary_factor": 0.25}
+    },
+    "weight_quant_body": "INT4 g=128 (asymmetric)",
+    "weight_quant_lm_head": "INT8 g=128",
+    "kv_cache_quant": "INT8 (i8) and INT4 (u4) — both measured; u4 stored packed in u8 cache + FP16 scale/zp",
+    "activation_dtype": "FP16"
+  },
+  "attention_shapes": {
+    "sliding": {
+      "NH": 32, "NKV": 16, "HD": 256,
+      "Q_dim": 8192, "K_dim": 4096, "V_dim": 4096,
+      "QKV_fused_N": 16384,
+      "O_K": 8192, "O_N": 5376,
+      "comment": "Q=NH*HD=8192, K=V=NKV*HD=4096, QKV=Q+K+V=16384, GQA group=2"
+    },
+    "full": {
+      "NH": 32, "NKV": 4, "HD": 512,
+      "Q_dim": 16384, "K_dim": 2048, "V_dim": 2048,
+      "QK_fused_N": 18432,
+      "O_K": 16384, "O_N": 5376,
+      "comment": "Q=NH*HD=16384, K=NKV*HD=2048, V=K (attention_k_eq_v=true), QK=Q+K=18432, GQA group=8, partial_rotary_factor=0.25"
+    }
+  },
+  "input_token_sizes": [1024, 2048, 4096, 8192, 16384, 32768, 49152],
+  "sdpa_impl": "PagedAttention OpenCL + micro_kernel (kv_type=i8)",
+  "ops": [
+    {
+      "op": "embedding",
+      "kernel": "gather",
+      "shape": "[vocab=262144, H=5376] tied with LM_head",
+      "calls_per_inference": 1,
+      "notes": "Tied with LM_head INT8"
+    },
+    {
+      "op": "FC_QKV_sliding",
+      "kernel": "FullyConnectedCompressed (decode: gemm_kernel, prefill: dq+gemm_kernel)",
+      "shape": "K=5376, N=16384, INT4 g=128",
+      "calls_per_inference": 50,
+      "fused": "Q+K+V projections fused into one GEMM (16384=8192+4096+4096)"
+    },
+    {
+      "op": "FC_O_sliding",
+      "kernel": "FullyConnectedCompressed",
+      "shape": "K=8192, N=5376, INT4 g=128",
+      "calls_per_inference": 50
+    },
+    {
+      "op": "FC_QK_full",
+      "kernel": "FullyConnectedCompressed",
+      "shape": "K=5376, N=18432, INT4 g=128",
+      "calls_per_inference": 10,
+      "fused": "Q+K fused (V reuses K projection due to attention_k_eq_v=true), 18432=16384+2048"
+    },
+    {
+      "op": "FC_O_full",
+      "kernel": "FullyConnectedCompressed",
+      "shape": "K=16384, N=5376, INT4 g=128",
+      "calls_per_inference": 10
+    },
+    {
+      "op": "FC_Gate_dense",
+      "kernel": "FullyConnectedCompressed",
+      "shape": "K=5376, N=21504, INT4 g=128",
+      "calls_per_inference": 60,
+      "notes": "GEGLU MLP gate projection"
+    },
+    {
+      "op": "FC_Up_dense",
+      "kernel": "FullyConnectedCompressed",
+      "shape": "K=5376, N=21504, INT4 g=128",
+      "calls_per_inference": 60,
+      "notes": "GEGLU MLP up projection"
+    },
+    {
+      "op": "FC_Down_dense",
+      "kernel": "FullyConnectedCompressed",
+      "shape": "K=21504, N=5376, INT4 g=128",
+      "calls_per_inference": 60,
+      "notes": "GEGLU MLP down projection"
+    },
+    {
+      "op": "LM_head",
+      "kernel": "FullyConnectedCompressed (gemm_kernel)",
+      "shape": "M=1, K=5376, N=262144, INT8 g=128",
+      "calls_per_inference": 1,
+      "notes": "Single output token, used for both decode and prefill (tied with embedding)"
+    },
+    {
+      "op": "PA_sliding",
+      "kernel": "PagedAttention (paged_attn_single_token / sdpa_micro_prefill)",
+      "shape": "NH=32, NKV=16, HD=256, sliding_window=1024, KV=INT8",
+      "calls_per_inference": 50,
+      "notes": "Sliding-window attention, KV capped at min(ctx,1024)"
+    },
+    {
+      "op": "PA_full",
+      "kernel": "PagedAttention (paged_attn_single_token / sdpa_micro_prefill)",
+      "shape": "NH=32, NKV=4, HD=512, KV=INT8",
+      "calls_per_inference": 10,
+      "notes": "Full causal attention, partial_rotary_factor=0.25"
+    },
+    {
+      "op": "rmsnorm_hidden",
+      "kernel": "RMSNorm",
+      "shape": "[M, H=5376]",
+      "calls_per_inference": "4*60 + 1 = 241",
+      "notes": "pre-attn + post-attn + pre-mlp + post-mlp + final RMSNorm"
+    },
+    {
+      "op": "rmsnorm3d_q_sliding",
+      "kernel": "RMSNorm",
+      "shape": "[M, NH=32, HD=256]",
+      "calls_per_inference": 50
+    },
+    {
+      "op": "rmsnorm3d_k_sliding",
+      "kernel": "RMSNorm",
+      "shape": "[M, NKV=16, HD=256]",
+      "calls_per_inference": 50
+    },
+    {
+      "op": "rmsnorm3d_q_full",
+      "kernel": "RMSNorm",
+      "shape": "[M, NH=32, HD=512]",
+      "calls_per_inference": 10
+    },
+    {
+      "op": "rmsnorm3d_k_full",
+      "kernel": "RMSNorm",
+      "shape": "[M, NKV=4, HD=512]",
+      "calls_per_inference": 10
+    },
+    {
+      "op": "rope_q_sliding",
+      "kernel": "RoPE (element-wise)",
+      "shape": "[1, M, NH=32, HD=256]",
+      "calls_per_inference": 50
+    },
+    {
+      "op": "rope_k_sliding",
+      "kernel": "RoPE",
+      "shape": "[1, M, NKV=16, HD=256]",
+      "calls_per_inference": 50
+    },
+    {
+      "op": "rope_q_full",
+      "kernel": "RoPE",
+      "shape": "[1, M, NH=32, HD=512]",
+      "calls_per_inference": 10,
+      "notes": "partial_rotary_factor=0.25; bench measures full HD (slight over-estimate)"
+    },
+    {
+      "op": "rope_k_full",
+      "kernel": "RoPE",
+      "shape": "[1, M, NKV=4, HD=512]",
+      "calls_per_inference": 10
+    },
+    {
+      "op": "add_residual",
+      "kernel": "eltwise Add",
+      "shape": "[M, H=5376]",
+      "calls_per_inference": "2*60 = 120",
+      "notes": "Residual after attention and after MLP"
+    },
+    {
+      "op": "GEGLU_multiply",
+      "kernel": "SwiGLU primitive (fused gelu(gate)*up)",
+      "shape": "[M, intermediate=21504]",
+      "fused": true,
+      "notes": "Fused into MLP pipeline; not measured standalone"
+    }
+  ]
+}

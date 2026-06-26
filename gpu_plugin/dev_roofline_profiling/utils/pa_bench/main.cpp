@@ -3,7 +3,7 @@
  *
  * Usage: ./pa_bench <mode> <S_q> <S_kv> [iters] [warmup] [num_bufs] [kv_type] [impl] [flush_mb]
  *   mode: "decode" (S_q=1) or "prefill" (S_q=S, S_kv=0)
- *   kv_type: "f16" (default) or "i8"
+ *   kv_type: "f16" (default), "i8" (8-bit), or "u4"/"i4" (4-bit; stored packed in a u8 cache tensor)
  *   impl: "ocl" (default) or "cm"
  *     - ocl: standard OCL/micro-kernel PA path (block_size=16)
  *     - cm:  XAttention CM kernel path (block_size=256). Requires Xe2/Xe3
@@ -228,11 +228,31 @@ static void fill_i8(Tensor& t, std::mt19937& rng) {
         p[i] = int8_t(rng() % 256 - 128);
 }
 
+// Raw byte fill for any element type whose typed data<>() accessor we don't want
+// to depend on (u8/u4/i4). For a 4-bit KV-cache (kv_cache_precision=u4) the plugin
+// physically allocates the cache as u8 (4-bit packed + fp16 scale/zp), see
+// ConvertPagedAttnInputs in transformations_pipeline.cpp — so the queried cache
+// element type is u8, not u4. Filling the whole byte buffer with random bytes is
+// correct for a perf-only benchmark (no numerical check).
+static void fill_bytes(Tensor& t, std::mt19937& rng) {
+    auto* p = static_cast<uint8_t*>(t.data());
+    for (size_t i = 0; i < t.get_byte_size(); i++)
+        p[i] = uint8_t(rng() & 0xFF);
+}
+
+// Dispatch KV-cache fill by the actual (post-ConvertPagedAttnInputs) element type.
+static void fill_cache(Tensor& t, std::mt19937& rng) {
+    const auto et = t.get_element_type();
+    if (et == element::f16)      fill_f16(t, rng);
+    else if (et == element::i8)  fill_i8(t, rng);
+    else                         fill_bytes(t, rng);  // u8 (4-bit packed) / u4 / i4 / etc.
+}
+
 int main(int argc, char* argv[]) {
     try {
     if (argc < 4) {
         std::cerr << "Usage: " << argv[0] << " <mode:decode|prefill> <S_q> <S_kv>"
-                  << " [iters=100] [warmup=10] [num_bufs=4] [kv_type=f16|i8] [impl=ocl|cm] [flush_mb=64]" << std::endl;
+                  << " [iters=100] [warmup=10] [num_bufs=4] [kv_type=f16|i8|u4] [impl=ocl|cm] [flush_mb=64]" << std::endl;
         return 1;
     }
 
@@ -242,7 +262,16 @@ int main(int argc, char* argv[]) {
     int iters    = argc > 4 ? std::atoi(argv[4]) : 100;
     int warmup   = argc > 5 ? std::atoi(argv[5]) : 10;
     int num_bufs_cli = argc > 6 ? std::atoi(argv[6]) : 0;  // 0 = auto-size
-    bool use_i8  = (argc > 7 && std::string(argv[7]) == "i8");
+    // KV-cache precision: f16 (uncompressed), i8 (8-bit), or u4/i4 (4-bit).
+    // The GPU plugin normalizes i4->u4 internally and physically stores the 4-bit
+    // cache in a u8 tensor (packed 2x + fp16 scale/zp). See execution_config.cpp
+    // finalize_impl and transformations_pipeline.cpp ConvertPagedAttnInputs.
+    std::string kv_type_str = (argc > 7) ? std::string(argv[7]) : "f16";
+    ov::element::Type kv_prec = ov::element::f16;
+    int kv_elem_bits = 16;
+    if (kv_type_str == "i8" || kv_type_str == "u8") { kv_prec = ov::element::i8; kv_elem_bits = 8; }
+    else if (kv_type_str == "u4" || kv_type_str == "i4") { kv_prec = ov::element::u4; kv_elem_bits = 4; }
+    bool use_i8  = (kv_elem_bits == 8);  // retained for back-compat in a couple of spots
     bool use_cm  = (argc > 8 && std::string(argv[8]) == "cm");
     // L2/L3 flush size in MiB. CLI arg has priority; otherwise env var PA_BENCH_FLUSH_MB;
     // otherwise default 64 MiB (>=4x typical Intel iGPU LLC of 16 MiB on PTL 12Xe).
@@ -278,8 +307,10 @@ int main(int argc, char* argv[]) {
             long long v = std::atoll(e);
             if (v > 0) target_mb = v;
         }
-        const long long kv_bytes_per_buf =
-            2LL * std::max(1, S_q + S_kv) * NKV * HD * (use_i8 ? 1 : 2);
+        // bytes-per-element via bit width (u4 = 0.5 byte/element, rounded up).
+        const long long kv_bits_per_buf =
+            2LL * std::max(1, S_q + S_kv) * NKV * HD * kv_elem_bits;
+        const long long kv_bytes_per_buf = (kv_bits_per_buf + 7) / 8;
         const long long target_resident = target_mb * 1024 * 1024;
         num_bufs = std::max(2, int((target_resident + kv_bytes_per_buf - 1) /
                                    std::max<long long>(1, kv_bytes_per_buf)));
@@ -314,7 +345,7 @@ int main(int argc, char* argv[]) {
     std::cout << "=== PA Benchmark ===" << std::endl;
     std::cout << "NH=" << NH << " NKV=" << NKV << " HD=" << HD << std::endl;
     std::cout << "Mode=" << mode << " S_q=" << S_q << " S_kv=" << S_kv
-              << " blocks=" << num_blocks << " kv_type=" << (use_i8 ? "i8" : "f16")
+              << " blocks=" << num_blocks << " kv_type=" << kv_type_str
               << " impl=" << (use_cm ? "cm" : "ocl")
               << " iters=" << iters << " warmup=" << warmup
               << " bufs=" << num_bufs
@@ -340,11 +371,11 @@ int main(int argc, char* argv[]) {
     // If we only set it for use_i8=true, then the f16 branch silently runs INT8 KV
     // and the bytes/BW figures become wrong (kernel streams ~half the assumed bytes,
     // pushing apparent eff% above 100%).
-    if (use_i8) {
-        props[ov::hint::kv_cache_precision.name()] = ov::element::i8;
-    } else {
-        props[ov::hint::kv_cache_precision.name()] = ov::element::f16;
-    }
+    // ALWAYS set kv_cache_precision explicitly. The GPU plugin defaults to i8 for
+    // PagedAttention models (see src/plugins/intel_gpu/src/runtime/execution_config.cpp).
+    // We drive it from the CLI kv_type so f16 / i8 / u4 are each measured against
+    // the cache layout the plugin actually materializes for that precision.
+    props[ov::hint::kv_cache_precision.name()] = kv_prec;
     // Note: GPU_USE_CM is internal-only (cannot be set via string AnyMap from public
     // API). Its default is true; if your environment exports OV_GPU_USE_CM=0 the
     // CM PA path will be unreachable and the GPU plugin will throw at compile time.
@@ -409,12 +440,12 @@ int main(int argc, char* argv[]) {
         // key_cache and value_cache with resolved shapes
         {
             auto t = Tensor(kc_type, kc_shape);
-            if (kc_type == element::i8) fill_i8(t, rng); else fill_f16(t, rng);
+            fill_cache(t, rng);
             req.set_input_tensor(3, t);
         }
         {
             auto t = Tensor(vc_type, vc_shape);
-            if (vc_type == element::i8) fill_i8(t, rng); else fill_f16(t, rng);
+            fill_cache(t, rng);
             req.set_input_tensor(4, t);
         }
 
