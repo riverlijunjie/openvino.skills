@@ -1,0 +1,55 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: C:\Users\Local_Admin\Downloads\clintercept-3.0.6-win64\Release\opencl.dll
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(NOT supported)
+    clock(steady_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept registry key: SOFTWARE\INTEL\IGFX\CLINTERCEPT
+Trying to load dispatch from: real_opencl.dll
+Couldn't get exported function pointer to: clGetGLContextInfoKHR
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+Total Enqueues: 0
+
+=== FC Benchmark (precision=u4) ===
+M=32768 K=6656 N=19968 group_size=128 iters=2 warmup=1 bufs=1 flush_mb=0
+Dynamic quantization: ON (group_size=128)
+Input tensors allocated in USM_DEVICE (VRAM) via RemoteContext.
+L2/L3 flush kernel DISABLED (flush_mb=0).
+Median_ms: 115.14
+Min_ms: 114.24
+Avg_ms: 114.69
+GFLOPS: 75648.6
+BW_GBs: 15.7492
+AI: 4803.34
+WeightBytes: 6.64535e+07
+TotalBytes: 1.81336e+09
+TotalFLOPs: 8.71019e+12
+Total Enqueues: 15
+
+
+Device Performance Timing Results for Intel(R) Arc(TM) B390 GPU (96CUs, 2400MHz):
+
+Total Time (ns): 369268955
+
+                                   Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+                      clEnqueueMemFillINTEL( D ),      3,       1014999,    0.27%,        338333,         26562,        956250
+                      clEnqueueMemFillINTEL( H ),      2,      15875104,    4.30%,       7937552,         21250,      15853854
+dynamic_quantize_gpu_opt_1884315935046964962_0_0,      3,      22994166,    6.23%,       7664722,       6015000,      10711041
+                                     gemm_kernel,      3,     329199374,   89.15%,     109733124,     108025729,     112635729
+            reorder_data_6434398720240975730_0_0,      1,        185312,    0.05%,        185312,        185312,        185312
+CLIntercept is shutting down...
+... shutdown complete.
