@@ -1,0 +1,130 @@
+{
+  "model": "Qwen3.6-27B (dense, MTP, multimodal vision encoder ignored)",
+  "note": "model_type=qwen3_5, architectures=Qwen3_5ForConditionalGeneration. Text decoder only. Dense FFN (no MoE). Has 1 MTP layer. Difference vs Qwen3.6-35B-A3B: DENSE FFN (intermediate_size=17408) instead of MoE, hidden_size=5120, num_layers=64, num_attention_heads=24, num_kv_heads=4, head_dim=256, attn_output_gate=true (same), linear_num_value_heads=48 (vs 32), vocab_size=248320. Layer pattern: [linear_attn x3 -> full_attn x1] x 16 + 1 MTP layer.",
+  "hardware": "Intel Arc B60 (Xe2 dGPU, 20 Xe-Cores, 2400 MHz, 24 GB GDDR6)",
+  "hw_peaks": {
+    "xe_cores": 20,
+    "freq_MHz": 2400,
+    "fp16_xmx_tflops": 98.304,
+    "int8_xmx_tops": 196.608,
+    "memory_bw_GBs": 576,
+    "memory_bw_note": "24 GB GDDR6, ~384-bit bus @ 12 Gbps = 576 GB/s (estimated; measure via mem_bw.c)"
+  },
+  "config": {
+    "vocab_size": 248320,
+    "hidden_size": 5120,
+    "num_hidden_layers": 64,
+    "num_full_attention_layers": 16,
+    "num_linear_attention_layers": 48,
+    "layer_pattern": "linear_attention x 3 then full_attention x 1, repeated x 16 (full_attention_interval=4)",
+    "num_attention_heads": 24,
+    "num_key_value_heads": 4,
+    "head_dim": 256,
+    "gqa_ratio": 6,
+    "rotary_dim": 64,
+    "partial_rotary_factor": 0.25,
+    "attn_output_gate": true,
+    "linear_num_key_heads": 16,
+    "linear_num_value_heads": 48,
+    "linear_key_head_dim": 128,
+    "linear_value_head_dim": 128,
+    "linear_conv_kernel_dim": 4,
+    "intermediate_size": 17408,
+    "mtp_num_hidden_layers": 1,
+    "rope_theta": 10000000,
+    "weight_quant_body": "INT4 g=128 (asymmetric)",
+    "weight_quant_lm_head": "INT8 g=128",
+    "kv_cache_quant": "INT8",
+    "activation_dtype": "FP16"
+  },
+  "ops": {
+    "fc_qkv_gate_full_attn": {
+      "shape": "FC(M, 5120, 14336)",
+      "weight": "INT4 g=128",
+      "calls_per_decode": 16,
+      "note": "Q=24*256=6144, gate=24*256=6144 (attn_output_gate), K=4*256=1024, V=4*256=1024 -> 14336. 16 full-attn layers."
+    },
+    "attn_output_gate": {
+      "shape": "Eltwise gate(M, 6144) = attn_output * swish(gate)",
+      "calls_per_decode": 16,
+      "note": "H=24*256=6144; swish gate applied to attn_output in full-attn layers. output_gate_type=swish"
+    },
+    "fc_o_full_attn": {
+      "shape": "FC(M, 6144, 5120)",
+      "weight": "INT4 g=128",
+      "calls_per_decode": 16,
+      "note": "24*256=6144 -> 5120. 16 full-attn layers."
+    },
+    "paged_attention_full": {
+      "config": "NH=24, NKV=4, HD=256, GQA=6, kv_int8",
+      "calls_per_decode": 16,
+      "note": "rotary_dim=64 (partial_rotary_factor=0.25). INT8 KV cache."
+    },
+    "linattn_input_proj": {
+      "shape": "FC(M, 5120, 16384)",
+      "weight": "INT4 g=128",
+      "calls_per_decode": 48,
+      "note": "QK: 2*16*128=4096, V: 48*128=6144, Z/gate: 48*128=6144 -> total 16384. 48 GDN layers."
+    },
+    "gated_delta_net": {
+      "config": "qk_heads=16, v_heads=48, K=V=128, kernel=PagedGatedDeltaNet opt, cache_interval=0",
+      "calls_per_decode": 48,
+      "note": "linear_num_key_heads=16, linear_num_value_heads=48, linear_head_dim=128. 48 GDN layers."
+    },
+    "fc_gate_up_dense": {
+      "shape": "FC(M, 5120, 17408) x2 (gate and up, all 64 layers)",
+      "weight": "INT4 g=128",
+      "calls_per_decode": 128,
+      "note": "All 64 layers (16 full-attn + 48 linear-attn) have dense FFN with intermediate_size=17408. gate and up are separate FCs each of shape FC(M, 5120, 17408). 64*2=128 calls/decode."
+    },
+    "fc_down_dense": {
+      "shape": "FC(M, 17408, 5120)",
+      "weight": "INT4 g=128",
+      "calls_per_decode": 64,
+      "note": "All 64 layers have fc_down. Swish(gate)*up is fused into activation before down. 64 calls/decode."
+    },
+    "lm_head": {
+      "shape": "FC(1, 5120, 248320)",
+      "weight": "INT8 g=128",
+      "calls_per_decode": 1,
+      "note": "Single token output projection. INT8 g=128 (different from body INT4)."
+    },
+    "mtp_layer": {
+      "note": "1 extra MTP transformer layer (mtp_num_hidden_layers=1). Adds ~1 full-attn call + 1 dense FFN. Small overhead vs 64 main layers; included in total call count as +1 to respective ops.",
+      "calls_per_decode_extra": {
+        "fc_qkv_gate_full_attn": 1,
+        "fc_o_full_attn": 1,
+        "paged_attention_full": 1,
+        "fc_gate_up_dense": 2,
+        "fc_down_dense": 1
+      }
+    },
+    "small_ops_per_layer": [
+      "rmsnorm_pre_attn (H=5120, all 64 layers)",
+      "rmsnorm_post_attn (H=5120, all 64 layers, before FFN)",
+      "rmsnorm_q (3D, full-attn only: M x 24 x 256, 16 layers)",
+      "rmsnorm_k (3D, full-attn only: M x 4 x 256, 16 layers)",
+      "rope_q (M x 24 x 64 partial RoPE, full-attn only, 16 layers)",
+      "rope_k (M x 4 x 64 partial RoPE, full-attn only, 16 layers)",
+      "attn_output_gate (eltwise M x 6144, 16 layers)",
+      "residual_add x2 (H=5120, all 64 layers)"
+    ]
+  },
+  "fc_bench_invocations": {
+    "fc_qkv_decode":    "fc_bench 1     5120 14336 128  iters warm bufs u4 64",
+    "fc_o_decode":      "fc_bench 1     6144  5120 128  iters warm bufs u4 64",
+    "fc_gate_decode":   "fc_bench 1     5120 17408 128  iters warm bufs u4 64",
+    "fc_up_decode":     "fc_bench 1     5120 17408 128  iters warm bufs u4 64",
+    "fc_down_decode":   "fc_bench 1    17408  5120 128  iters warm bufs u4 64",
+    "lm_head_decode":   "fc_bench 1     5120 248320 128 iters warm bufs u8 64",
+    "linattn_proj_decode": "fc_bench 1  5120 16384 128  iters warm bufs u4 64"
+  },
+  "pa_bench_invocations": {
+    "pa_decode_kvN":    "pa_bench decode  1 KV_LEN iters warm bufs i8 (NH=24 NKV=4 HD=256)",
+    "pa_prefill_SN":    "pa_bench prefill S_LEN 0 iters warm bufs i8 (NH=24 NKV=4 HD=256)"
+  },
+  "gdn_bench_invocations": {
+    "gdn_decode":       "gdn_bench 1 1    16 48 128 iters warm bufs 0",
+    "gdn_prefill_SN":   "gdn_bench 1 S_LEN 16 48 128 iters warm bufs T"
+  }
+}
