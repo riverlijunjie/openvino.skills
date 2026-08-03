@@ -97,8 +97,10 @@ QKV_W = 2 * NH * HD + 2 * NKV * HD   # Q+gate+K+V = 6144+6144+1024+1024 = 14336
 O_W = NH * HD                           # output proj width = 6144
 LIN_PROJ_W = 2 * LIN_HK * LIN_HD + 2 * LIN_HV * LIN_HD  # 4096+6144+6144=16384
 
-# Number of full-attn + MTP layers
-NL_FA = NL_F + MTP   # 16 + 1 = 17
+# Full-attn layers: 16 (PA:LA = 1:3 pattern, full_attention_interval=4)
+# MTP is a separate speculative-decoding module; it only executes when MTP
+# speculative decoding is enabled.  Standard inference calls NL_F=16 PA layers.
+NL_FA = NL_F   # 16  (NOT +MTP — MTP is not in the standard inference path)
 
 TOKEN_SIZES = [1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
 
@@ -282,11 +284,11 @@ def build_metrics(raw):
 
     # ---- decode FC ops ----
     fc_ops_decode = {
-        "fc_qkv_decode": ("fc_qkv_decode_M1",    1, H,    QKV_W, False, NL_FA,   "FC(1,5120,14336) INT4 g128 - QKV+gate, full-attn"),
-        "fc_o_decode":   ("fc_o_decode_M1",       1, O_W,  H,     False, NL_FA,   "FC(1,6144,5120) INT4 g128 - O proj, full-attn"),
-        "fc_gate_decode":("fc_gate_decode_M1",    1, H,    I,     False, NL+MTP,  "FC(1,5120,17408) INT4 g128 - FFN gate, all layers"),
-        "fc_down_decode":("fc_down_decode_M1",    1, I,    H,     False, NL+MTP,  "FC(1,17408,5120) INT4 g128 - FFN down, all layers"),
-        "lm_head_decode":("lm_head_decode_M1",    1, H,    VOCAB, True,  1,        "FC(1,5120,248320) INT8 g128 - LM head"),
+        "fc_qkv_gate_full_attn": ("fc_qkv_decode_M1",    1, H,    QKV_W, False, NL_FA,  "FC(1,5120,14336) INT4 g128 - QKV+gate, full-attn 16 layers"),
+        "fc_o_decode":   ("fc_o_decode_M1",       1, O_W,  H,     False, NL_FA,  "FC(1,6144,5120) INT4 g128 - O proj, full-attn 16 layers"),
+        "fc_gate_decode":("fc_gate_decode_M1",    1, H,    I,     False, NL,     "FC(1,5120,17408) INT4 g128 - FFN gate, all 64 layers"),
+        "fc_down_decode":("fc_down_decode_M1",    1, I,    H,     False, NL,     "FC(1,17408,5120) INT4 g128 - FFN down, all 64 layers"),
+        "lm_head_decode":("lm_head_decode_M1",    1, H,    VOCAB, True,  1,       "FC(1,5120,248320) INT8 g128 - LM head"),
         "fc_linattn_proj_decode":("fc_linattn_proj_decode_M1", 1, H, LIN_PROJ_W, False, NL_L, "FC(1,5120,16384) INT4 g128 - linattn proj, 48 layers"),
     }
     for op_name, (log_key, M_tok, K_in, N_out, is_u8, calls, note) in fc_ops_decode.items():
@@ -317,8 +319,8 @@ def build_metrics(raw):
     ops["fc_gate_up_avg_decode"] = dict(ops["fc_gate_decode"])
     ops["fc_gate_up_avg_decode"]["note"] = f"FC gate ({ms_gate*1000:.1f}µs) + up ({ms_up*1000:.1f}µs) avg"
     ops["fc_gate_up_avg_decode"]["avg_ms"] = ms_fc_gate_up
-    ops["fc_gate_up_avg_decode"]["calls_per_inference"] = (NL + MTP) * 2
-    ops["fc_gate_up_avg_decode"]["total_ms"] = ms_fc_gate_up * (NL + MTP) * 2
+    ops["fc_gate_up_avg_decode"]["calls_per_inference"] = NL * 2   # 64 gate + 64 up = 128
+    ops["fc_gate_up_avg_decode"]["total_ms"] = ms_fc_gate_up * NL * 2
 
     # ---- decode PA ----
     for kv in TOKEN_SIZES:
@@ -334,7 +336,7 @@ def build_metrics(raw):
         ops[f"pa_decode_kv{kv}"] = {
             "note": f"PA decode, KV={kv}, NH={NH}, NKV={NKV}, HD={HD}, INT8 KV",
             "phase": "decode", "kv": kv,
-            "calls_per_inference": NL_FA,
+            "calls_per_inference": NL_F,   # 16 full-attn layers only
             "avg_ms": ms, "total_ms": ms * NL_FA,
             "total_bytes": total_bytes, "flops": flops,
             "arithmetic_intensity": ai, "bound": bd,
@@ -366,10 +368,10 @@ def build_metrics(raw):
     # ---- prefill FC ops ----
     for S in TOKEN_SIZES:
         fc_ops_prefill = {
-            f"fc_qkv_prefill_S{S}": (f"fc_qkv_prefill_S{S}",     S, H,    QKV_W, False, NL_FA,  f"FC({S},5120,14336) INT4 g128 prefill"),
-            f"fc_o_prefill_S{S}":   (f"fc_o_prefill_S{S}",        S, O_W,  H,     False, NL_FA,  f"FC({S},6144,5120) INT4 g128 prefill"),
-            f"fc_gate_prefill_S{S}":(f"fc_gate_prefill_S{S}",     S, H,    I,     False, NL+MTP, f"FC({S},5120,17408) INT4 g128 FFN gate prefill"),
-            f"fc_down_prefill_S{S}":(f"fc_down_prefill_S{S}",     S, I,    H,     False, NL+MTP, f"FC({S},17408,5120) INT4 g128 FFN down prefill"),
+            f"fc_qkv_prefill_S{S}": (f"fc_qkv_prefill_S{S}",     S, H,    QKV_W, False, NL_F,  f"FC({S},5120,14336) INT4 g128 prefill"),
+            f"fc_o_prefill_S{S}":   (f"fc_o_prefill_S{S}",        S, O_W,  H,     False, NL_F,  f"FC({S},6144,5120) INT4 g128 prefill"),
+            f"fc_gate_prefill_S{S}":(f"fc_gate_prefill_S{S}",     S, H,    I,     False, NL,    f"FC({S},5120,17408) INT4 g128 FFN gate prefill"),
+            f"fc_down_prefill_S{S}":(f"fc_down_prefill_S{S}",     S, I,    H,     False, NL,    f"FC({S},17408,5120) INT4 g128 FFN down prefill"),
             f"fc_linattn_prefill_S{S}":(f"fc_linattn_proj_prefill_S{S}", S, H, LIN_PROJ_W, False, NL_L, f"FC({S},5120,16384) INT4 g128 linattn prefill"),
         }
         for op_name, (log_key, M_tok, K_in, N_out, is_u8, calls, note) in fc_ops_prefill.items():
@@ -406,7 +408,7 @@ def build_metrics(raw):
         ops[f"pa_prefill_S{S}"] = {
             "note": f"PA prefill S={S}, NH={NH}, NKV={NKV}, HD={HD}, INT8 KV, causal",
             "phase": "prefill", "sq": S,
-            "calls_per_inference": NL_FA,
+            "calls_per_inference": NL_F,   # 16 full-attn layers
             "avg_ms": ms, "total_ms": ms * NL_FA,
             "total_bytes": total_bytes, "flops": flops,
             "arithmetic_intensity": ai, "bound": bd,
@@ -439,8 +441,8 @@ def build_metrics(raw):
     # ---- small ops decode (approximate; use heuristic BW for eltwise) ----
     small_ops_decode = {
         "so_rmsnorm_decode":  ("so_rmsnorm_h5120_decode",  1, H*3*2,   NL*2,     "RMSNorm H=5120 (64layers×2=128 calls/decode)"),
-        "so_rope_q_decode":   ("so_rope_q_decode",          1, NH*64*2*2, NL_FA,  "RoPE Q M=1, NH=24, rotary_dim=64 (17 calls)"),
-        "so_rope_k_decode":   ("so_rope_k_decode",          1, NKV*64*2*2, NL_FA, "RoPE K M=1, NKV=4, rotary_dim=64 (17 calls)"),
+        "so_rope_q_decode":   ("so_rope_q_decode",          1, NH*64*2*2, NL_FA,  "RoPE Q M=1, NH=24, rotary_dim=64 (16 calls)"),
+        "so_rope_k_decode":   ("so_rope_k_decode",          1, NKV*64*2*2, NL_FA, "RoPE K M=1, NKV=4, rotary_dim=64 (16 calls)"),
         "so_add_decode":      ("so_add_decode",             1, H*3*2,   NL*2,     "Residual add H=5120 (64layers×2=128 calls)"),
     }
     for op_name, (log_key, M_tok, byte_per_call, calls, note) in small_ops_decode.items():
@@ -461,7 +463,7 @@ def build_metrics(raw):
     # Decode at each KV length
     for kv in TOKEN_SIZES:
         fc_ms = (
-            ops["fc_qkv_decode"]["total_ms"] +
+            ops["fc_qkv_gate_full_attn"]["total_ms"] +
             ops["fc_o_decode"]["total_ms"] +
             ops["fc_gate_up_avg_decode"]["total_ms"] +
             ops["fc_down_decode"]["total_ms"] +
