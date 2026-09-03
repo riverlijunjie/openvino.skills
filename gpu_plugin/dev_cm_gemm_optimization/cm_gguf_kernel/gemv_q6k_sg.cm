@@ -1,0 +1,178 @@
+/*
+ * gemv_q6k_sg.cm — Dense Q6_K GEMV/GEMM (CM / C-for-Metal port).
+ *
+ * Converted from sycl_gguf_kernel/gemv_q6k_L1.xve.cpp using the same
+ * "SG-transposed" weight layout as the reference OpenCL port (see
+ * /mnt/river/ovmx/ocl_gguf_kernel/gemv_q6k_sg.cl). One CM thread computes all
+ * OPG=16 output rows of a row-group via vector<float,OPG> SIMD arithmetic.
+ *
+ * == Weight layout ==
+ *   pql_T: num_blocks * 128 bytes (low nibbles, like Q4_K pqs_T)
+ *   pqh_T: num_blocks *  64 bytes (upper 2-bit part; per (j,c2) 16 lanes * 4B)
+ *   ps_T:  num_blocks *  16 bytes (int8 scales; per si (0..15) 16 lanes * 1B)
+ *   pd_T:  num_blocks *   2 bytes (fp16 super-scale; 16 lanes * 2B)
+ *   weights = pql_T || pqh_T || ps_T || pd_T
+ *
+ * == Dispatch ==
+ *   global (threads) = (output_len/OPG, KSPLIT, token_len)
+ *   local  (threads)  = (1, KSPLIT, 1)
+ *
+ * Use pack_qk_pqs_sg (for pql), pack_q6k_pqh_sg, pack_q6k_ps_sg,
+ * pack_q6k_pd_sg from test_dense_gemv.py.
+ */
+
+#include <cm/cm.h>
+
+#define OPG 16
+
+#ifndef KSPLIT
+#define KSPLIT 1
+#endif
+
+#define W2_MASK 0x000F000Fu
+#define Q6_MASK 0x00300030u
+
+/* Dequantise one Q6_K sub-block (32 raw weight codes, 16 output rows at once).
+ * Returns the RAW (pre -32-offset) weighted dot products for the low/high
+ * halves separately (offset correction is applied by the caller). */
+_GENX_ inline void q6k_subblock(
+        vector<uint, OPG> q0, vector<uint, OPG> q1,
+        vector<uint, OPG> q2, vector<uint, OPG> q3,
+        vector<uint, OPG> HL, vector<uint, OPG> HH,
+        vector<float, 32> in32,
+        vector_ref<float, OPG> vlo, vector_ref<float, OPG> vhi)
+{
+    vector<uint, OPG> a, b, cc, d;
+    vector<float, OPG> wl0, wl1, wl2, wl3, wh0, wh1, wh2, wh3;
+    vlo = 0.0f; vhi = 0.0f;
+
+    /* c = 0 */
+    a  = (q0 & W2_MASK) | (((HL << 4) >> 0) & Q6_MASK);
+    b  = ((q0 >> 8) & W2_MASK) | ((HL >> 4) & Q6_MASK);
+    cc = ((q0 >> 4) & W2_MASK) | (((HH << 4) >> 0) & Q6_MASK);
+    d  = ((q0 >> 12) & W2_MASK) | ((HH >> 4) & Q6_MASK);
+    wl0 = (a & 0xFFFFu); wl1 = (b & 0xFFFFu); wl2 = (a >> 16); wl3 = (b >> 16);
+    wh0 = (cc & 0xFFFFu); wh1 = (d & 0xFFFFu); wh2 = (cc >> 16); wh3 = (d >> 16);
+    vlo += wl0 * in32[0] + wl1 * in32[1] + wl2 * in32[2]  + wl3 * in32[3];
+    vhi += wh0 * in32[16] + wh1 * in32[17] + wh2 * in32[18] + wh3 * in32[19];
+
+    /* c = 1 */
+    a  = (q1 & W2_MASK) | (((HL << 4) >> 2) & Q6_MASK);
+    b  = ((q1 >> 8) & W2_MASK) | ((HL >> 6) & Q6_MASK);
+    cc = ((q1 >> 4) & W2_MASK) | (((HH << 4) >> 2) & Q6_MASK);
+    d  = ((q1 >> 12) & W2_MASK) | ((HH >> 6) & Q6_MASK);
+    wl0 = (a & 0xFFFFu); wl1 = (b & 0xFFFFu); wl2 = (a >> 16); wl3 = (b >> 16);
+    wh0 = (cc & 0xFFFFu); wh1 = (d & 0xFFFFu); wh2 = (cc >> 16); wh3 = (d >> 16);
+    vlo += wl0 * in32[4] + wl1 * in32[5] + wl2 * in32[6]  + wl3 * in32[7];
+    vhi += wh0 * in32[20] + wh1 * in32[21] + wh2 * in32[22] + wh3 * in32[23];
+
+    /* c = 2 */
+    a  = (q2 & W2_MASK) | (((HL << 4) >> 4) & Q6_MASK);
+    b  = ((q2 >> 8) & W2_MASK) | ((HL >> 8) & Q6_MASK);
+    cc = ((q2 >> 4) & W2_MASK) | (((HH << 4) >> 4) & Q6_MASK);
+    d  = ((q2 >> 12) & W2_MASK) | ((HH >> 8) & Q6_MASK);
+    wl0 = (a & 0xFFFFu); wl1 = (b & 0xFFFFu); wl2 = (a >> 16); wl3 = (b >> 16);
+    wh0 = (cc & 0xFFFFu); wh1 = (d & 0xFFFFu); wh2 = (cc >> 16); wh3 = (d >> 16);
+    vlo += wl0 * in32[8] + wl1 * in32[9] + wl2 * in32[10] + wl3 * in32[11];
+    vhi += wh0 * in32[24] + wh1 * in32[25] + wh2 * in32[26] + wh3 * in32[27];
+
+    /* c = 3 */
+    a  = (q3 & W2_MASK) | (((HL << 4) >> 6) & Q6_MASK);
+    b  = ((q3 >> 8) & W2_MASK) | ((HL >> 10) & Q6_MASK);
+    cc = ((q3 >> 4) & W2_MASK) | (((HH << 4) >> 6) & Q6_MASK);
+    d  = ((q3 >> 12) & W2_MASK) | ((HH >> 10) & Q6_MASK);
+    wl0 = (a & 0xFFFFu); wl1 = (b & 0xFFFFu); wl2 = (a >> 16); wl3 = (b >> 16);
+    wh0 = (cc & 0xFFFFu); wh1 = (d & 0xFFFFu); wh2 = (cc >> 16); wh3 = (d >> 16);
+    vlo += wl0 * in32[12] + wl1 * in32[13] + wl2 * in32[14] + wl3 * in32[15];
+    vhi += wh0 * in32[28] + wh1 * in32[29] + wh2 * in32[30] + wh3 * in32[31];
+}
+
+extern "C" _GENX_MAIN_ void gemv_q6k_sg(
+    half*  inputs  [[type("svmptr_t")]],   /* [token_len * input_len]  fp16 */
+    uchar* weights [[type("svmptr_t")]],   /* pql_T||pqh_T||ps_T||pd_T      */
+    float* outputs [[type("svmptr_t")]],   /* [token_len * output_len] fp32 */
+    uint token_len,
+    uint input_len,
+    uint output_len)
+{
+    const uint nbpr       = input_len / 256;
+    const uint num_blocks = input_len * output_len / 256;
+
+    const uint h  = cm_group_id(0);
+    const uint sg = cm_local_id(1);
+    const uint t  = cm_group_id(2);
+
+    uchar* pql_base = weights;
+    uchar* pqh_base = weights + num_blocks * 128u;
+    uchar* ps_base  = weights + num_blocks * 192u;
+    uchar* pd_base  = weights + num_blocks * 208u;
+
+#if KSPLIT > 1
+    cm_slm_init(KSPLIT * OPG * sizeof(float));
+    uint slm = cm_slm_alloc(KSPLIT * OPG * sizeof(float));
+#endif
+
+    vector<float, OPG> acc = 0.0f;
+    const uint in_row_byte = t * input_len * (uint)sizeof(half);
+
+    for (uint bid = sg; bid < nbpr; bid += KSPLIT) {
+        const uint blk      = h * nbpr + bid;
+        const uint pql_byte = blk * (OPG * 128u);
+        const uint pqh_byte = blk * (OPG * 64u);
+        const uint ps_byte  = blk * (OPG * 16u);
+        const uint pd_byte  = blk * (OPG * 2u);
+        const uint in_byte  = in_row_byte + bid * 256u * (uint)sizeof(half);
+
+        vector<uint, OPG/2> pd_u = cm_ptr_load<uint, OPG/2>((uint*)pd_base, pd_byte);
+        vector<half, OPG> dh = pd_u.format<half>();
+        vector<float, OPG> dF;
+        dF = dh;
+
+        #pragma unroll
+        for (int j = 0; j < 8; j++) {
+            vector<uint, OPG> q0 = cm_ptr_load<uint, OPG>((uint*)pql_base, pql_byte + j * 256 + 0 * 64);
+            vector<uint, OPG> q1 = cm_ptr_load<uint, OPG>((uint*)pql_base, pql_byte + j * 256 + 1 * 64);
+            vector<uint, OPG> q2 = cm_ptr_load<uint, OPG>((uint*)pql_base, pql_byte + j * 256 + 2 * 64);
+            vector<uint, OPG> q3 = cm_ptr_load<uint, OPG>((uint*)pql_base, pql_byte + j * 256 + 3 * 64);
+            vector<uint, OPG> HL = cm_ptr_load<uint, OPG>((uint*)pqh_base, pqh_byte + (j * 2 + 0) * 64);
+            vector<uint, OPG> HH = cm_ptr_load<uint, OPG>((uint*)pqh_base, pqh_byte + (j * 2 + 1) * 64);
+
+            vector<uint, OPG/4> sc_lo_u = cm_ptr_load<uint, OPG/4>((uint*)ps_base, ps_byte + (2 * j + 0) * 16);
+            vector<uint, OPG/4> sc_hi_u = cm_ptr_load<uint, OPG/4>((uint*)ps_base, ps_byte + (2 * j + 1) * 16);
+            vector<char, OPG> sc_lo = sc_lo_u.format<char>();
+            vector<char, OPG> sc_hi = sc_hi_u.format<char>();
+            vector<float, OPG> sc_lo_f, sc_hi_f;
+            sc_lo_f = sc_lo; sc_hi_f = sc_hi;
+            vector<float, OPG> clo_j = dF * sc_lo_f;
+            vector<float, OPG> chi_j = dF * sc_hi_f;
+
+            vector<uint, 16>  in_u32 = cm_ptr_load<uint, 16>((uint*)inputs, in_byte + j * 64);
+            vector<half, 32>  in32h  = in_u32.format<half>();
+            vector<float, 32> in32   = in32h;
+            float sum_lo = cm_sum<float>(in32.select<16, 1>(0));
+            float sum_hi = cm_sum<float>(in32.select<16, 1>(16));
+
+            vector<float, OPG> vlo, vhi;
+            q6k_subblock(q0, q1, q2, q3, HL, HH, in32, vlo, vhi);
+            acc += clo_j * (vlo - 32.0f * sum_lo) + chi_j * (vhi - 32.0f * sum_hi);
+        }
+    }
+
+#if KSPLIT == 1
+    cm_ptr_store<float, OPG>((float*)outputs, (t * output_len + h * OPG) * (uint)sizeof(float), acc);
+#else
+    cm_slm_block_write(slm, sg * OPG * sizeof(float), acc.format<float>());
+    cm_fence(CM_LOCAL_BARRIER);
+    cm_barrier();
+    if (sg == 0) {
+        vector<float, OPG> total = 0.0f;
+        #pragma unroll
+        for (int r = 0; r < KSPLIT; r++) {
+            vector<float, OPG> part;
+            cm_slm_block_read(slm, GENX_NONE, r * OPG * sizeof(float), part.format<float>());
+            total += part;
+        }
+        cm_ptr_store<float, OPG>((float*)outputs, (t * output_len + h * OPG) * (uint)sizeof(float), total);
+    }
+#endif
+}

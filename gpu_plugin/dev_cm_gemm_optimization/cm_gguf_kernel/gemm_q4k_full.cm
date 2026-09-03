@@ -1,0 +1,184 @@
+/*
+ * gemm_q4k_full.cm -- Dense Q4_K GEMM, unified layout (v4).
+ *
+ * UNIFIED: fp16 inputs, SG-transposed weights (same as gemv_q4k_sg.cm),
+ * cm_dpas systolic engine with VNNI-packed fp16-dequantized weights.
+ * Converted from sycl_gguf_kernel/gemm_q4k_L1.xmx-xe2.cpp.
+ *
+ * Weight layout: pqs_T || psl_T  (SAME as gemv_q4k_sg.cm)
+ * Nibble layout per lane uint32 for chunk c:
+ *   bits 0..3:  lo K-pos 4c+0   bits 4..7:  hi K-pos 4c+16
+ *   bits 8..11: lo K-pos 4c+1   bits 12..15: hi K-pos 4c+17
+ *   bits 16..19: lo K-pos 4c+2  bits 20..23: hi K-pos 4c+18
+ *   bits 24..27: lo K-pos 4c+3  bits 28..31: hi K-pos 4c+19
+ * VNNI: B_half[sd][2*n+k_bit] = W_fp16[k=2*sd+k_bit][n]
+ *
+ * PERF (v4): this kernel is limited by WEIGHT DEQUANT, not by the dpas it
+ * feeds -- per (K-block, sub-block j) it issues ~32 SIMD16 dequant ops to
+ * produce operands for just 2 dpas ops. v4 decodes all 4 chunks of a
+ * sub-block in one SIMD64 pass (q4k_vnni_block_sg below), cutting dequant
+ * instruction count ~4x for bit-identical arithmetic. Measured 1.11-1.27x
+ * faster end-to-end on Arc B580.
+ *
+ * Things that were measured and rejected (interleaved A/B, min-of-N, to
+ * cancel this machine's large inter-run clock drift):
+ *   - Raising TOKENS_PER_TILE to 16/32/64 to amortise the dequant cost
+ *     over more tokens per decode: 1.4-4.6x SLOWER. The extra live
+ *     registers spill ("Spill memory used = N bytes" at build time), which
+ *     costs more than the redundant decoding saves.
+ *   - fp16 (instead of fp32) dequant arithmetic: ~1.25x slower.
+ *   - -Qxcm_register_file_size=256: helps K=2048 (~1.2x) but hurts
+ *     K=4096 (~1.15x slower), so not enabled by default.
+ *   - Parallel tree SLM reduction instead of the serial hh==0 sum: no
+ *     measurable difference (the reduction is not the bottleneck).
+ *
+ * Dispatch: global=(N/OPG*nbpr, ceil(token_len/8)), local=(nbpr,1)
+ */
+
+#include <cm/cm.h>
+#include <cm/cmtl.h>
+
+#pragma OPENCL EXTENSION cl_khr_fp16 : enable
+
+#define OPG 16
+#define MAX_NBPR 64
+
+#define TOKENS_PER_TILE 8
+
+
+
+/* Decode all 4 chunks of sub-block j in ONE pass.
+ *
+ * The per-chunk version above issues 8 SIMD16 ops per chunk = 32 SIMD16 ops
+ * per (j, K-block), and dequant -- not the dpas it feeds -- is what limits
+ * this kernel. Loading all 4 chunks at once (pqs_T stores chunk c at
+ * +c*64 bytes, so 64 consecutive uints = [c=0..3][n=0..15]) lets the exact
+ * same 8 bit-field extractions run at SIMD64, i.e. 8 ops instead of 32 --
+ * a 4x cut in dequant instruction count for identical arithmetic.
+ *
+ * Scatter back into the VNNI tile is a pure register-region write, no
+ * shuffle: source element (c,n) belongs at VNNI [sd=2c+kpair][2n+kbit], so
+ * viewing the tile as matrix<half,8,32> the destination for a whole
+ * extraction is exactly the strided 2D region
+ * .select<4,2,16,2>(kpair, kbit) (rows 2c+kpair, cols 2n+kbit). */
+_GENX_ inline void q4k_vnni_block_sg(
+    uchar* pqs_base, uint pe_byte, int j,
+    vector<float, OPG> scale_j, vector<float, OPG> minv_j,
+    vector_ref<half, 8*32> Blo, vector_ref<half, 8*32> Bhi)
+{
+    vector<uint, 4*OPG> q = cm_ptr_load<uint, 4*OPG>((uint*)pqs_base, pe_byte + j*256);
+
+    vector<float, 4*OPG> scale4, minv4;
+    #pragma unroll
+    for (int c = 0; c < 4; c++) {
+        scale4.select<OPG,1>(c*OPG) = scale_j;
+        minv4 .select<OPG,1>(c*OPG) = minv_j;
+    }
+
+    matrix_ref<half, 8, 32> Bl = Blo.format<half, 8, 32>();
+    matrix_ref<half, 8, 32> Bh = Bhi.format<half, 8, 32>();
+
+    /* lo nibbles -> Blo, hi nibbles -> Bhi; (kpair, kbit) picks the region */
+    { vector<float,4*OPG> w=(q & 0xFu);       w=w*scale4-minv4; Bl.select<4,2,16,2>(0,0)=w.format<float,4,OPG>(); }
+    { vector<float,4*OPG> w=((q>>8)  & 0xFu); w=w*scale4-minv4; Bl.select<4,2,16,2>(0,1)=w.format<float,4,OPG>(); }
+    { vector<float,4*OPG> w=((q>>16) & 0xFu); w=w*scale4-minv4; Bl.select<4,2,16,2>(1,0)=w.format<float,4,OPG>(); }
+    { vector<float,4*OPG> w=((q>>24) & 0xFu); w=w*scale4-minv4; Bl.select<4,2,16,2>(1,1)=w.format<float,4,OPG>(); }
+    { vector<float,4*OPG> w=((q>>4)  & 0xFu); w=w*scale4-minv4; Bh.select<4,2,16,2>(0,0)=w.format<float,4,OPG>(); }
+    { vector<float,4*OPG> w=((q>>12) & 0xFu); w=w*scale4-minv4; Bh.select<4,2,16,2>(0,1)=w.format<float,4,OPG>(); }
+    { vector<float,4*OPG> w=((q>>20) & 0xFu); w=w*scale4-minv4; Bh.select<4,2,16,2>(1,0)=w.format<float,4,OPG>(); }
+    { vector<float,4*OPG> w=((q>>28) & 0xFu); w=w*scale4-minv4; Bh.select<4,2,16,2>(1,1)=w.format<float,4,OPG>(); }
+}
+
+extern "C" _GENX_MAIN_ void gemm_q4k_full(
+    half*  inputs  [[type("svmptr_t")]],
+    uchar* weights [[type("svmptr_t")]],
+    float* outputs [[type("svmptr_t")]],
+    uint token_len, uint input_len, uint output_len)
+{
+    const uint nbpr       = input_len / 256;
+    const uint num_blocks = input_len * output_len / 256;
+
+    cm_slm_init(MAX_NBPR * TOKENS_PER_TILE * OPG * sizeof(float));
+    uint slm = cm_slm_alloc(MAX_NBPR * TOKENS_PER_TILE * OPG * sizeof(float));
+
+    const uint h  = cm_group_id(0);
+    const uint hh = cm_local_id(0);
+    const uint t  = cm_group_id(1);
+
+    const uint tile_base = t * TOKENS_PER_TILE;
+    const uint tile_len  = (tile_base + TOKENS_PER_TILE <= token_len)
+                          ? TOKENS_PER_TILE : (token_len - tile_base);
+
+    uchar* pqs_base = weights;
+    uchar* psl_base = weights + num_blocks * 128u;
+
+    const uint blk      = h * nbpr + hh;
+    const uint pe_byte  = blk * (OPG * 128u);
+    const uint psl_byte = blk * (OPG * 16u);
+
+    vector<uint, OPG>   sl    = cm_ptr_load<uint, OPG>((uint*)psl_base, psl_byte + 0);
+    vector<uint, OPG>   ml    = cm_ptr_load<uint, OPG>((uint*)psl_base, psl_byte + 64);
+    vector<uint, OPG/2> sh_u  = cm_ptr_load<uint, OPG/2>((uint*)psl_base, psl_byte + 128);
+    vector<uint, OPG/2> mh_u  = cm_ptr_load<uint, OPG/2>((uint*)psl_base, psl_byte + 160);
+    vector<uint, OPG/2> d_u   = cm_ptr_load<uint, OPG/2>((uint*)psl_base, psl_byte + 192);
+    vector<uint, OPG/2> dmn_u = cm_ptr_load<uint, OPG/2>((uint*)psl_base, psl_byte + 224);
+    vector<ushort, OPG> sh16=sh_u.format<ushort>(), mh16=mh_u.format<ushort>();
+    vector<half,   OPG> dh=d_u.format<half>(), dminh=dmn_u.format<half>();
+    vector<uint,   OPG> shu=sh16, mhu=mh16;
+    vector<float,  OPG> dF, dminF; dF=dh; dminF=dminh;
+
+    vector<half, TOKENS_PER_TILE * 256> Atile = (half)0.0f;
+    #pragma unroll
+    for (uint tt = 0; tt < TOKENS_PER_TILE; tt++) {
+        if (tile_base + tt < token_len) {
+            uint ib = ((tile_base + tt) * input_len + hh * 256u) * (uint)sizeof(half);
+            vector<uint, 64> u0 = cm_ptr_load<uint, 64>((uint*)inputs, ib);
+            vector<uint, 64> u1 = cm_ptr_load<uint, 64>((uint*)inputs, ib + 64u * (uint)sizeof(uint));
+            Atile.select<128, 1>(tt * 256)       = u0.format<half>();
+            Atile.select<128, 1>(tt * 256 + 128) = u1.format<half>();
+        }
+    }
+
+    vector<float, TOKENS_PER_TILE * OPG> acc = 0.0f;
+
+    #pragma unroll
+    for (int j = 0; j < 8; j++) {
+        vector<uint, OPG> sq=((sl>>(j*4))&0xFu)|(((shu>>(j*2))&0x3u)<<4);
+        vector<uint, OPG> mq=((ml>>(j*4))&0xFu)|(((mhu>>(j*2))&0x3u)<<4);
+        vector<float, OPG> sqf, mqf; sqf=sq; mqf=mq;
+        vector<float, OPG> scale_j=sqf*dF, minv_j=mqf*dminF;
+
+        vector<half, 8*32> Blo=(half)0.0f, Bhi=(half)0.0f;
+        q4k_vnni_block_sg(pqs_base, pe_byte, j, scale_j, minv_j, Blo, Bhi);
+
+        vector<half, TOKENS_PER_TILE * 16> Alo, Ahi;
+        #pragma unroll
+        for (uint tt = 0; tt < TOKENS_PER_TILE; tt++) {
+            Alo.select<16,1>(tt*16) = Atile.select<16,1>(tt*256 + j*32 + 0);
+            Ahi.select<16,1>(tt*16) = Atile.select<16,1>(tt*256 + j*32 + 16);
+        }
+        acc = cm_dpas<CM_PRECISION_HF,CM_PRECISION_HF,8,TOKENS_PER_TILE>(acc, Blo.format<int32_t>(), Alo.format<int32_t>());
+        acc = cm_dpas<CM_PRECISION_HF,CM_PRECISION_HF,8,TOKENS_PER_TILE>(acc, Bhi.format<int32_t>(), Ahi.format<int32_t>());
+    }
+
+    cm_slm_block_write(slm, hh * TOKENS_PER_TILE * OPG * sizeof(float), acc.format<float>());
+    cm_fence(CM_LOCAL_BARRIER);
+    cm_barrier();
+
+    if (hh == 0) {
+        vector<float, TOKENS_PER_TILE * OPG> total = 0.0f;
+        for (uint k = 0; k < nbpr; k++) {
+            vector<float, TOKENS_PER_TILE * OPG> part;
+            cm_slm_block_read(slm, GENX_NONE, k * TOKENS_PER_TILE * OPG * sizeof(float), part.format<float>());
+            total += part;
+        }
+        #pragma unroll
+        for (uint tt = 0; tt < TOKENS_PER_TILE; tt++) {
+            if (tile_base + tt < token_len) {
+                cm_ptr_store<float, OPG>((float*)outputs,
+                    ((tile_base + tt) * output_len + h * OPG) * (uint)sizeof(float),
+                    total.select<OPG, 1>(tt * OPG));
+            }
+        }
+    }
+}

@@ -1,0 +1,231 @@
+/*
+ * moe_gemv_q80_sg.cm — Shared-expert Q8_0 MoE GEMV (CM / C-for-Metal port).
+ *
+ * Converted from the OpenCL reference port
+ * /mnt/river/ovmx/ocl_gguf_kernel/moe_gemv_q80_sg.cl (shared_gate_up_q8_0 /
+ * shared_down_merge_q8_0), using the same SG-packed per-weight-matrix layout.
+ * Each CM thread computes all OPG=16 output rows of a row-group directly via
+ * vector<float,OPG> SIMD arithmetic (no sub-group lanes needed). Output dtype
+ * is fp16 (half), matching the OpenCL reference.
+ *
+ * == Weight layout (SG-packed Q8_0, per [N, K] weight matrix) ==
+ *   pqs section: N*nbpr*256 bytes. Entry (h,bid) at (h*nbpr+bid)*OPG*256B;
+ *     sub-block j (0..7, 32 weights) at +j*OPG*32B, chunk c (0..7, 4 int8
+ *     weights) at +j*OPG*32+c*OPG*4B -- 16 contiguous lanes' 4-byte chunks.
+ *   pd  section: N*nbpr*16 bytes right after pqs. Entry (h,bid) at
+ *     (h*nbpr+bid)*OPG*16B, sub-block j SoA fp16 scale at +j*OPG*2B.
+ *
+ * == Dispatch ==
+ *   shared_gate_up_q8_0:    global=(intermediate_size/OPG, KSPLIT, token_len), local=(1,KSPLIT,1)
+ *   shared_down_merge_q8_0: global=(hidden_size/OPG,       KSPLIT, token_len), local=(1,KSPLIT,1)
+ */
+
+#include <cm/cm.h>
+
+#define OPG 16
+
+#ifndef KSPLIT
+#define KSPLIT 1
+#endif
+
+/* Dot-product one Q8_0 sub-block (32 signed int8 weights, 16 output rows at
+ * once) against the 32 shared fp32 activations, scaled by the per-row scale. */
+_GENX_ inline vector<float, OPG> q80_subblock(uchar* pqs_base, uint pe_byte,
+        vector<float, OPG> scale, vector<float, 32> in32)
+{
+    vector<float, OPG> dot = 0.0f;
+    #pragma unroll
+    for (int c = 0; c < 8; c++) {
+        vector<uint, OPG> qw = cm_ptr_load<uint, OPG>((uint*)pqs_base, pe_byte + c * 64);
+        matrix<char, OPG, 4> qc = qw.format<char, OPG, 4>();
+        #pragma unroll
+        for (int k = 0; k < 4; k++) {
+            vector<char, OPG> wk = qc.column(k);
+            vector<float, OPG> wf;
+            wf = wk;
+            dot += wf * in32[c * 4 + k];
+        }
+    }
+    return dot * scale;
+}
+
+_GENX_ inline void load_inputs(half* inputs, uint in_byte, vector<float, 32> in_j[8])
+{
+    #pragma unroll
+    for (int j = 0; j < 8; j++) {
+        vector<uint, 16>  u32  = cm_ptr_load<uint, 16>((uint*)inputs, in_byte + j * 64);
+        vector<half, 32>  h32  = u32.format<half>();
+        in_j[j] = h32;
+    }
+}
+
+/* Decode the 8 per-sub-block fp16 scales (SoA), 16 output rows at once. */
+_GENX_ inline void q80_decode_scales(uchar* pd_base, uint pd_byte, vector<float, OPG>* scale8)
+{
+    #pragma unroll
+    for (int j = 0; j < 8; j++) {
+        vector<uint, OPG/2> d_u = cm_ptr_load<uint, OPG/2>((uint*)pd_base, pd_byte + j * 32);
+        vector<half, OPG> dh = d_u.format<half>();
+        scale8[j] = dh;
+    }
+}
+
+/* Full Q8_0 block dot product (all 8 sub-blocks), 16 output rows at once. */
+_GENX_ inline vector<float, OPG> q80_block_acc(uchar* pqs_base, uchar* pd_base,
+        uint pe_byte, uint pd_byte, vector<float, 32> in_j[8])
+{
+    vector<float, OPG> scale8[8];
+    q80_decode_scales(pd_base, pd_byte, scale8);
+
+    vector<float, OPG> acc = 0.0f;
+    #pragma unroll
+    for (int j = 0; j < 8; j++)
+        acc += q80_subblock(pqs_base, pe_byte + j * (OPG * 32u), scale8[j], in_j[j]);
+    return acc;
+}
+
+/* =======================================================================
+ * Kernel 1: shared_gate_up_q8_0
+ * ===================================================================== */
+extern "C" _GENX_MAIN_ void shared_gate_up_q8_0(
+    uchar* gate_weights  [[type("svmptr_t")]],  /* SG-packed Q8_0 [intermediate_size, hidden_size] */
+    uchar* up_weights    [[type("svmptr_t")]],  /* SG-packed Q8_0 [intermediate_size, hidden_size] */
+    half*  hidden_states [[type("svmptr_t")]],  /* [token_len, hidden_size] */
+    half*  gate_up_out   [[type("svmptr_t")]],  /* [token_len, intermediate_size] */
+    uint hidden_size,
+    uint intermediate_size)
+{
+    const uint h  = cm_group_id(0);
+    const uint sg = cm_local_id(1);
+    const uint t  = cm_group_id(2);
+
+    const uint nbpr   = hidden_size / 256u;
+    const uint off_pd = intermediate_size * nbpr * 256u;
+
+    uchar* g_pqs = gate_weights;
+    uchar* g_pd  = gate_weights + off_pd;
+    uchar* u_pqs = up_weights;
+    uchar* u_pd  = up_weights + off_pd;
+
+#if KSPLIT > 1
+    cm_slm_init(2 * KSPLIT * OPG * sizeof(float));
+    uint slm = cm_slm_alloc(2 * KSPLIT * OPG * sizeof(float));
+#endif
+
+    vector<float, OPG> gate_acc = 0.0f, up_acc = 0.0f;
+    const uint in_row_byte = t * hidden_size * (uint)sizeof(half);
+
+    for (uint bid = sg; bid < nbpr; bid += KSPLIT) {
+        const uint blk     = h * nbpr + bid;
+        const uint pe_byte = blk * (OPG * 256u);
+        const uint pd_byte = blk * (OPG * 16u);
+        const uint in_byte = in_row_byte + bid * 256u * (uint)sizeof(half);
+
+        vector<float, 32> in_j[8];
+        load_inputs(hidden_states, in_byte, in_j);
+
+        gate_acc += q80_block_acc(g_pqs, g_pd, pe_byte, pd_byte, in_j);
+        up_acc   += q80_block_acc(u_pqs, u_pd, pe_byte, pd_byte, in_j);
+    }
+
+    vector<float, OPG> g_total = gate_acc, u_total = up_acc;
+#if KSPLIT > 1
+    cm_slm_block_write(slm, (sg * 2 + 0) * OPG * sizeof(float), up_acc.format<float>());
+    cm_slm_block_write(slm, (sg * 2 + 1) * OPG * sizeof(float), gate_acc.format<float>());
+    cm_fence(CM_LOCAL_BARRIER);
+    cm_barrier();
+    if (sg == 0) {
+        u_total = 0.0f; g_total = 0.0f;
+        #pragma unroll
+        for (int r = 0; r < KSPLIT; r++) {
+            vector<float, OPG> pu, pg;
+            cm_slm_block_read(slm, GENX_NONE, (r * 2 + 0) * OPG * sizeof(float), pu.format<float>());
+            cm_slm_block_read(slm, GENX_NONE, (r * 2 + 1) * OPG * sizeof(float), pg.format<float>());
+            u_total += pu; g_total += pg;
+        }
+#endif
+        vector<float, OPG> sig = 1.0f / (1.0f + cm_exp(-g_total * 1.4426950408889634f));
+        vector<float, OPG> result_f = (sig * g_total) * u_total;
+        vector<half, OPG> result_h = result_f;
+        vector<uint, OPG/2> result_u = result_h.format<uint>();
+        cm_ptr_store<uint, OPG/2>((uint*)gate_up_out,
+                (t * intermediate_size + h * OPG) * (uint)sizeof(half), result_u);
+#if KSPLIT > 1
+    }
+#endif
+}
+
+/* =======================================================================
+ * Kernel 2: shared_down_merge_q8_0
+ * ===================================================================== */
+extern "C" _GENX_MAIN_ void shared_down_merge_q8_0(
+    half*  gate_up_in    [[type("svmptr_t")]],  /* [token_len, intermediate_size] */
+    uchar* down_weights  [[type("svmptr_t")]],  /* SG-packed Q8_0 [hidden_size, intermediate_size] */
+    half*  shared_gate   [[type("svmptr_t")]],  /* [token_len] scalar gate */
+    half*  final_out     [[type("svmptr_t")]],  /* [token_len, hidden_size] */
+    uint intermediate_size,
+    uint hidden_size,
+    int  is_acc)
+{
+    const uint h  = cm_group_id(0);
+    const uint sg = cm_local_id(1);
+    const uint t  = cm_group_id(2);
+
+    const uint nbpr   = intermediate_size / 256u;
+    const uint off_pd = hidden_size * nbpr * 256u;
+
+    uchar* d_pqs = down_weights;
+    uchar* d_pd  = down_weights + off_pd;
+
+#if KSPLIT > 1
+    cm_slm_init(KSPLIT * OPG * sizeof(float));
+    uint slm = cm_slm_alloc(KSPLIT * OPG * sizeof(float));
+#endif
+
+    vector<float, OPG> acc = 0.0f;
+    const uint in_row_byte = t * intermediate_size * (uint)sizeof(half);
+
+    for (uint bid = sg; bid < nbpr; bid += KSPLIT) {
+        const uint blk     = h * nbpr + bid;
+        const uint pe_byte = blk * (OPG * 256u);
+        const uint pd_byte = blk * (OPG * 16u);
+        const uint in_byte = in_row_byte + bid * 256u * (uint)sizeof(half);
+
+        vector<float, 32> in_j[8];
+        load_inputs(gate_up_in, in_byte, in_j);
+
+        acc += q80_block_acc(d_pqs, d_pd, pe_byte, pd_byte, in_j);
+    }
+
+    float gscale = (float)shared_gate[t];
+
+#if KSPLIT == 1
+    vector<float, OPG> total_out = acc;
+#else
+    cm_slm_block_write(slm, sg * OPG * sizeof(float), acc.format<float>());
+    cm_fence(CM_LOCAL_BARRIER);
+    cm_barrier();
+    if (sg == 0) {
+        vector<float, OPG> total_out = 0.0f;
+        #pragma unroll
+        for (int r = 0; r < KSPLIT; r++) {
+            vector<float, OPG> part;
+            cm_slm_block_read(slm, GENX_NONE, r * OPG * sizeof(float), part.format<float>());
+            total_out += part;
+        }
+#endif
+        total_out = total_out * gscale;
+        const uint out_byte = (t * hidden_size + h * OPG) * (uint)sizeof(half);
+        if (is_acc) {
+            vector<uint, OPG/2> prev_u = cm_ptr_load<uint, OPG/2>((uint*)final_out, out_byte);
+            vector<half, OPG> prev_h = prev_u.format<half>();
+            vector<float, OPG> prev_f = prev_h;
+            total_out += prev_f;
+        }
+        vector<half, OPG> total_h = total_out;
+        vector<uint, OPG/2> total_u = total_h.format<uint>();
+        cm_ptr_store<uint, OPG/2>((uint*)final_out, out_byte, total_u);
+#if KSPLIT > 1
+    }
+#endif
+}

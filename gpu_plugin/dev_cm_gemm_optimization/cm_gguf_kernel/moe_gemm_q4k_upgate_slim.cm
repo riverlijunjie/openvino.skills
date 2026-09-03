@@ -1,0 +1,103 @@
+/*
+ * moe_gemm_q4k_upgate_slim.cm -- Fused Up+Gate+SiLU MoE GEMM, unified layout (v3).
+ * fp16 inputs, SG-transposed weights (pqs_T||psl_T each for ups/gates), scalar.
+ * NO SLM: each thread reduces ALL K-blocks itself (like KSPLIT=1 in GEMV).
+ * Dispatch: global=(N/OPG, token_len), local=(1,1)
+ */
+
+#include <cm/cm.h>
+
+#define OPG 16
+#define W2_MASK 0x000F000Fu
+
+_GENX_ inline vector<float, OPG> q4k_subblock(
+        vector<uint, OPG> q0, vector<uint, OPG> q1,
+        vector<uint, OPG> q2, vector<uint, OPG> q3,
+        vector<float, 32> in32)
+{
+    vector<float, OPG> acc = 0.0f;
+    vector<uint, OPG> a, b, c, d;
+    vector<float, OPG> wl0,wl1,wl2,wl3,wh0,wh1,wh2,wh3;
+    a=q0&W2_MASK; b=(q0>>8)&W2_MASK; c=(q0>>4)&W2_MASK; d=(q0>>12)&W2_MASK;
+    wl0=(a&0xFFFFu);wl1=(b&0xFFFFu);wl2=a>>16;wl3=b>>16;wh0=(c&0xFFFFu);wh1=(d&0xFFFFu);wh2=c>>16;wh3=d>>16;
+    acc+=wl0*in32[0]+wl1*in32[1]+wl2*in32[2]+wl3*in32[3]+wh0*in32[16]+wh1*in32[17]+wh2*in32[18]+wh3*in32[19];
+    a=q1&W2_MASK; b=(q1>>8)&W2_MASK; c=(q1>>4)&W2_MASK; d=(q1>>12)&W2_MASK;
+    wl0=(a&0xFFFFu);wl1=(b&0xFFFFu);wl2=a>>16;wl3=b>>16;wh0=(c&0xFFFFu);wh1=(d&0xFFFFu);wh2=c>>16;wh3=d>>16;
+    acc+=wl0*in32[4]+wl1*in32[5]+wl2*in32[6]+wl3*in32[7]+wh0*in32[20]+wh1*in32[21]+wh2*in32[22]+wh3*in32[23];
+    a=q2&W2_MASK; b=(q2>>8)&W2_MASK; c=(q2>>4)&W2_MASK; d=(q2>>12)&W2_MASK;
+    wl0=(a&0xFFFFu);wl1=(b&0xFFFFu);wl2=a>>16;wl3=b>>16;wh0=(c&0xFFFFu);wh1=(d&0xFFFFu);wh2=c>>16;wh3=d>>16;
+    acc+=wl0*in32[8]+wl1*in32[9]+wl2*in32[10]+wl3*in32[11]+wh0*in32[24]+wh1*in32[25]+wh2*in32[26]+wh3*in32[27];
+    a=q3&W2_MASK; b=(q3>>8)&W2_MASK; c=(q3>>4)&W2_MASK; d=(q3>>12)&W2_MASK;
+    wl0=(a&0xFFFFu);wl1=(b&0xFFFFu);wl2=a>>16;wl3=b>>16;wh0=(c&0xFFFFu);wh1=(d&0xFFFFu);wh2=c>>16;wh3=d>>16;
+    acc+=wl0*in32[12]+wl1*in32[13]+wl2*in32[14]+wl3*in32[15]+wh0*in32[28]+wh1*in32[29]+wh2*in32[30]+wh3*in32[31];
+    return acc;
+}
+
+extern "C" _GENX_MAIN_ void moe_gemm_q4k_upgate_slim(
+    half*  inputs  [[type("svmptr_t")]],
+    uchar* ups     [[type("svmptr_t")]],
+    uchar* gates   [[type("svmptr_t")]],
+    float* outputs [[type("svmptr_t")]],
+    uint token_len, uint input_len, uint output_len)
+{
+    const uint nbpr       = input_len / 256;
+    const uint num_blocks = input_len * output_len / 256;
+    const uint h = cm_group_id(0);
+    const uint t = cm_group_id(1);
+    uchar* up_pqs = ups;   uchar* up_psl = ups   + num_blocks * 128u;
+    uchar* gt_pqs = gates; uchar* gt_psl = gates + num_blocks * 128u;
+    const uint in_row_byte = t * input_len * (uint)sizeof(half);
+    vector<float, OPG> acc_up = 0.0f, acc_gate = 0.0f;
+    for (uint bid = 0; bid < nbpr; bid++) {
+        const uint blk = h * nbpr + bid;
+        const uint pe_byte  = blk * (OPG * 128u);
+        const uint psl_byte = blk * (OPG * 16u);
+        const uint in_byte  = in_row_byte + bid * 256u * (uint)sizeof(half);
+        vector<uint,OPG> sl=cm_ptr_load<uint,OPG>((uint*)up_psl,psl_byte+0);
+        vector<uint,OPG> ml=cm_ptr_load<uint,OPG>((uint*)up_psl,psl_byte+64);
+        vector<uint,OPG/2> sh_u=cm_ptr_load<uint,OPG/2>((uint*)up_psl,psl_byte+128);
+        vector<uint,OPG/2> mh_u=cm_ptr_load<uint,OPG/2>((uint*)up_psl,psl_byte+160);
+        vector<uint,OPG/2> d_u=cm_ptr_load<uint,OPG/2>((uint*)up_psl,psl_byte+192);
+        vector<uint,OPG/2> dn_u=cm_ptr_load<uint,OPG/2>((uint*)up_psl,psl_byte+224);
+        vector<ushort,OPG> sh16=sh_u.format<ushort>(),mh16=mh_u.format<ushort>();
+        vector<half,OPG> dh=d_u.format<half>(),dminh=dn_u.format<half>();
+        vector<uint,OPG> shu=sh16,mhu=mh16; vector<float,OPG> dF,dminF; dF=dh; dminF=dminh;
+        vector<uint,OPG> gsl=cm_ptr_load<uint,OPG>((uint*)gt_psl,psl_byte+0);
+        vector<uint,OPG> gml=cm_ptr_load<uint,OPG>((uint*)gt_psl,psl_byte+64);
+        vector<uint,OPG/2> gsh_u=cm_ptr_load<uint,OPG/2>((uint*)gt_psl,psl_byte+128);
+        vector<uint,OPG/2> gmh_u=cm_ptr_load<uint,OPG/2>((uint*)gt_psl,psl_byte+160);
+        vector<uint,OPG/2> gd_u=cm_ptr_load<uint,OPG/2>((uint*)gt_psl,psl_byte+192);
+        vector<uint,OPG/2> gdn_u=cm_ptr_load<uint,OPG/2>((uint*)gt_psl,psl_byte+224);
+        vector<ushort,OPG> gsh16=gsh_u.format<ushort>(),gmh16=gmh_u.format<ushort>();
+        vector<half,OPG> gdh=gd_u.format<half>(),gdminh=gdn_u.format<half>();
+        vector<uint,OPG> gshu=gsh16,gmhu=gmh16; vector<float,OPG> gdF,gdminF; gdF=gdh; gdminF=gdminh;
+        for (int j = 0; j < 8; j++) {
+            vector<uint,OPG> sq=((sl>>(j*4))&0xFu)|(((shu>>(j*2))&0x3u)<<4);
+            vector<uint,OPG> mq=((ml>>(j*4))&0xFu)|(((mhu>>(j*2))&0x3u)<<4);
+            vector<float,OPG> sqf,mqf; sqf=sq; mqf=mq;
+            vector<float,OPG> scale_j=sqf*dF, minv_j=mqf*dminF;
+            vector<uint,OPG> gsq=((gsl>>(j*4))&0xFu)|(((gshu>>(j*2))&0x3u)<<4);
+            vector<uint,OPG> gmq=((gml>>(j*4))&0xFu)|(((gmhu>>(j*2))&0x3u)<<4);
+            vector<float,OPG> gsqf,gmqf; gsqf=gsq; gmqf=gmq;
+            vector<float,OPG> gscale_j=gsqf*gdF, gminv_j=gmqf*gdminF;
+            vector<uint,OPG> q0u=cm_ptr_load<uint,OPG>((uint*)up_pqs,pe_byte+j*256+0*64);
+            vector<uint,OPG> q1u=cm_ptr_load<uint,OPG>((uint*)up_pqs,pe_byte+j*256+1*64);
+            vector<uint,OPG> q2u=cm_ptr_load<uint,OPG>((uint*)up_pqs,pe_byte+j*256+2*64);
+            vector<uint,OPG> q3u=cm_ptr_load<uint,OPG>((uint*)up_pqs,pe_byte+j*256+3*64);
+            vector<uint,OPG> q0g=cm_ptr_load<uint,OPG>((uint*)gt_pqs,pe_byte+j*256+0*64);
+            vector<uint,OPG> q1g=cm_ptr_load<uint,OPG>((uint*)gt_pqs,pe_byte+j*256+1*64);
+            vector<uint,OPG> q2g=cm_ptr_load<uint,OPG>((uint*)gt_pqs,pe_byte+j*256+2*64);
+            vector<uint,OPG> q3g=cm_ptr_load<uint,OPG>((uint*)gt_pqs,pe_byte+j*256+3*64);
+            vector<uint,16> in_u32=cm_ptr_load<uint,16>((uint*)inputs,in_byte+j*64);
+            vector<half,32> in32h=in_u32.format<half>(); vector<float,32> in32=in32h;
+            float isum_j=cm_sum<float>(in32);
+            vector<float,OPG> sub_up  = q4k_subblock(q0u,q1u,q2u,q3u,in32);
+            vector<float,OPG> sub_gate= q4k_subblock(q0g,q1g,q2g,q3g,in32);
+            acc_up   += scale_j  * sub_up   - minv_j  * isum_j;
+            acc_gate += gscale_j * sub_gate - gminv_j * isum_j;
+        }
+    }
+    vector<float,OPG> sig = 1.0f / (1.0f + cm_exp(-acc_gate * 1.4426950408889634f));
+    vector<float,OPG> result = (sig * acc_gate) * acc_up;
+    cm_ptr_store<float,OPG>((float*)outputs, (t*output_len+h*OPG)*(uint)sizeof(float), result);
+}

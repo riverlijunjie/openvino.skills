@@ -1,0 +1,241 @@
+/*
+ * gemm_q6k_slim.cm — Dense Q6_K GEMM, unified layout (v3).
+ *
+ * UNIFIED: fp16 inputs, SG-transposed weights, REAL cm_dpas systolic engine
+ * (SYCL Q6K slim also uses XMX dpas -- gemm_q6k_slim_xmx_xe2 in
+ * sycl_gguf_kernel/gemm_q6k_L1_slim.xmx-xe2.cpp). OPG=16 (unified, vs
+ * SYCL's OPG_Q6K_SLIM=32) keeps the same weight layout as all other kernels.
+ *
+ * Converted from sycl_gguf_kernel/gemm_q6k_L1_slim.xmx-xe2.cpp.
+ *
+ * == Weight layout == (IDENTICAL to gemv_q6k_sg.cm and gemm_q6k_full.cm)
+ *   pql_T: num_blocks * OPG * 128 bytes
+ *   pqh_T: num_blocks * OPG * 64 bytes
+ *   ps_T:  num_blocks * OPG * 16 bytes
+ *   pd_T:  num_blocks * OPG * 2 bytes
+ *   weights = pql_T || pqh_T || ps_T || pd_T
+ *
+ * == Input == fp16 [token_len * input_len]
+ *
+ * == Dispatch ==
+ *   global (threads) = (output_len/OPG * nbpr, ceil(token_len/TOKENS_PER_TILE))   2D
+ *   local  (threads)  = (nbpr, 1)
+ *   TOKENS_PER_TILE = 8 (dpas RepeatCount)
+ */
+
+#include <cm/cm.h>
+#include <cm/cmtl.h>
+
+#pragma OPENCL EXTENSION cl_khr_fp16 : enable
+
+#define OPG 16
+#define MAX_NBPR 64
+#define TOKENS_PER_TILE 8
+
+/* Build VNNI tiles Blo/Bhi for Q6K sub-block j, chunk c from SG-transposed layout.
+ * HL, HH: pqh_T lanes for lo/hi halves of this (blk, j).
+ * clo_j, chi_j: per-row scale × d for lo/hi halves.
+ * Blo/Bhi: output VNNI tiles [sd=0..7][2*n+{0,1}] for SystolicDepth=8, N=OPG. */
+_GENX_ inline void q6k_vnni_chunk_sg(
+    uchar* pql_base, uint pql_byte, int j, int c,
+    vector<uint, OPG> HL, vector<uint, OPG> HH,
+    vector<float, OPG> clo_j, vector<float, OPG> chi_j,
+    vector_ref<half, 8*32> Blo, vector_ref<half, 8*32> Bhi)
+{
+    /* lo nibbles from pql_T (identical to Q4K pqs_T layout) */
+    vector<uint, OPG> q = cm_ptr_load<uint, OPG>((uint*)pql_base, pql_byte + j*256 + c*64);
+
+    /* Upper-2-bit shift = 2c + 8*k3 where k3 = 0..3 is offset within chunk */
+    /* K-pair (4c+0, 4c+1): VNNI sd = 2c */
+    {
+        vector<float, OPG> raw0 = (q & 0xFu); raw0 += ((HL >> (2*c + 8*0)) & 3u) << 4;
+        vector<float, OPG> raw1 = ((q >> 8) & 0xFu); raw1 += ((HL >> (2*c + 8*1)) & 3u) << 4;
+        vector<half, OPG> wh0 = (raw0 - 32.0f) * clo_j;
+        vector<half, OPG> wh1 = (raw1 - 32.0f) * clo_j;
+        Blo.select<OPG, 2>((2*c+0)*32 + 0) = wh0;
+        Blo.select<OPG, 2>((2*c+0)*32 + 1) = wh1;
+    }
+    /* K-pair (4c+2, 4c+3): VNNI sd = 2c+1 */
+    {
+        vector<float, OPG> raw2 = ((q >> 16) & 0xFu); raw2 += ((HL >> (2*c + 8*2)) & 3u) << 4;
+        vector<float, OPG> raw3 = ((q >> 24) & 0xFu); raw3 += ((HL >> (2*c + 8*3)) & 3u) << 4;
+        vector<half, OPG> wh2 = (raw2 - 32.0f) * clo_j;
+        vector<half, OPG> wh3 = (raw3 - 32.0f) * clo_j;
+        Blo.select<OPG, 2>((2*c+1)*32 + 0) = wh2;
+        Blo.select<OPG, 2>((2*c+1)*32 + 1) = wh3;
+    }
+    /* hi K-pair (4c+16, 4c+17): Bhi sd = 2c */
+    {
+        vector<float, OPG> raw16 = ((q >> 4) & 0xFu); raw16 += ((HH >> (2*c + 8*0)) & 3u) << 4;
+        vector<float, OPG> raw17 = ((q >> 12) & 0xFu); raw17 += ((HH >> (2*c + 8*1)) & 3u) << 4;
+        vector<half, OPG> wh16 = (raw16 - 32.0f) * chi_j;
+        vector<half, OPG> wh17 = (raw17 - 32.0f) * chi_j;
+        Bhi.select<OPG, 2>((2*c+0)*32 + 0) = wh16;
+        Bhi.select<OPG, 2>((2*c+0)*32 + 1) = wh17;
+    }
+    /* hi K-pair (4c+18, 4c+19): Bhi sd = 2c+1 */
+    {
+        vector<float, OPG> raw18 = ((q >> 20) & 0xFu); raw18 += ((HH >> (2*c + 8*2)) & 3u) << 4;
+        vector<float, OPG> raw19 = ((q >> 28) & 0xFu); raw19 += ((HH >> (2*c + 8*3)) & 3u) << 4;
+        vector<half, OPG> wh18 = (raw18 - 32.0f) * chi_j;
+        vector<half, OPG> wh19 = (raw19 - 32.0f) * chi_j;
+        Bhi.select<OPG, 2>((2*c+1)*32 + 0) = wh18;
+        Bhi.select<OPG, 2>((2*c+1)*32 + 1) = wh19;
+    }
+}
+
+extern "C" _GENX_MAIN_ void gemm_q6k_slim(
+    half*  inputs  [[type("svmptr_t")]],   /* [token_len * input_len]  fp16 */
+    uchar* weights [[type("svmptr_t")]],   /* pql_T||pqh_T||ps_T||pd_T      */
+    float* outputs [[type("svmptr_t")]],   /* [token_len * output_len] fp32 */
+    uint token_len,
+    uint input_len,
+    uint output_len)
+{
+    const uint nbpr       = input_len / 256;
+    const uint num_blocks = input_len * output_len / 256;
+
+    cm_slm_init(MAX_NBPR * TOKENS_PER_TILE * OPG * sizeof(float));
+    uint slm = cm_slm_alloc(MAX_NBPR * TOKENS_PER_TILE * OPG * sizeof(float));
+
+    const uint h  = cm_group_id(0);
+    const uint hh = cm_local_id(0);
+    const uint t  = cm_group_id(1);
+
+    const uint tile_base = t * TOKENS_PER_TILE;
+    const uint tile_len  = (tile_base + TOKENS_PER_TILE <= token_len)
+                          ? TOKENS_PER_TILE : (token_len - tile_base);
+
+    uchar* pql_base = weights;
+    uchar* pqh_base = weights + num_blocks * 128u;
+    uchar* ps_base  = weights + num_blocks * 192u;
+    uchar* pd_base  = weights + num_blocks * 208u;
+
+    const uint blk      = h * nbpr + hh;
+    const uint pql_byte = blk * (OPG * 128u);
+    const uint pqh_byte = blk * (OPG * 64u);
+    const uint ps_byte  = blk * (OPG * 16u);
+    const uint pd_byte  = blk * (OPG * 2u);
+
+    /* Load per-row fp16 super-scale d */
+    vector<uint, OPG/2> pd_u = cm_ptr_load<uint, OPG/2>((uint*)pd_base, pd_byte);
+    vector<half, OPG> dh = pd_u.format<half>();
+    vector<float, OPG> dF; dF = dh;
+
+    /* Gather activation tile [TOKENS_PER_TILE, 256] fp16 */
+    vector<half, TOKENS_PER_TILE * 256> Atile = (half)0.0f;
+    #pragma unroll
+    for (uint tt = 0; tt < TOKENS_PER_TILE; tt++) {
+        if (tile_base + tt < token_len) {
+            uint ib = ((tile_base + tt) * input_len + hh * 256u) * (uint)sizeof(half);
+            vector<uint, 64> u0 = cm_ptr_load<uint, 64>((uint*)inputs, ib);
+            vector<uint, 64> u1 = cm_ptr_load<uint, 64>((uint*)inputs, ib + 64u * (uint)sizeof(uint));
+            Atile.select<128, 1>(tt * 256)       = u0.format<half>();
+            Atile.select<128, 1>(tt * 256 + 128) = u1.format<half>();
+        }
+    }
+
+    vector<float, TOKENS_PER_TILE * OPG> acc = 0.0f;
+
+    #pragma unroll
+    for (int j = 0; j < 8; j++) {
+        /* Load scale factors: lo half (sc[2j]) and hi half (sc[2j+1]) per row */
+        vector<uint, OPG/4> sc_lo_u = cm_ptr_load<uint, OPG/4>((uint*)ps_base, ps_byte + (2*j+0)*16);
+        vector<uint, OPG/4> sc_hi_u = cm_ptr_load<uint, OPG/4>((uint*)ps_base, ps_byte + (2*j+1)*16);
+        vector<char, OPG> sc_lo = sc_lo_u.format<char>();
+        vector<char, OPG> sc_hi = sc_hi_u.format<char>();
+        vector<float, OPG> sc_lo_f, sc_hi_f; sc_lo_f = sc_lo; sc_hi_f = sc_hi;
+        vector<float, OPG> clo_j = dF * sc_lo_f;
+        vector<float, OPG> chi_j = dF * sc_hi_f;
+
+        /* Load HL and HH for this sub-block j */
+        vector<uint, OPG> HL = cm_ptr_load<uint, OPG>((uint*)pqh_base, pqh_byte + (j*2+0)*64);
+        vector<uint, OPG> HH = cm_ptr_load<uint, OPG>((uint*)pqh_base, pqh_byte + (j*2+1)*64);
+
+        /* Build VNNI weight tiles for lo (Blo) and hi (Bhi) halves of sub-block j */
+        vector<half, 8*32> Blo = (half)0.0f, Bhi = (half)0.0f;
+        #pragma unroll
+        for (int c = 0; c < 4; c++)
+            q6k_vnni_chunk_sg(pql_base, pql_byte, j, c, HL, HH, clo_j, chi_j, Blo, Bhi);
+
+        /* Activation operand: [TOKENS_PER_TILE, 16] for lo and hi halves */
+        vector<half, TOKENS_PER_TILE * 16> Alo, Ahi;
+        #pragma unroll
+        for (uint tt = 0; tt < TOKENS_PER_TILE; tt++) {
+            Alo.select<16, 1>(tt * 16) = Atile.select<16, 1>(tt * 256 + j * 32 + 0);
+            Ahi.select<16, 1>(tt * 16) = Atile.select<16, 1>(tt * 256 + j * 32 + 16);
+        }
+
+        acc = cm_dpas<CM_PRECISION_HF, CM_PRECISION_HF, 8, TOKENS_PER_TILE>(acc, Blo.format<int32_t>(), Alo.format<int32_t>());
+        acc = cm_dpas<CM_PRECISION_HF, CM_PRECISION_HF, 8, TOKENS_PER_TILE>(acc, Bhi.format<int32_t>(), Ahi.format<int32_t>());
+    }
+
+    cm_slm_block_write(slm, hh * TOKENS_PER_TILE * OPG * sizeof(float), acc.format<float>());
+    cm_fence(CM_LOCAL_BARRIER);
+    cm_barrier();
+
+    if (hh == 0) {
+        vector<float, TOKENS_PER_TILE * OPG> total = 0.0f;
+        for (uint k = 0; k < nbpr; k++) {
+            vector<float, TOKENS_PER_TILE * OPG> part;
+            cm_slm_block_read(slm, GENX_NONE, k * TOKENS_PER_TILE * OPG * sizeof(float), part.format<float>());
+            total += part;
+        }
+        #pragma unroll
+        for (uint tt = 0; tt < TOKENS_PER_TILE; tt++) {
+            if (tile_base + tt < token_len) {
+                cm_ptr_store<float, OPG>((float*)outputs,
+                    ((tile_base + tt) * output_len + h * OPG) * (uint)sizeof(float),
+                    total.select<OPG, 1>(tt * OPG));
+            }
+        }
+    }
+}
+
+
+#include <cm/cm.h>
+
+#define OPG 16
+#define MAX_NBPR 64
+
+/* One Q6_K sub-block (32 raw weight codes) dot product for a single output
+ * row. shift table (same as the SYCL/OpenCL constant):
+ *   {0,8,16,24,2,10,18,26,4,12,20,28,6,14,22,30} */
+_GENX_ inline float q6k_block_dot(uchar* ql_ptr, uchar* qh_ptr,
+                                   char* sc, float d, vector<float, 32> in_j[8])
+{
+    vector<uint, 16> SH;
+    SH[0]=0;  SH[1]=8;  SH[2]=16; SH[3]=24;
+    SH[4]=2;  SH[5]=10; SH[6]=18; SH[7]=26;
+    SH[8]=4;  SH[9]=12; SH[10]=20; SH[11]=28;
+    SH[12]=6; SH[13]=14; SH[14]=22; SH[15]=30;
+
+    float acc = 0.0f;
+    #pragma unroll
+    for (int j = 0; j < 8; j++) {
+        float clo = d * (float)sc[2 * j];
+        float chi = d * (float)sc[2 * j + 1];
+
+        vector<uint, 4>  qb_u = cm_ptr_load<uint, 4>((uint*)ql_ptr, j * 16);
+        vector<uchar, 16> qb = qb_u.format<uchar>();
+        uint Hlo = cm_ptr_load<uint, 1>((uint*)qh_ptr, j * 8 + 0)[0];
+        uint Hhi = cm_ptr_load<uint, 1>((uint*)qh_ptr, j * 8 + 4)[0];
+        vector<uint, 16> Hlov = Hlo, Hhiv = Hhi;
+
+        vector<uint, 16> bit_lo = (Hlov >> SH) & 3u;
+        vector<uint, 16> bit_hi = (Hhiv >> SH) & 3u;
+        vector<float, 16> bit_lo_f, bit_hi_f;
+        bit_lo_f = bit_lo; bit_hi_f = bit_hi;
+
+        vector<float, 16> wlo, whi;
+        wlo = (qb & 0x0f); wlo += bit_lo_f * 16.0f;
+        whi = ((qb >> 4) & 0x0f); whi += bit_hi_f * 16.0f;
+
+        vector<float, 16> in_lo = in_j[j].select<16, 1>(0);
+        vector<float, 16> in_hi = in_j[j].select<16, 1>(16);
+        float acc_lo = cm_sum<float>((wlo - 32.0f) * in_lo);
+        float acc_hi = cm_sum<float>((whi - 32.0f) * in_hi);
+        acc += clo * acc_lo + chi * acc_hi;
+    }
+    return acc;
+}

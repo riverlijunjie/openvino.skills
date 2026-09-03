@@ -1,0 +1,288 @@
+/*
+ * moe_gemv_q6k_sg.cm — MoE Q6_K GEMV (CM / C-for-Metal port).
+ *
+ * Converted from sycl_gguf_kernel/gemv_q6k_L1.xve.cpp
+ * (runGroupUpAndGateVecQ4KL1-equivalent logic reused from gemv_q6k_sg.cm),
+ * using the same "SG-transposed" per-expert weight layout as the reference
+ * OpenCL port (/mnt/river/ovmx/ocl_gguf_kernel/moe_gemv_q6k_sg.cl).
+ *
+ * == Per-expert weight layout ==
+ *   expert_size = num_blocks * 210
+ *     (pql_T:128B || pqh_T:64B || ps_T:16B || pd_T:2B per block)
+ *
+ * == Dispatch ==
+ *   group_up_gate_q6k_sg: global=(output_len/OPG, KSPLIT, output_num*token_len), local=(1,KSPLIT,1)
+ *   down_merge_q6k_sg:    global=(output_len/OPG, KSPLIT, token_len),            local=(1,KSPLIT,1)
+ */
+
+#include <cm/cm.h>
+
+#define OPG 16
+
+#ifndef KSPLIT
+#define KSPLIT 1
+#endif
+
+#define W2_MASK 0x000F000Fu
+#define Q6_MASK 0x00300030u
+
+_GENX_ inline void q6k_subblock(
+        vector<uint, OPG> q0, vector<uint, OPG> q1,
+        vector<uint, OPG> q2, vector<uint, OPG> q3,
+        vector<uint, OPG> HL, vector<uint, OPG> HH,
+        vector<float, 32> in32,
+        vector_ref<float, OPG> vlo, vector_ref<float, OPG> vhi)
+{
+    vector<uint, OPG> a, b, cc, d;
+    vector<float, OPG> wl0, wl1, wl2, wl3, wh0, wh1, wh2, wh3;
+    vlo = 0.0f; vhi = 0.0f;
+
+    a  = (q0 & W2_MASK) | (((HL << 4) >> 0) & Q6_MASK);
+    b  = ((q0 >> 8) & W2_MASK) | ((HL >> 4) & Q6_MASK);
+    cc = ((q0 >> 4) & W2_MASK) | (((HH << 4) >> 0) & Q6_MASK);
+    d  = ((q0 >> 12) & W2_MASK) | ((HH >> 4) & Q6_MASK);
+    wl0 = (a & 0xFFFFu); wl1 = (b & 0xFFFFu); wl2 = (a >> 16); wl3 = (b >> 16);
+    wh0 = (cc & 0xFFFFu); wh1 = (d & 0xFFFFu); wh2 = (cc >> 16); wh3 = (d >> 16);
+    vlo += wl0 * in32[0] + wl1 * in32[1] + wl2 * in32[2]  + wl3 * in32[3];
+    vhi += wh0 * in32[16] + wh1 * in32[17] + wh2 * in32[18] + wh3 * in32[19];
+
+    a  = (q1 & W2_MASK) | (((HL << 4) >> 2) & Q6_MASK);
+    b  = ((q1 >> 8) & W2_MASK) | ((HL >> 6) & Q6_MASK);
+    cc = ((q1 >> 4) & W2_MASK) | (((HH << 4) >> 2) & Q6_MASK);
+    d  = ((q1 >> 12) & W2_MASK) | ((HH >> 6) & Q6_MASK);
+    wl0 = (a & 0xFFFFu); wl1 = (b & 0xFFFFu); wl2 = (a >> 16); wl3 = (b >> 16);
+    wh0 = (cc & 0xFFFFu); wh1 = (d & 0xFFFFu); wh2 = (cc >> 16); wh3 = (d >> 16);
+    vlo += wl0 * in32[4] + wl1 * in32[5] + wl2 * in32[6]  + wl3 * in32[7];
+    vhi += wh0 * in32[20] + wh1 * in32[21] + wh2 * in32[22] + wh3 * in32[23];
+
+    a  = (q2 & W2_MASK) | (((HL << 4) >> 4) & Q6_MASK);
+    b  = ((q2 >> 8) & W2_MASK) | ((HL >> 8) & Q6_MASK);
+    cc = ((q2 >> 4) & W2_MASK) | (((HH << 4) >> 4) & Q6_MASK);
+    d  = ((q2 >> 12) & W2_MASK) | ((HH >> 8) & Q6_MASK);
+    wl0 = (a & 0xFFFFu); wl1 = (b & 0xFFFFu); wl2 = (a >> 16); wl3 = (b >> 16);
+    wh0 = (cc & 0xFFFFu); wh1 = (d & 0xFFFFu); wh2 = (cc >> 16); wh3 = (d >> 16);
+    vlo += wl0 * in32[8] + wl1 * in32[9] + wl2 * in32[10] + wl3 * in32[11];
+    vhi += wh0 * in32[24] + wh1 * in32[25] + wh2 * in32[26] + wh3 * in32[27];
+
+    a  = (q3 & W2_MASK) | (((HL << 4) >> 6) & Q6_MASK);
+    b  = ((q3 >> 8) & W2_MASK) | ((HL >> 10) & Q6_MASK);
+    cc = ((q3 >> 4) & W2_MASK) | (((HH << 4) >> 6) & Q6_MASK);
+    d  = ((q3 >> 12) & W2_MASK) | ((HH >> 10) & Q6_MASK);
+    wl0 = (a & 0xFFFFu); wl1 = (b & 0xFFFFu); wl2 = (a >> 16); wl3 = (b >> 16);
+    wh0 = (cc & 0xFFFFu); wh1 = (d & 0xFFFFu); wh2 = (cc >> 16); wh3 = (d >> 16);
+    vlo += wl0 * in32[12] + wl1 * in32[13] + wl2 * in32[14] + wl3 * in32[15];
+    vhi += wh0 * in32[28] + wh1 * in32[29] + wh2 * in32[30] + wh3 * in32[31];
+}
+
+_GENX_ inline void load_inputs(half* inputs, uint in_byte, vector<float, 32> in_j[8])
+{
+    #pragma unroll
+    for (int j = 0; j < 8; j++) {
+        vector<uint, 16>  u32  = cm_ptr_load<uint, 16>((uint*)inputs, in_byte + j * 64);
+        vector<half, 32>  h32  = u32.format<half>();
+        in_j[j] = h32;
+    }
+}
+
+/* Full Q6_K block dot product for all 8 sub-blocks, 16 output rows at once. */
+_GENX_ inline vector<float, OPG> q6k_block_acc(uchar* pql_base, uchar* pqh_base,
+        uchar* ps_base, uchar* pd_base,
+        uint pql_byte, uint pqh_byte, uint ps_byte, uint pd_byte,
+        vector<float, 32> in_j[8])
+{
+    vector<uint, OPG/2> pd_u = cm_ptr_load<uint, OPG/2>((uint*)pd_base, pd_byte);
+    vector<half, OPG> dh = pd_u.format<half>();
+    vector<float, OPG> dF;
+    dF = dh;
+
+    vector<float, OPG> acc = 0.0f;
+    #pragma unroll
+    for (int j = 0; j < 8; j++) {
+        vector<uint, OPG> q0 = cm_ptr_load<uint, OPG>((uint*)pql_base, pql_byte + j * 256 + 0 * 64);
+        vector<uint, OPG> q1 = cm_ptr_load<uint, OPG>((uint*)pql_base, pql_byte + j * 256 + 1 * 64);
+        vector<uint, OPG> q2 = cm_ptr_load<uint, OPG>((uint*)pql_base, pql_byte + j * 256 + 2 * 64);
+        vector<uint, OPG> q3 = cm_ptr_load<uint, OPG>((uint*)pql_base, pql_byte + j * 256 + 3 * 64);
+        vector<uint, OPG> HL = cm_ptr_load<uint, OPG>((uint*)pqh_base, pqh_byte + (j * 2 + 0) * 64);
+        vector<uint, OPG> HH = cm_ptr_load<uint, OPG>((uint*)pqh_base, pqh_byte + (j * 2 + 1) * 64);
+
+        vector<uint, OPG/4> sc_lo_u = cm_ptr_load<uint, OPG/4>((uint*)ps_base, ps_byte + (2 * j + 0) * 16);
+        vector<uint, OPG/4> sc_hi_u = cm_ptr_load<uint, OPG/4>((uint*)ps_base, ps_byte + (2 * j + 1) * 16);
+        vector<char, OPG> sc_lo = sc_lo_u.format<char>();
+        vector<char, OPG> sc_hi = sc_hi_u.format<char>();
+        vector<float, OPG> sc_lo_f, sc_hi_f;
+        sc_lo_f = sc_lo; sc_hi_f = sc_hi;
+        vector<float, OPG> clo_j = dF * sc_lo_f;
+        vector<float, OPG> chi_j = dF * sc_hi_f;
+
+        float sum_lo = cm_sum<float>(in_j[j].select<16, 1>(0));
+        float sum_hi = cm_sum<float>(in_j[j].select<16, 1>(16));
+
+        vector<float, OPG> vlo, vhi;
+        q6k_subblock(q0, q1, q2, q3, HL, HH, in_j[j], vlo, vhi);
+        acc += clo_j * (vlo - 32.0f * sum_lo) + chi_j * (vhi - 32.0f * sum_hi);
+    }
+    return acc;
+}
+
+/* =======================================================================
+ * Kernel 1: group_up_gate_q6k_sg
+ * ===================================================================== */
+extern "C" _GENX_MAIN_ void group_up_gate_q6k_sg(
+    half*  inputs  [[type("svmptr_t")]],
+    uchar* ups     [[type("svmptr_t")]],
+    uchar* gates   [[type("svmptr_t")]],
+    uint*  indexes [[type("svmptr_t")]],
+    float* outputs [[type("svmptr_t")]],
+    uint output_num,
+    uint aligned_output_num,
+    uint token_len,
+    uint input_len,
+    uint output_len)
+{
+    const uint nbpr        = input_len / 256;
+    const uint num_blocks  = input_len * output_len / 256;
+    const uint expert_size = num_blocks * 210;
+
+    const uint h  = cm_group_id(0);
+    const uint sg = cm_local_id(1);
+    const uint vt = cm_group_id(2);
+    const uint v  = vt % output_num;
+    const uint t  = vt / output_num;
+
+    const uint index = indexes ? indexes[t * aligned_output_num + v] : v;
+    uchar* up_pqs = ups   + index * expert_size;
+    uchar* gt_pqs = gates + index * expert_size;
+
+#if KSPLIT > 1
+    cm_slm_init(2 * KSPLIT * OPG * sizeof(float));
+    uint slm = cm_slm_alloc(2 * KSPLIT * OPG * sizeof(float));
+#endif
+
+    vector<float, OPG> up_acc = 0.0f, gate_acc = 0.0f;
+    const uint in_row_byte = t * input_len * (uint)sizeof(half);
+
+    for (uint bid = sg; bid < nbpr; bid += KSPLIT) {
+        const uint blk      = h * nbpr + bid;
+        const uint pql_byte = blk * (OPG * 128u);
+        const uint pqh_byte = blk * (OPG * 64u);
+        const uint ps_byte  = blk * (OPG * 16u);
+        const uint pd_byte  = blk * (OPG * 2u);
+        const uint in_byte  = in_row_byte + bid * 256u * (uint)sizeof(half);
+
+        vector<float, 32> in_j[8];
+        load_inputs(inputs, in_byte, in_j);
+
+        up_acc += q6k_block_acc(up_pqs, up_pqs + num_blocks * 128u,
+                                 up_pqs + num_blocks * 192u, up_pqs + num_blocks * 208u,
+                                 pql_byte, pqh_byte, ps_byte, pd_byte, in_j);
+        gate_acc += q6k_block_acc(gt_pqs, gt_pqs + num_blocks * 128u,
+                                   gt_pqs + num_blocks * 192u, gt_pqs + num_blocks * 208u,
+                                   pql_byte, pqh_byte, ps_byte, pd_byte, in_j);
+    }
+
+    vector<float, OPG> u_total = up_acc, g_total = gate_acc;
+#if KSPLIT > 1
+    cm_slm_block_write(slm, (sg * 2 + 0) * OPG * sizeof(float), up_acc.format<float>());
+    cm_slm_block_write(slm, (sg * 2 + 1) * OPG * sizeof(float), gate_acc.format<float>());
+    cm_fence(CM_LOCAL_BARRIER);
+    cm_barrier();
+    if (sg == 0) {
+        u_total = 0.0f; g_total = 0.0f;
+        #pragma unroll
+        for (int r = 0; r < KSPLIT; r++) {
+            vector<float, OPG> pu, pg;
+            cm_slm_block_read(slm, GENX_NONE, (r * 2 + 0) * OPG * sizeof(float), pu.format<float>());
+            cm_slm_block_read(slm, GENX_NONE, (r * 2 + 1) * OPG * sizeof(float), pg.format<float>());
+            u_total += pu; g_total += pg;
+        }
+#endif
+        vector<float, OPG> sig = 1.0f / (1.0f + cm_exp(-g_total * 1.4426950408889634f));
+        vector<float, OPG> result = (sig * g_total) * u_total;
+        cm_ptr_store<float, OPG>((float*)outputs,
+                ((t * output_num + v) * output_len + h * OPG) * (uint)sizeof(float), result);
+#if KSPLIT > 1
+    }
+#endif
+}
+
+/* =======================================================================
+ * Kernel 2: down_merge_q6k_sg
+ * ===================================================================== */
+extern "C" _GENX_MAIN_ void down_merge_q6k_sg(
+    half*  inputs     [[type("svmptr_t")]],
+    uchar* downs      [[type("svmptr_t")]],
+    uint*  indexes    [[type("svmptr_t")]],
+    float* efficients [[type("svmptr_t")]],
+    float* outputs    [[type("svmptr_t")]],
+    uint input_num,
+    uint aligned_input_num,
+    uint token_len,
+    uint input_len,
+    uint output_len,
+    int  is_acc)
+{
+    const uint nbpr        = input_len / 256;
+    const uint num_blocks  = input_len * output_len / 256;
+    const uint expert_size = num_blocks * 210;
+
+    const uint h  = cm_group_id(0);
+    const uint sg = cm_local_id(1);
+    const uint t  = cm_group_id(2);
+
+#if KSPLIT > 1
+    cm_slm_init(KSPLIT * OPG * sizeof(float));
+    uint slm = cm_slm_alloc(KSPLIT * OPG * sizeof(float));
+#endif
+
+    const uint total_iters = input_num * nbpr;
+    vector<float, OPG> acc = 0.0f;
+
+    for (uint idx = sg; idx < total_iters; idx += KSPLIT) {
+        const uint e   = idx / nbpr;
+        const uint bid = idx - e * nbpr;
+
+        const uint index      = indexes ? indexes[t * aligned_input_num + e] : e;
+        const float efficient  = efficients[t * aligned_input_num + e];
+
+        uchar* d_pqs = downs + index * expert_size;
+        const uint blk      = h * nbpr + bid;
+        const uint pql_byte = blk * (OPG * 128u);
+        const uint pqh_byte = blk * (OPG * 64u);
+        const uint ps_byte  = blk * (OPG * 16u);
+        const uint pd_byte  = blk * (OPG * 2u);
+        const uint in_byte  = (t * input_num * input_len + e * input_len + bid * 256u) * (uint)sizeof(half);
+
+        vector<float, 32> in_j[8];
+        load_inputs(inputs, in_byte, in_j);
+
+        vector<float, OPG> blk_acc = q6k_block_acc(d_pqs, d_pqs + num_blocks * 128u,
+                                 d_pqs + num_blocks * 192u, d_pqs + num_blocks * 208u,
+                                 pql_byte, pqh_byte, ps_byte, pd_byte, in_j);
+        acc += blk_acc * efficient;
+    }
+
+#if KSPLIT == 1
+    vector<float, OPG> total_out = acc;
+#else
+    cm_slm_block_write(slm, sg * OPG * sizeof(float), acc.format<float>());
+    cm_fence(CM_LOCAL_BARRIER);
+    cm_barrier();
+    if (sg == 0) {
+        vector<float, OPG> total_out = 0.0f;
+        #pragma unroll
+        for (int r = 0; r < KSPLIT; r++) {
+            vector<float, OPG> part;
+            cm_slm_block_read(slm, GENX_NONE, r * OPG * sizeof(float), part.format<float>());
+            total_out += part;
+        }
+#endif
+        const uint out_byte = (t * output_len + h * OPG) * (uint)sizeof(float);
+        if (is_acc) {
+            vector<float, OPG> prev = cm_ptr_load<float, OPG>((float*)outputs, out_byte);
+            total_out += prev;
+        }
+        cm_ptr_store<float, OPG>((float*)outputs, out_byte, total_out);
+#if KSPLIT > 1
+    }
+#endif
+}

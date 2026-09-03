@@ -1,0 +1,133 @@
+/*
+ * explore_gemm_fp16vnni.cm -- EXPLORATORY (structural rewrite, no SLM round-trip)
+ *
+ * Pure fp16 VNNI-weight dpas GEMM. NO decode, NO SLM, NO barrier. The Q4/Q5/Q6
+ * weights are assumed PRE-DECODED to fp16 VNNI tiles ONCE at model-load time
+ * (weights are static across all forward passes), so the per-call kernel only
+ * streams fp16 weights + fp16 activations straight into cm_dpas.
+ *
+ * WHY: the fused COOP_SLM kernels are SBID/SLM-latency bound at 52-63% roofline,
+ * stalling on the decode -> SLM-store -> barrier -> SLM-load -> dpas round-trip.
+ * Measured: removing SLM but keeping per-thread decode (v6) is 1.23-1.32x SLOWER
+ * because the 8x cooperative-decode saving outweighs the SLM cost. So the only
+ * way to remove the SLM round-trip AND win is to also remove the decode: hoist
+ * it out of the hot path entirely (one-time pre-decode). This kernel is that
+ * hot-path: it should approach the fp16 dpas roofline since nothing but loads
+ * and dpas remain.
+ *
+ * Weight buffer layout (produced once by the pre-decode pass / the test host):
+ *   W[h][kb][j][lohi] = one VNNI tile, 8*32 half = 512 B, contiguous.
+ *   tile_index(h,kb,j,lohi) = (((h*nbpr + kb)*8 + j)*2 + lohi)
+ *   byte offset             = tile_index * 512
+ *   Tile content (matches the fused kernel's decoded Blo/Bhi):
+ *     Blo[d][2n+kbit] = W_fp16[k = kb*256 + j*32 + (2d+kbit)      ][h*16 + n]
+ *     Bhi[d][2n+kbit] = W_fp16[k = kb*256 + j*32 + (16 + 2d+kbit) ][h*16 + n]
+ *   Total size = output_len * input_len * 2 bytes (one fp16 per weight).
+ *
+ * Dispatch (see explore_test_fp16vnni.py):
+ *   global (threads) = (output_len/OPG, ceil(ntiles/TOKEN_LOCAL)*TOKEN_LOCAL)
+ *   local  (threads) = (1, TOKEN_LOCAL)
+ *   ntiles = ceil(token_len / (8*TOKEN_GROUPS))
+ *   TOKEN_LOCAL only groups threads that share row-group h for L1 weight reuse;
+ *   it is NOT a correctness requirement here (no cooperative staging).
+ */
+
+#include <cm/cm.h>
+#include <cm/cmtl.h>
+
+#pragma OPENCL EXTENSION cl_khr_fp16 : enable
+
+#define OPG 16
+#define TOKENS_PER_TILE 8          /* dpas RepeatCount */
+
+#ifndef TOKEN_GROUPS
+#define TOKEN_GROUPS 4             /* dpas pairs fed by one weight tile */
+#endif
+#ifndef TOKEN_LOCAL
+#define TOKEN_LOCAL 8              /* threads/wg sharing row-group h (L1 reuse) */
+#endif
+#ifndef WPREF
+#define WPREF 0                    /* cache-prefetch the next K-block's weights */
+#endif
+
+#define TOKENS_PER_THREAD (TOKENS_PER_TILE * TOKEN_GROUPS)
+
+extern "C" _GENX_MAIN_ void gemm_fp16vnni(
+    half*  inputs  [[type("svmptr_t")]],   /* [token_len * input_len]  fp16 */
+    half*  weights [[type("svmptr_t")]],   /* pre-decoded fp16 VNNI tiles   */
+    float* outputs [[type("svmptr_t")]],   /* [token_len * output_len] fp32 */
+    uint token_len, uint input_len, uint output_len)
+{
+    const uint nbpr = input_len / 256;
+
+    const uint h   = cm_group_id(0);
+    const uint lid = cm_local_id(1);
+    const uint t   = cm_group_id(1) * TOKEN_LOCAL + lid;
+    const uint tile_base = t * TOKENS_PER_THREAD;
+
+    vector<float, TOKENS_PER_TILE * OPG> acc[TOKEN_GROUPS];
+    #pragma unroll
+    for (int tg = 0; tg < TOKEN_GROUPS; tg++) acc[tg] = 0.0f;
+
+    /* 2 blocks x [8 tokens x 16 halves]: one load yields [Alo | Ahi]. */
+    lsc::block_2d_desc<half, 2, TOKENS_PER_TILE, 16> b2dA(
+        inputs, token_len - 1, input_len * (uint)sizeof(half) - 1,
+        input_len * (uint)sizeof(half) - 1, 0, 0);
+
+    /* first tile index of this row-group's first K-block sub-block 0 lo */
+    for (uint kb = 0; kb < nbpr; kb++) {
+        const uint blk_tile0 = ((h * nbpr + kb) * 8u) * 2u;   /* (j=0,lo) */
+
+#if WPREF
+        if (kb + 1 < nbpr) {
+            const uint nxt = ((h * nbpr + kb + 1) * 8u) * 2u;
+            #pragma unroll
+            for (int p = 0; p < 4; p++)     /* 4 x 512B = 2KB of the 8KB K-block */
+                cm_ptr_prefetch<128, DataSize::U32, CacheHint::Cached, CacheHint::Cached>(
+                    (const unsigned*)weights, (nxt + (uint)p * 4u) * 512u);
+        }
+#endif
+
+        #pragma unroll
+        for (int j = 0; j < 8; j++) {
+            const uint tidx  = blk_tile0 + (uint)j * 2u;      /* lo tile index */
+            const uint blo_b = (tidx + 0u) * 512u;            /* byte offsets   */
+            const uint bhi_b = (tidx + 1u) * 512u;
+            /* one 512B VNNI tile = 128 uint; cm_ptr_load tops out well below
+             * that, so load each tile as 2 x 64-uint (256B) chunks. */
+            vector<uint, 128> rlo, rhi;
+            rlo.select<64,1>(0)  = cm_ptr_load<uint, 64>((uint*)weights, blo_b);
+            rlo.select<64,1>(64) = cm_ptr_load<uint, 64>((uint*)weights, blo_b + 256u);
+            rhi.select<64,1>(0)  = cm_ptr_load<uint, 64>((uint*)weights, bhi_b);
+            rhi.select<64,1>(64) = cm_ptr_load<uint, 64>((uint*)weights, bhi_b + 256u);
+            vector<half, 8*32> Blo = rlo.format<half>();
+            vector<half, 8*32> Bhi = rhi.format<half>();
+
+            #pragma unroll
+            for (int tg = 0; tg < TOKEN_GROUPS; tg++) {
+                vector<half, 2 * TOKENS_PER_TILE * 16> A2;
+                b2dA.set_block_y((int)(tile_base + tg * TOKENS_PER_TILE));
+                cm_load<lsc::Normal>(A2, b2dA.set_block_x((int)(kb * 256u) + j * 32));
+                auto Alo = A2.select<TOKENS_PER_TILE * 16, 1>(0);
+                auto Ahi = A2.select<TOKENS_PER_TILE * 16, 1>(TOKENS_PER_TILE * 16);
+                acc[tg] = cm_dpas<CM_PRECISION_HF,CM_PRECISION_HF,8,TOKENS_PER_TILE>(
+                              acc[tg], Blo.format<int32_t>(), Alo.format<int32_t>());
+                acc[tg] = cm_dpas<CM_PRECISION_HF,CM_PRECISION_HF,8,TOKENS_PER_TILE>(
+                              acc[tg], Bhi.format<int32_t>(), Ahi.format<int32_t>());
+            }
+        }
+    }
+
+    #pragma unroll
+    for (int tg = 0; tg < TOKEN_GROUPS; tg++) {
+        #pragma unroll
+        for (int i = 0; i < TOKENS_PER_TILE; i++) {
+            uint tok = tile_base + tg * TOKENS_PER_TILE + i;
+            if (tok < token_len) {
+                cm_ptr_store<float, OPG>((float*)outputs,
+                    (tok * output_len + h * OPG) * (uint)sizeof(float),
+                    acc[tg].select<OPG, 1>(i * OPG));
+            }
+        }
+    }
+}

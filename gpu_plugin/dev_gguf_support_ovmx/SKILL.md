@@ -9,8 +9,8 @@ When developing GGUF support feature, always include:
     - SPEC.md
 
 2. **Local repos**:
-    - OpenVINO repo: /home/ov2022/workspace/ovmx/openvino.mx
-    - OpenVINO GenAI repo: /home/ov2022/workspace/ovmx/openvino.genai.mx
+    - OpenVINO repo: /mnt/river/ovmx/openvino.pipeline.mx/thirdparty/openvino
+    - OpenVINO GenAI repo: /mnt/river/ovmx/openvino.pipeline.mx/thirdparty/openvino.genai
 
 3. **Implementation**:
     - Implement the GGUF support feature in the local openvino.mx and openvino.genai.mx repos.

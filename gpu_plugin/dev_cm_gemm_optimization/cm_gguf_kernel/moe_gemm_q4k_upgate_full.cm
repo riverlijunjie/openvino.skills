@@ -1,0 +1,151 @@
+/*
+ * moe_gemm_q4k_upgate_full.cm -- Fused Up+Gate+SiLU MoE GEMM, unified layout (v3).
+ * fp16 inputs, SG-transposed weights (pqs_T||psl_T each for ups/gates), cm_dpas.
+ * Dispatch: global=(N/OPG*nbpr, ceil(token_len/8)), local=(nbpr,1)
+ */
+
+#include <cm/cm.h>
+#include <cm/cmtl.h>
+#pragma OPENCL EXTENSION cl_khr_fp16 : enable
+
+#define OPG 16
+#define MAX_NBPR 64
+#define TOKENS_PER_TILE 8
+
+_GENX_ inline void q4k_vnni_chunk_sg(
+    uchar* pqs_base, uint pe_byte, int j, int c,
+    vector<float, OPG> scale_j, vector<float, OPG> minv_j,
+    vector_ref<half, 8*32> Blo, vector_ref<half, 8*32> Bhi)
+{
+    vector<uint, OPG> q = cm_ptr_load<uint, OPG>((uint*)pqs_base, pe_byte + j*256 + c*64);
+    { vector<float,OPG> w=(q&0xFu);        w=w*scale_j-minv_j; Blo.select<OPG,2>((2*c+0)*32+0)=vector<half,OPG>(w); }
+    { vector<float,OPG> w=((q>>8)&0xFu);   w=w*scale_j-minv_j; Blo.select<OPG,2>((2*c+0)*32+1)=vector<half,OPG>(w); }
+    { vector<float,OPG> w=((q>>16)&0xFu);  w=w*scale_j-minv_j; Blo.select<OPG,2>((2*c+1)*32+0)=vector<half,OPG>(w); }
+    { vector<float,OPG> w=((q>>24)&0xFu);  w=w*scale_j-minv_j; Blo.select<OPG,2>((2*c+1)*32+1)=vector<half,OPG>(w); }
+    { vector<float,OPG> w=((q>>4)&0xFu);   w=w*scale_j-minv_j; Bhi.select<OPG,2>((2*c+0)*32+0)=vector<half,OPG>(w); }
+    { vector<float,OPG> w=((q>>12)&0xFu);  w=w*scale_j-minv_j; Bhi.select<OPG,2>((2*c+0)*32+1)=vector<half,OPG>(w); }
+    { vector<float,OPG> w=((q>>20)&0xFu);  w=w*scale_j-minv_j; Bhi.select<OPG,2>((2*c+1)*32+0)=vector<half,OPG>(w); }
+    { vector<float,OPG> w=((q>>28)&0xFu);  w=w*scale_j-minv_j; Bhi.select<OPG,2>((2*c+1)*32+1)=vector<half,OPG>(w); }
+}
+
+extern "C" _GENX_MAIN_ void moe_gemm_q4k_upgate_full(
+    half*  inputs  [[type("svmptr_t")]],
+    uchar* ups     [[type("svmptr_t")]],   /* pqs_T || psl_T (up) */
+    uchar* gates   [[type("svmptr_t")]],   /* pqs_T || psl_T (gate) */
+    float* outputs [[type("svmptr_t")]],
+    uint token_len, uint input_len, uint output_len)
+{
+    const uint nbpr       = input_len / 256;
+    const uint num_blocks = input_len * output_len / 256;
+
+    cm_slm_init(2 * MAX_NBPR * TOKENS_PER_TILE * OPG * sizeof(float));
+    uint slm_up   = cm_slm_alloc(MAX_NBPR * TOKENS_PER_TILE * OPG * sizeof(float));
+    uint slm_gate = cm_slm_alloc(MAX_NBPR * TOKENS_PER_TILE * OPG * sizeof(float));
+
+    const uint h  = cm_group_id(0);
+    const uint hh = cm_local_id(0);
+    const uint t  = cm_group_id(1);
+
+    const uint tile_base = t * TOKENS_PER_TILE;
+    const uint tile_len  = (tile_base + TOKENS_PER_TILE <= token_len)
+                          ? TOKENS_PER_TILE : (token_len - tile_base);
+
+    uchar* up_pqs = ups;   uchar* up_psl = ups   + num_blocks * 128u;
+    uchar* gt_pqs = gates; uchar* gt_psl = gates + num_blocks * 128u;
+
+    const uint blk      = h * nbpr + hh;
+    const uint pe_byte  = blk * (OPG * 128u);
+    const uint psl_byte = blk * (OPG * 16u);
+
+    /* Load up scales */
+    vector<uint,OPG> sl=cm_ptr_load<uint,OPG>((uint*)up_psl,psl_byte+0);
+    vector<uint,OPG> ml=cm_ptr_load<uint,OPG>((uint*)up_psl,psl_byte+64);
+    vector<uint,OPG/2> sh_u=cm_ptr_load<uint,OPG/2>((uint*)up_psl,psl_byte+128);
+    vector<uint,OPG/2> mh_u=cm_ptr_load<uint,OPG/2>((uint*)up_psl,psl_byte+160);
+    vector<uint,OPG/2> d_u=cm_ptr_load<uint,OPG/2>((uint*)up_psl,psl_byte+192);
+    vector<uint,OPG/2> dn_u=cm_ptr_load<uint,OPG/2>((uint*)up_psl,psl_byte+224);
+    vector<ushort,OPG> sh16=sh_u.format<ushort>(),mh16=mh_u.format<ushort>();
+    vector<half,OPG> dh=d_u.format<half>(),dminh=dn_u.format<half>();
+    vector<uint,OPG> shu=sh16,mhu=mh16; vector<float,OPG> dF,dminF; dF=dh; dminF=dminh;
+
+    /* Load gate scales */
+    vector<uint,OPG> gsl=cm_ptr_load<uint,OPG>((uint*)gt_psl,psl_byte+0);
+    vector<uint,OPG> gml=cm_ptr_load<uint,OPG>((uint*)gt_psl,psl_byte+64);
+    vector<uint,OPG/2> gsh_u=cm_ptr_load<uint,OPG/2>((uint*)gt_psl,psl_byte+128);
+    vector<uint,OPG/2> gmh_u=cm_ptr_load<uint,OPG/2>((uint*)gt_psl,psl_byte+160);
+    vector<uint,OPG/2> gd_u=cm_ptr_load<uint,OPG/2>((uint*)gt_psl,psl_byte+192);
+    vector<uint,OPG/2> gdn_u=cm_ptr_load<uint,OPG/2>((uint*)gt_psl,psl_byte+224);
+    vector<ushort,OPG> gsh16=gsh_u.format<ushort>(),gmh16=gmh_u.format<ushort>();
+    vector<half,OPG> gdh=gd_u.format<half>(),gdminh=gdn_u.format<half>();
+    vector<uint,OPG> gshu=gsh16,gmhu=gmh16; vector<float,OPG> gdF,gdminF; gdF=gdh; gdminF=gdminh;
+
+    vector<half, TOKENS_PER_TILE * 256> Atile = (half)0.0f;
+    #pragma unroll
+    for (uint tt = 0; tt < TOKENS_PER_TILE; tt++) {
+        if (tile_base + tt < token_len) {
+            uint ib = ((tile_base + tt) * input_len + hh * 256u) * (uint)sizeof(half);
+            vector<uint, 64> u0 = cm_ptr_load<uint, 64>((uint*)inputs, ib);
+            vector<uint, 64> u1 = cm_ptr_load<uint, 64>((uint*)inputs, ib + 64u * (uint)sizeof(uint));
+            Atile.select<128,1>(tt*256)     = u0.format<half>();
+            Atile.select<128,1>(tt*256+128) = u1.format<half>();
+        }
+    }
+
+    vector<float, TOKENS_PER_TILE * OPG> acc_up=0.0f, acc_gate=0.0f;
+    #pragma unroll
+    for (int j = 0; j < 8; j++) {
+        vector<uint,OPG> sq=((sl>>(j*4))&0xFu)|(((shu>>(j*2))&0x3u)<<4);
+        vector<uint,OPG> mq=((ml>>(j*4))&0xFu)|(((mhu>>(j*2))&0x3u)<<4);
+        vector<float,OPG> sqf,mqf; sqf=sq; mqf=mq;
+        vector<float,OPG> scale_j=sqf*dF, minv_j=mqf*dminF;
+
+        vector<uint,OPG> gsq=((gsl>>(j*4))&0xFu)|(((gshu>>(j*2))&0x3u)<<4);
+        vector<uint,OPG> gmq=((gml>>(j*4))&0xFu)|(((gmhu>>(j*2))&0x3u)<<4);
+        vector<float,OPG> gsqf,gmqf; gsqf=gsq; gmqf=gmq;
+        vector<float,OPG> gscale_j=gsqf*gdF, gminv_j=gmqf*gdminF;
+
+        vector<half,8*32> Blo_up=(half)0.0f, Bhi_up=(half)0.0f;
+        vector<half,8*32> Blo_gt=(half)0.0f, Bhi_gt=(half)0.0f;
+        #pragma unroll
+        for (int c = 0; c < 4; c++) {
+            q4k_vnni_chunk_sg(up_pqs, pe_byte, j, c, scale_j,  minv_j,  Blo_up, Bhi_up);
+            q4k_vnni_chunk_sg(gt_pqs, pe_byte, j, c, gscale_j, gminv_j, Blo_gt, Bhi_gt);
+        }
+
+        vector<half, TOKENS_PER_TILE*16> Alo, Ahi;
+        #pragma unroll
+        for (uint tt = 0; tt < TOKENS_PER_TILE; tt++) {
+            Alo.select<16,1>(tt*16) = Atile.select<16,1>(tt*256+j*32+0);
+            Ahi.select<16,1>(tt*16) = Atile.select<16,1>(tt*256+j*32+16);
+        }
+        acc_up   = cm_dpas<CM_PRECISION_HF,CM_PRECISION_HF,8,TOKENS_PER_TILE>(acc_up,   Blo_up.format<int32_t>(), Alo.format<int32_t>());
+        acc_up   = cm_dpas<CM_PRECISION_HF,CM_PRECISION_HF,8,TOKENS_PER_TILE>(acc_up,   Bhi_up.format<int32_t>(), Ahi.format<int32_t>());
+        acc_gate = cm_dpas<CM_PRECISION_HF,CM_PRECISION_HF,8,TOKENS_PER_TILE>(acc_gate, Blo_gt.format<int32_t>(), Alo.format<int32_t>());
+        acc_gate = cm_dpas<CM_PRECISION_HF,CM_PRECISION_HF,8,TOKENS_PER_TILE>(acc_gate, Bhi_gt.format<int32_t>(), Ahi.format<int32_t>());
+    }
+
+    cm_slm_block_write(slm_up,   hh * TOKENS_PER_TILE * OPG * sizeof(float), acc_up.format<float>());
+    cm_slm_block_write(slm_gate, hh * TOKENS_PER_TILE * OPG * sizeof(float), acc_gate.format<float>());
+    cm_fence(CM_LOCAL_BARRIER);
+    cm_barrier();
+
+    if (hh == 0) {
+        vector<float, TOKENS_PER_TILE * OPG> tot_up=0.0f, tot_gate=0.0f;
+        for (uint k=0; k<nbpr; k++) {
+            vector<float,TOKENS_PER_TILE*OPG> pu, pg;
+            cm_slm_block_read(slm_up,   GENX_NONE, k*TOKENS_PER_TILE*OPG*sizeof(float), pu.format<float>());
+            cm_slm_block_read(slm_gate, GENX_NONE, k*TOKENS_PER_TILE*OPG*sizeof(float), pg.format<float>());
+            tot_up += pu; tot_gate += pg;
+        }
+        vector<float,TOKENS_PER_TILE*OPG> sig = 1.0f / (1.0f + cm_exp(-tot_gate * 1.4426950408889634f));
+        vector<float,TOKENS_PER_TILE*OPG> result = (sig * tot_gate) * tot_up;
+        #pragma unroll
+        for (uint tt = 0; tt < TOKENS_PER_TILE; tt++) {
+            if (tile_base + tt < token_len) {
+                cm_ptr_store<float,OPG>((float*)outputs,
+                    ((tile_base+tt)*output_len+h*OPG)*(uint)sizeof(float),
+                    result.select<OPG,1>(tt*OPG));
+            }
+        }
+    }
+}

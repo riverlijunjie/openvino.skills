@@ -1,0 +1,182 @@
+/*
+ * gemv_q5k_sg.cm — Dense Q5_K GEMV/GEMM (CM / C-for-Metal port).
+ *
+ * Converted from sycl_gguf_kernel/gemv_q5k_L1.xve-xe2.cpp using the same
+ * "SG-transposed" weight layout as gemv_q4k_sg.cm / the reference OpenCL port
+ * (see /mnt/river/ovmx/ocl_gguf_kernel/gemv_q5k_sg.cl). One CM thread computes
+ * all OPG=16 output rows of a row-group via vector<float,OPG> SIMD arithmetic.
+ *
+ * == Weight layout ==
+ *   pqs_T: num_blocks * 128 bytes  (low nibbles, identical to Q4_K pqs_T)
+ *   pqh_T: num_blocks * 32  bytes  (5th bit per weight, 4 bytes/sub-block/lane)
+ *   psl_T: num_blocks * 16  bytes  (SoA scale/min, identical to Q4_K psl_T)
+ *   weights = pqs_T || pqh_T || psl_T
+ *
+ * == Dispatch ==
+ *   global (threads) = (output_len/OPG, KSPLIT, token_len)
+ *   local  (threads)  = (1, KSPLIT, 1)
+ *
+ * Use pack_qk_pqs_sg, pack_q5k_pqh_sg, pack_qk_psl_sg from test_dense_gemv.py.
+ */
+
+#include <cm/cm.h>
+
+#define OPG 16
+
+#ifndef KSPLIT
+#define KSPLIT 1
+#endif
+
+#define W2_MASK 0x000F000Fu
+#define QH_MASK 0x00100010u
+
+/* Dequantise+accumulate one Q5_K sub-block (32 weights, 16 output rows at once).
+ * q0..q3: packed low-nibble-pair words for chunks c=0..3.
+ * H: packed 5th-bit word for this sub-block (one uint32 per output row).
+ * in32: the 32 shared fp32 activations for this sub-block. */
+_GENX_ inline vector<float, OPG> q5k_subblock(
+        vector<uint, OPG> q0, vector<uint, OPG> q1,
+        vector<uint, OPG> q2, vector<uint, OPG> q3,
+        vector<uint, OPG> H, vector<float, 32> in32)
+{
+    vector<float, OPG> acc = 0.0f;
+    vector<uint, OPG> a, b, c, d;
+    vector<float, OPG> wl0, wl1, wl2, wl3, wh0, wh1, wh2, wh3;
+
+    /* c = 0 */
+    a = (q0 & W2_MASK) | ((H << 4) & QH_MASK);
+    b = ((q0 >> 8) & W2_MASK) | ((H >> 4) & QH_MASK);
+    c = ((q0 >> 4) & W2_MASK) | ((H >> 0) & QH_MASK);
+    d = ((q0 >> 12) & W2_MASK) | ((H >> 8) & QH_MASK);
+    wl0 = (a & 0xFFFFu); wl1 = (b & 0xFFFFu); wl2 = (a >> 16); wl3 = (b >> 16);
+    wh0 = (c & 0xFFFFu); wh1 = (d & 0xFFFFu); wh2 = (c >> 16); wh3 = (d >> 16);
+    acc += wl0 * in32[0] + wl1 * in32[1] + wl2 * in32[2]  + wl3 * in32[3];
+    acc += wh0 * in32[16] + wh1 * in32[17] + wh2 * in32[18] + wh3 * in32[19];
+
+    /* c = 1 */
+    a = (q1 & W2_MASK) | ((H << 3) & QH_MASK);
+    b = ((q1 >> 8) & W2_MASK) | ((H >> 5) & QH_MASK);
+    c = ((q1 >> 4) & W2_MASK) | ((H >> 1) & QH_MASK);
+    d = ((q1 >> 12) & W2_MASK) | ((H >> 9) & QH_MASK);
+    wl0 = (a & 0xFFFFu); wl1 = (b & 0xFFFFu); wl2 = (a >> 16); wl3 = (b >> 16);
+    wh0 = (c & 0xFFFFu); wh1 = (d & 0xFFFFu); wh2 = (c >> 16); wh3 = (d >> 16);
+    acc += wl0 * in32[4] + wl1 * in32[5] + wl2 * in32[6]  + wl3 * in32[7];
+    acc += wh0 * in32[20] + wh1 * in32[21] + wh2 * in32[22] + wh3 * in32[23];
+
+    /* c = 2 */
+    a = (q2 & W2_MASK) | ((H << 2) & QH_MASK);
+    b = ((q2 >> 8) & W2_MASK) | ((H >> 6) & QH_MASK);
+    c = ((q2 >> 4) & W2_MASK) | ((H >> 2) & QH_MASK);
+    d = ((q2 >> 12) & W2_MASK) | ((H >> 10) & QH_MASK);
+    wl0 = (a & 0xFFFFu); wl1 = (b & 0xFFFFu); wl2 = (a >> 16); wl3 = (b >> 16);
+    wh0 = (c & 0xFFFFu); wh1 = (d & 0xFFFFu); wh2 = (c >> 16); wh3 = (d >> 16);
+    acc += wl0 * in32[8] + wl1 * in32[9] + wl2 * in32[10] + wl3 * in32[11];
+    acc += wh0 * in32[24] + wh1 * in32[25] + wh2 * in32[26] + wh3 * in32[27];
+
+    /* c = 3 */
+    a = (q3 & W2_MASK) | ((H << 1) & QH_MASK);
+    b = ((q3 >> 8) & W2_MASK) | ((H >> 7) & QH_MASK);
+    c = ((q3 >> 4) & W2_MASK) | ((H >> 3) & QH_MASK);
+    d = ((q3 >> 12) & W2_MASK) | ((H >> 11) & QH_MASK);
+    wl0 = (a & 0xFFFFu); wl1 = (b & 0xFFFFu); wl2 = (a >> 16); wl3 = (b >> 16);
+    wh0 = (c & 0xFFFFu); wh1 = (d & 0xFFFFu); wh2 = (c >> 16); wh3 = (d >> 16);
+    acc += wl0 * in32[12] + wl1 * in32[13] + wl2 * in32[14] + wl3 * in32[15];
+    acc += wh0 * in32[28] + wh1 * in32[29] + wh2 * in32[30] + wh3 * in32[31];
+
+    return acc;
+}
+
+extern "C" _GENX_MAIN_ void gemv_q5k_sg(
+    half*  inputs  [[type("svmptr_t")]],   /* [token_len * input_len]  fp16 */
+    uchar* weights [[type("svmptr_t")]],   /* pqs_T || pqh_T || psl_T       */
+    float* outputs [[type("svmptr_t")]],   /* [token_len * output_len] fp32 */
+    uint token_len,
+    uint input_len,
+    uint output_len)
+{
+    const uint nbpr       = input_len / 256;
+    const uint num_blocks = input_len * output_len / 256;
+
+    const uint h  = cm_group_id(0);
+    const uint sg = cm_local_id(1);
+    const uint t  = cm_group_id(2);
+
+    uchar* pqs_base = weights;
+    uchar* pqh_base = weights + num_blocks * 128u;
+    uchar* psl_base = weights + num_blocks * 160u;
+
+#if KSPLIT > 1
+    cm_slm_init(KSPLIT * OPG * sizeof(float));
+    uint slm = cm_slm_alloc(KSPLIT * OPG * sizeof(float));
+#endif
+
+    vector<float, OPG> acc = 0.0f;
+    const uint in_row_byte = t * input_len * (uint)sizeof(half);
+
+    for (uint bid = sg; bid < nbpr; bid += KSPLIT) {
+        const uint blk      = h * nbpr + bid;
+        const uint pe_byte  = blk * (OPG * 128u);
+        const uint pqh_byte = blk * (OPG * 32u);
+        const uint psl_byte = blk * (OPG * 16u);
+        const uint in_byte  = in_row_byte + bid * 256u * (uint)sizeof(half);
+
+        vector<uint, OPG>   sl    = cm_ptr_load<uint, OPG>((uint*)psl_base, psl_byte + 0);
+        vector<uint, OPG>   ml    = cm_ptr_load<uint, OPG>((uint*)psl_base, psl_byte + 64);
+        vector<uint, OPG/2> sh_u  = cm_ptr_load<uint, OPG/2>((uint*)psl_base, psl_byte + 128);
+        vector<uint, OPG/2> mh_u  = cm_ptr_load<uint, OPG/2>((uint*)psl_base, psl_byte + 160);
+        vector<uint, OPG/2> d_u   = cm_ptr_load<uint, OPG/2>((uint*)psl_base, psl_byte + 192);
+        vector<uint, OPG/2> dmn_u = cm_ptr_load<uint, OPG/2>((uint*)psl_base, psl_byte + 224);
+
+        vector<ushort, OPG> sh16  = sh_u.format<ushort>();
+        vector<ushort, OPG> mh16  = mh_u.format<ushort>();
+        vector<half, OPG>   dh    = d_u.format<half>();
+        vector<half, OPG>   dminh = dmn_u.format<half>();
+
+        vector<uint, OPG> shu = sh16;
+        vector<uint, OPG> mhu = mh16;
+        vector<float, OPG> dF, dminF;
+        dF = dh; dminF = dminh;
+
+        #pragma unroll
+        for (int j = 0; j < 8; j++) {
+            vector<uint, OPG> sq = ((sl >> (j * 4)) & 0xFu) | (((shu >> (j * 2)) & 0x3u) << 4);
+            vector<uint, OPG> mq = ((ml >> (j * 4)) & 0xFu) | (((mhu >> (j * 2)) & 0x3u) << 4);
+            vector<float, OPG> sqf, mqf;
+            sqf = sq; mqf = mq;
+            vector<float, OPG> scale_j = sqf * dF;
+            vector<float, OPG> minv_j  = mqf * dminF;
+
+            vector<uint, OPG> q0 = cm_ptr_load<uint, OPG>((uint*)pqs_base, pe_byte + j * 256 + 0 * 64);
+            vector<uint, OPG> q1 = cm_ptr_load<uint, OPG>((uint*)pqs_base, pe_byte + j * 256 + 1 * 64);
+            vector<uint, OPG> q2 = cm_ptr_load<uint, OPG>((uint*)pqs_base, pe_byte + j * 256 + 2 * 64);
+            vector<uint, OPG> q3 = cm_ptr_load<uint, OPG>((uint*)pqs_base, pe_byte + j * 256 + 3 * 64);
+            vector<uint, OPG> H  = cm_ptr_load<uint, OPG>((uint*)pqh_base, pqh_byte + j * 64);
+
+            vector<uint, 16>  in_u32 = cm_ptr_load<uint, 16>((uint*)inputs, in_byte + j * 64);
+            vector<half, 32>  in32h  = in_u32.format<half>();
+            vector<float, 32> in32   = in32h;
+            float isum_j = cm_sum<float>(in32);
+
+            vector<float, OPG> sub = q5k_subblock(q0, q1, q2, q3, H, in32);
+            acc += scale_j * sub - minv_j * isum_j;
+        }
+    }
+
+#if KSPLIT == 1
+    cm_ptr_store<float, OPG>((float*)outputs, (t * output_len + h * OPG) * (uint)sizeof(float), acc);
+#else
+    cm_slm_block_write(slm, sg * OPG * sizeof(float), acc.format<float>());
+    cm_fence(CM_LOCAL_BARRIER);
+    cm_barrier();
+    if (sg == 0) {
+        vector<float, OPG> total = 0.0f;
+        #pragma unroll
+        for (int r = 0; r < KSPLIT; r++) {
+            vector<float, OPG> part;
+            cm_slm_block_read(slm, GENX_NONE, r * OPG * sizeof(float), part.format<float>());
+            total += part;
+        }
+        cm_ptr_store<float, OPG>((float*)outputs, (t * output_len + h * OPG) * (uint)sizeof(float), total);
+    }
+#endif
+}
