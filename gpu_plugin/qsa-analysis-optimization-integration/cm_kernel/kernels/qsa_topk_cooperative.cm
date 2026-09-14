@@ -1,0 +1,144 @@
+// Copyright (c) 2026 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+// Exact WG-owned radix selection. Same arguments as qsa_topk_finalization.
+// GWS = [num_tokens * QSA_TOPK_WG,1,1], LWS = [QSA_TOPK_WG,1,1].
+// No candidate cap or peer global-memory round trips. All SLM offsets are bytes.
+#ifndef ATTR
+#define ATTR [[type("svmptr_t")]]
+#endif
+#include "qsa_score_common.hpp"
+#ifndef QSA_TOPK_WG
+#define QSA_TOPK_WG 16
+#endif
+#ifndef QSA_SCORE_ROW_CHUNK
+#define QSA_SCORE_ROW_CHUNK 0
+#endif
+
+extern "C" _GENX_MAIN_ void KERNEL_NAME(
+    const float* block_scores ATTR,
+    const int32_t* past_lens ATTR,
+    const int32_t* subsequence_begins ATTR,
+    int32_t* selected_blocks ATTR,
+    int32_t* selected_counts ATTR,
+    uint32_t num_tokens, uint32_t num_seqs,
+#if QSA_SCORE_ROW_CHUNK
+    uint32_t max_blocks, uint32_t row_begin, uint32_t row_end) {
+#else
+    uint32_t max_blocks) {
+#endif
+    constexpr uint WG = QSA_TOPK_WG;
+    constexpr uint K = QSA_BLOCK_TOPK;
+    constexpr uint HIST_BYTES = WG * 256 * sizeof(uint);
+    constexpr uint COUNT_BASE = HIST_BYTES;
+    constexpr uint STATE_BASE = COUNT_BASE + WG * 16;
+    constexpr uint SLM_BYTES = STATE_BASE + 16;
+    static_assert(WG == 8 || WG == 16, "supported top-k WG: 8 or 16");
+    static_assert(SLM_BYTES < 64 * 1024, "top-k SLM exceeds budget");
+#if QSA_SCORE_ROW_CHUNK
+    const uint token_idx = cm_group_id(0) + row_begin;
+    if (token_idx >= row_end) return;
+    const uint score_row = token_idx - row_begin;
+#else
+    const uint token_idx = cm_group_id(0);
+    const uint score_row = token_idx;
+#endif
+    const uint tid = cm_local_id(0);
+    if (token_idx >= num_tokens) return; // uniform before any barrier
+    uint seq = 0, abs_pos = 0;
+    qsa_resolve_token(subsequence_begins, past_lens, num_seqs, token_idx, seq, abs_pos);
+    const uint n = qsa_num_complete_blocks(abs_pos);
+    const uint k = n < K ? n : K;
+    int32_t* out = selected_blocks + token_idx * K;
+    if (tid == 0) selected_counts[token_idx] = (int32_t)k;
+    for (uint i = k + tid; i < K; i += WG) out[i] = -1;
+    if (k == 0) return;
+#if QSA_DENSE_BYPASS
+    if (k == n) {
+        for (uint i = tid; i < k; i += WG) out[i] = (int32_t)i;
+        return; // no score load, including when the producer left NaNs
+    }
+#endif
+    cm_slm_init(SLM_BYTES);
+    auto slm = cm_slm_alloc(SLM_BYTES);
+    const float* scores = block_scores + score_row * max_blocks;
+    // Contiguous, ordered ranges are essential for deterministic tie prefixes.
+    const uint chunk = (n + WG - 1) / WG;
+    const uint begin = tid * chunk;
+    const uint end = cm_min<uint>(begin + chunk, n);
+    uint prefix = 0, remaining = k;
+    for (uint pass = 0; pass < 4; pass++) {
+        const uint shift = 24 - 8 * pass;
+        const uint mask = pass == 0 ? 0u : (0xFFFFFFFFu << (32 - 8 * pass));
+        vector<uint, 256> hist = 0;
+        for (uint i = begin; i < end; i++) {
+            const uint key = qsa::float_to_ordered_key(scores[i]);
+            if ((key & mask) == prefix) hist[(key >> shift) & 255u] += 1;
+        }
+        cm_slm_block_write(slm, tid * 1024, hist);
+        cm_fence(CM_LOCAL_BARRIER);
+        cm_barrier();
+        if (tid == 0) {
+            vector<uint, 256> total = 0;
+            for (uint worker = 0; worker < WG; worker++) {
+                vector<uint, 256> row;
+                cm_slm_block_read(slm, worker * 1024, row);
+                total += row;
+            }
+            uint above = 0, chosen = 0;
+            for (int b = 255; b >= 0; b--) {
+                const uint count = total[b];
+                if (above + count >= remaining) { chosen = (uint)b; break; }
+                above += count;
+            }
+            vector<uint, 4> state = 0;
+            state[0] = prefix | (chosen << shift);
+            state[1] = remaining - above;
+            cm_slm_block_write(slm, STATE_BASE, state);
+        }
+        cm_fence(CM_LOCAL_BARRIER);
+        cm_barrier(); // leader finished all histogram reads before reuse
+        vector<uint, 4> state;
+        cm_slm_block_read(slm, STATE_BASE, state);
+        prefix = state[0];
+        remaining = state[1];
+        // The next histogram barrier also protects this state read from overwrite.
+    }
+    uint greater = 0, equal = 0;
+    for (uint i = begin; i < end; i++) {
+        const uint key = qsa::float_to_ordered_key(scores[i]);
+        greater += key > prefix;
+        equal += key == prefix;
+    }
+    vector<uint, 4> counts = 0;
+    counts[0] = greater;
+    counts[1] = equal;
+    cm_slm_block_write(slm, COUNT_BASE + tid * 16, counts);
+    cm_fence(CM_LOCAL_BARRIER);
+    cm_barrier();
+    if (tid == 0) {
+        uint offset = 0, equals_left = remaining;
+        for (uint worker = 0; worker < WG; worker++) {
+            vector<uint, 4> row;
+            cm_slm_block_read(slm, COUNT_BASE + worker * 16, row);
+            const uint take_equal = cm_min<uint>(equals_left, row[1]);
+            const uint take = row[0] + take_equal;
+            row[0] = offset;
+            row[1] = take_equal;
+            cm_slm_block_write(slm, COUNT_BASE + worker * 16, row);
+            equals_left -= take_equal;
+            offset += take;
+        }
+    }
+    cm_fence(CM_LOCAL_BARRIER);
+    cm_barrier();
+    cm_slm_block_read(slm, COUNT_BASE + tid * 16, counts);
+    uint offset = counts[0], equals_left = counts[1];
+    for (uint i = begin; i < end; i++) {
+        const uint key = qsa::float_to_ordered_key(scores[i]);
+        if (key > prefix) out[offset++] = (int32_t)i;
+        else if (key == prefix && equals_left > 0) {
+            out[offset++] = (int32_t)i;
+            equals_left--;
+        }
+    }
+}

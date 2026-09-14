@@ -1,0 +1,156 @@
+// Copyright (c) 2026 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+// Exact integer threshold selection, SIMD64 scans, one work item per row.
+// No float arithmetic, histogram indexing, candidate cap, or scratch writes.
+#ifndef ATTR
+#define ATTR [[type("svmptr_t")]]
+#endif
+#include "qsa_topk_fast.hpp"
+#ifndef QSA_SCORE_ROW_CHUNK
+#define QSA_SCORE_ROW_CHUNK 0
+#endif
+#ifndef QSA_TOPK_CAPACITY
+#define QSA_TOPK_CAPACITY 256
+#endif
+#ifndef QSA_TOPK_FORCE_COMPACT
+#define QSA_TOPK_FORCE_COMPACT 0
+#endif
+
+extern "C" _GENX_MAIN_ void KERNEL_NAME(
+    const float* block_scores ATTR, const int32_t* past_lens ATTR,
+    const int32_t* subsequence_begins ATTR, int32_t* selected_blocks ATTR,
+    int32_t* selected_counts ATTR, uint32_t num_tokens, uint32_t num_seqs,
+#if QSA_SCORE_ROW_CHUNK
+    uint32_t max_blocks, uint32_t row_begin, uint32_t row_end) {
+    const uint token = cm_global_id(0) + row_begin;
+    if (token >= row_end) return;
+    const uint score_row = token - row_begin;
+#else
+    uint32_t max_blocks) {
+    const uint token = cm_global_id(0);
+    const uint score_row = token;
+#endif
+    if (token >= num_tokens) return;
+    constexpr uint K = QSA_BLOCK_TOPK;
+    uint seq = 0, pos = 0;
+    qsa_resolve_token(subsequence_begins, past_lens, num_seqs, token, seq, pos);
+    const uint n = qsa_num_complete_blocks(pos), k = cm_min<uint>(n, K);
+    int32_t* out = selected_blocks + token * K;
+    selected_counts[token] = k;
+    vector<uint, 64> lane;
+    cmtl::cm_vector_assign(lane.select_all(), 0, 1);
+    for (uint i = k; i < K; i += 64) {
+        vector<int, 64> invalid = -1;
+        cm_ptr_store<int>(out, (lane + i) * 4, invalid, lane + i < K);
+    }
+    if (k == 0) return;
+    // Selecting all entries never requires score reads, independent of producer.
+    if (k == n) {
+        for (uint i = 0; i < k; i += 64) {
+            vector<int, 64> ids = lane + i;
+            cm_ptr_store<int>(out, (lane + i) * 4, ids, lane + i < k);
+        }
+        return;
+    }
+    const float* scores = block_scores + score_row * max_blocks;
+    uint lo = 0, hi = 0xFFFFFFFFu;
+    uint above = 0, active = n;
+#if QSA_TOPK_CAPACITY > 0
+    constexpr uint CAP = QSA_TOPK_CAPACITY;
+    vector<uint, CAP> cached = 0, cache_lane;
+    cmtl::cm_vector_assign(cache_lane.select_all(), 0, 1);
+    uint filled = 0, cache_above = 0;
+    bool buffered = false, attempted = false;
+#endif
+    // Invariant: kth largest ordered key is in [lo, hi]. Integer midpoint
+    // halves the interval; observed min/max skip empty key ranges exactly.
+    while (lo < hi) {
+#if QSA_TOPK_CAPACITY > 0
+        if (!attempted && (active <= CAP || QSA_TOPK_FORCE_COMPACT)) {
+            attempted = true;
+            bool overflow = false;
+            for (uint i = 0; i < n; i += 64) {
+                vector<uint, 64> key = fast_keys(scores, i, n);
+                vector<ushort, 64> match = (lane + i < n) & (key >= lo) & (key <= hi);
+#pragma unroll
+                for (uint part = 0; part < 2; part++) {
+                    uint mask = cm_pack_mask(match.select<32, 1>(part * 32));
+                    while (mask) {
+                        const uint bit = cm_fbl<uint>(mask);
+                        if (filled < CAP) cached[filled] = key[part * 32 + bit];
+                        else overflow = true;
+                        filled++;
+                        mask &= mask - 1;
+                    }
+                }
+            }
+            // Never use a partial cache. On overflow/count mismatch every later
+            // round reverts to the uncapped full scan, with unchanged bounds.
+            buffered = !overflow && filled == active;
+            cache_above = above;
+        }
+#endif
+        const uint mid = lo + ((hi - lo) >> 1) + 1;
+        uint rank, min_ge, max_lt;
+#if QSA_TOPK_CAPACITY > 0
+        if (buffered) {
+            vector<ushort, CAP> valid = cache_lane < filled;
+            vector<uint, CAP> count = 0, a = 0xFFFFFFFFu, b = 0;
+            count.merge(1u, (cached >= mid) & valid);
+            a.merge(cached, (cached >= mid) & valid);
+            b.merge(cached, (cached < mid) & valid);
+            rank = cache_above + cm_sum<uint>(count);
+            min_ge = cm_reduced_min<uint>(a);
+            max_lt = cm_reduced_max<uint>(b);
+        } else {
+#endif
+        vector<uint, 64> count = 0, upper_min = 0xFFFFFFFFu, lower_max = 0;
+        for (uint i = 0; i < n; i += 64) {
+            vector<uint, 64> key = fast_keys(scores, i, n);
+            vector<ushort, 64> valid = lane + i < n;
+            vector<ushort, 64> ge = (key >= mid) & valid;
+            vector<uint, 64> add = 0;
+            add.merge(1u, ge);
+            count += add;
+            vector<uint, 64> a = 0xFFFFFFFFu, b = 0;
+            a.merge(key, ge);
+            b.merge(key, (key < mid) & valid);
+            upper_min = cm_min<uint>(upper_min, a);
+            lower_max = cm_max<uint>(lower_max, b);
+        }
+        rank = cm_sum<uint>(count);
+        min_ge = cm_reduced_min<uint>(upper_min);
+        max_lt = cm_reduced_max<uint>(lower_max);
+#if QSA_TOPK_CAPACITY > 0
+        }
+#endif
+        if (rank >= k) {
+            lo = min_ge;
+            active = rank - above;
+            if (rank == k) { hi = lo; break; }
+        } else {
+            hi = max_lt;
+            active = active + above - rank;
+            above = rank;
+        }
+    }
+    vector<uint, 64> greater = 0;
+    for (uint i = 0; i < n; i += 64) {
+        vector<uint, 64> key = fast_keys(scores, i, n), add = 0;
+        add.merge(1u, (key > lo) & (lane + i < n));
+        greater += add;
+    }
+    uint equals_left = k - cm_sum<uint>(greater), written = 0;
+    for (uint i = 0; i < n; i += 64) {
+        vector<uint, 64> key = fast_keys(scores, i, n), eq = 0, take = 0;
+        vector<ushort, 64> valid = lane + i < n;
+        eq.merge(1u, (key == lo) & valid);
+        vector<uint, 64> eq_prefix = fast_scan(eq);
+        take.merge(1u, valid & ((key > lo) | ((eq != 0) & (eq_prefix <= equals_left))));
+        equals_left -= cm_min<uint>(equals_left, eq_prefix[63]);
+        vector<uint, 64> offsets = fast_scan(take);
+        vector<int, 64> ids = lane + i;
+        cm_ptr_store<int>(out, (offsets + written - 1) * 4, ids, take != 0);
+        written += offsets[63];
+    }
+}

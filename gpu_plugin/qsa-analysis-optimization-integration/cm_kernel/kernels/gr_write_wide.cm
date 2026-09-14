@@ -1,0 +1,62 @@
+// Copyright (C) 2026 Intel Corporation
+// SPDX-License-Identifier: Apache-2.0
+//
+// G2' - Gated Residual WRITE / COMBINE, widened + de-duplicated.
+//
+//   R'[c,d] = R[c,d] + S[c] * Y[d]
+//
+// Same math as gr_write.cm, restructured to cut both DRAM traffic and thread count:
+//  - gr_write.cm dispatches one thread per (d-tile, branch, row) with a 16-element
+//    tile; every branch's thread re-reads the SAME Y[row, d0:d0+16] from DRAM and the
+//    same gate pair, so Y traffic is inflated by a factor of GR_BRANCHES for no reason.
+//  - This kernel dispatches one thread per (d-tile, row) with a wider tile
+//    (GR_WRITE_TILE elements) and loops over the GR_BRANCHES branches itself: Y and the
+//    full gate vector are each read exactly ONCE per thread, and residual/output still
+//    read/write each element exactly once (unavoidable). Thread count drops by
+//    GR_BRANCHES * (GR_WRITE_TILE/16).
+//
+// JIT constants: GR_BRANCHES, GR_HIDDEN, GR_WRITE_TILE (elements/thread, multiple of 16).
+// Dispatch: gws = [ceil(GR_HIDDEN/GR_WRITE_TILE), num_rows, 1], lws = [1, 1, 1].
+
+#include "qsa_gr_common.hpp"
+
+#ifndef ATTR
+#define ATTR [[type("svmptr_t")]]
+#endif
+
+extern "C" _GENX_MAIN_ void KERNEL_NAME(const half* residual ATTR,      // [num_rows, C*D]
+                                        const half* sublayer_y ATTR,    // [num_rows, D]
+                                        const half* write_gate ATTR,    // [num_rows, C]
+                                        half* residual_out ATTR,        // [num_rows, C*D]
+                                        uint32_t num_rows) {
+    constexpr uint C = GR_BRANCHES;
+    constexpr uint D = GR_HIDDEN;
+    constexpr uint CD = C * D;
+    constexpr uint TILE = GR_WRITE_TILE;
+    static_assert(TILE % 16 == 0, "GR_WRITE_TILE must be a multiple of 16");
+    static_assert(D % TILE == 0, "GR_HIDDEN must be a multiple of GR_WRITE_TILE");
+    static_assert(C % 2 == 0, "packed gate load expects an even branch count");
+
+    const uint d0 = cm_global_id(0) * TILE;
+    const uint row = cm_global_id(1);
+    if (d0 >= D || row >= num_rows) {
+        return;
+    }
+
+    // One load for all C branches instead of one redundant pair-load per branch.
+    vector<half, C> gate;
+    gate.format<int>() = cm_ptr_load<int, C / 2>((int*)write_gate, row * C * (uint)sizeof(half));
+
+    vector<half, TILE> y;
+    qsa_gr::load_hv<TILE>(y, sublayer_y, row * D + d0);
+    vector<float, TILE> yf = y;
+
+#pragma unroll
+    for (uint c = 0; c < C; c++) {
+        const uint elem = row * CD + c * D + d0;
+        vector<half, TILE> r;
+        qsa_gr::load_hv<TILE>(r, residual, elem);
+        vector<half, TILE> out = vector<float, TILE>(r) + (float)gate[c] * yf;
+        qsa_gr::store_hv<TILE>(residual_out, elem, out);
+    }
+}
