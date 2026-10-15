@@ -136,6 +136,8 @@ operator families that map to reusable benchmarks:
 | MoE | routed/shared experts, gating | `utils/moe_bench/` |
 | Linear/state-space attention | GDN, delta/recurrent kernels | `utils/gdn_bench/` |
 | Norm + eltwise + RoPE + quant | RMSNorm, SwiGLU, Add, RoPE, dyn-quant | `utils/small_ops_bench/` |
+| 3D Convolution (video/VAE) | `Convolution`, causal-carry conv (SeedVR2-style) | `utils/conv_bench/` |
+| GroupNorm (video/VAE) | `GroupNormalizationZSplit`-style GroupNorm | `utils/groupnorm_bench/` |
 | Unsupported/custom op | model-specific block | add a bench or use explicit fallback |
 
 This operator-family abstraction is the main reason the tool can scale from
@@ -169,6 +171,12 @@ bespoke per-model `build_kernel_tables.py`.
 `utils/template/SUMMARY_TEMPLATE.md` is the Jinja2-style report template with
 `{{VAR}}` placeholders for generating per-model roofline analysis reports.
 All `{{PLACEHOLDER}}` variables are documented in `utils/template/README.md`.
+
+Model-specific sweep launch scripts (`run_<model>_<platform>.bat`/`.sh`) and any
+model-specific config generator (e.g. `generate_bench_config.py`, used when a
+model has many shape-derived specs that must stay in sync with
+`kernel_table_config.json`) live inside `models/<model>/`, not `utils/` —
+`utils/` is reserved for genuinely model-agnostic, reusable infrastructure.
 
 ## Standard workflow
 
@@ -252,6 +260,8 @@ All `{{PLACEHOLDER}}` variables are documented in `utils/template/README.md`.
 
 - `utils/ov_verbose_weight_analyze.py` — analyze OpenVINO GPU verbose logs to extract weight constants and produce comprehensive reports (per-category tables, precision summary, architecture insights)
 - `utils/parse_cm_pa_logs.py` — parse cliloader CM PA logs and emit per-kernel roofline tables (PTL/Xe2-specific)
+- `utils/build_utilization_report.py` — time-weighted hardware-utilization (Eff%) summary per stage and overall, split by compute-bound (% of FP16 XMX peak) vs memory-bound (% of peak BW) kernel time; reads an already-generated `kernel_tables.md` (no remote re-run needed): `python3 utils/build_utilization_report.py outputs/<model>/kernel_tables.md`
+- `models/seedvr2/build_dependency_memory_report.py` / `build_memory_report.py` — reference implementation of a dependency-aware (liveness-based) whole-model peak GPU memory estimator, complementing per-op isolated bench peaks; useful as a template for any future model needing a multi-submodel, sequential-pipeline memory analysis
 
 ## Required outputs
 

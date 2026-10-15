@@ -1,0 +1,53 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: C:\Users\Local_Admin\Downloads\clintercept-3.0.6-win64\Release\opencl.dll
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(NOT supported)
+    clock(steady_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept registry key: SOFTWARE\INTEL\IGFX\CLINTERCEPT
+Trying to load dispatch from: real_opencl.dll
+Couldn't get exported function pointer to: clGetGLContextInfoKHR
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+Total Enqueues: 0
+
+=== FC Benchmark (precision=f16) ===
+M=252960 K=2560 N=2560 group_size=128 iters=10 warmup=5 bufs=4 flush_mb=64
+F16 plain MatMul: no dynamic quantization.
+Input tensors allocated in USM_DEVICE (VRAM) via RemoteContext.
+L2/L3 flush kernel: 64 MB f16 Relu between every FC infer.
+Median_ms: 61.787
+Min_ms: 61.3946
+Avg_ms: 66.3437
+GFLOPS: 53661.7
+BW_GBs: 42.1354
+AI: 1273.56
+WeightBytes: 1.31072e+07
+TotalBytes: 2.60342e+09
+TotalFLOPs: 3.3156e+12
+Total Enqueues: 48
+
+
+Device Performance Timing Results for Intel(R) Arc(TM) B390 GPU (96CUs, 2400MHz):
+
+Total Time (ns): 1034992588
+
+                        Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+activation_opt_477147924471330069_0_0,     16,      20711763,    2.00%,       1294485,       1226041,       1734479
+           clEnqueueMemFillINTEL( H ),      2,      16356249,    1.58%,       8178124,       1069583,      15286666
+                          gemm_kernel,     15,     997924576,   96.42%,      66528305,      61301041,      82023125
+CLIntercept is shutting down...
+... shutdown complete.

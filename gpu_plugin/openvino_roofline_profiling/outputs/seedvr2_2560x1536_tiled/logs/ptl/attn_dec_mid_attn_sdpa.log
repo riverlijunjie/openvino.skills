@@ -1,0 +1,44 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: C:\Users\Local_Admin\Downloads\clintercept-3.0.6-win64\Release\opencl.dll
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(NOT supported)
+    clock(steady_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept registry key: SOFTWARE\INTEL\IGFX\CLINTERCEPT
+Trying to load dispatch from: real_opencl.dll
+Couldn't get exported function pointer to: clGetGLContextInfoKHR
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+Total Enqueues: 0
+
+=== SDPA Benchmark ===
+NH=1 NKV=1 HD=512
+Mode=prefill S_q=16200 S_kv=16200 causal=0 iters=20 warmup=5 bufs=4
+Total wall ms=530.267 per_iter_ms=26.5134
+Total Enqueues: 119
+
+
+Device Performance Timing Results for Intel(R) Arc(TM) B390 GPU (96CUs, 2400MHz):
+
+Total Time (ns): 649752605
+
+                              Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+                 clEnqueueMemFillINTEL( H ),      1,         97500,    0.02%,         97500,         97500,         97500
+               clEnqueueMemcpyINTEL( HtoH ),     18,       7031450,    1.08%,        390636,        378333,        417812
+               clEnqueueMemcpyINTEL( MtoD ),     75,      56666164,    8.72%,        755548,        364479,        876354
+sdpa_micro__prefill_3206793218563389646__sa,     25,     585957491,   90.18%,      23438299,      22915625,      24384270
+CLIntercept is shutting down...
+... shutdown complete.

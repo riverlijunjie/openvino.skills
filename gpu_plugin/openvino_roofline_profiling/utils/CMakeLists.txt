@@ -63,3 +63,24 @@ if(OV_SRC_DIR)
         "${OV_SRC_DIR}/src/common/transformations/include"
     )
 endif()
+
+# Conv bench: 3D Convolution for video VAE encoder/decoder (SeedVR2). Covers
+# both ov::op::v1::Convolution ("plain", 1x1x1/stride-2 taps) and the
+# SeedVR2-project-specific ov::op::internal::CausalConv3DCarry ("causal",
+# kernel_t==3 resnet convs with cross-segment temporal carry state). The
+# latter is a dev_api-only op, so OV_SRC_DIR is needed.
+add_executable(conv_bench conv_bench/main.cpp)
+target_link_libraries(conv_bench PRIVATE openvino::runtime)
+if(OV_SRC_DIR)
+    target_include_directories(conv_bench PRIVATE
+        "${OV_SRC_DIR}/src/core/dev_api"
+    )
+endif()
+
+# GroupNorm bench: ov::op::internal::GroupNormalizationZSplit → GPU plugin's
+# cldnn::group_normalization_zsplit primitive. This is the actual op SeedVR2's
+# exported VAE encoder/decoder IR uses for every ResnetBlock/attention-prenorm
+# GroupNorm (not the plain opset12 GroupNormalization). Header-only, part of
+# the installed core include tree -- no OV_SRC_DIR needed.
+add_executable(groupnorm_bench groupnorm_bench/main.cpp)
+target_link_libraries(groupnorm_bench PRIVATE openvino::runtime)

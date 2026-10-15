@@ -1,0 +1,35 @@
+{
+  "title": "f'# {model_name} \u2014 SeedVR2 Roofline Summary'",
+  "variables": {
+    "VH": "cfg['video_tokens'] if 'video_tokens' in cfg else 252960"
+  },
+  "decode_table": {
+    "title": "f'## VAE Encoder dominant ops ({platform_name})'",
+    "subtitle": "platform_desc",
+    "variables": {},
+    "rows": [
+      {
+        "name": "'down3_mid.conv1 (causal, 512->512, h136w240)'",
+        "log": "'conv_down3_mid_conv1'",
+        "calls": "116",
+        "bytes": "conv3d_bytes(512,512,3,3,3,1,2,136,240,1,136,240)",
+        "flops": "conv3d_flops(512,512,3,3,3,1,136,240)"
+      },
+      {
+        "name": "'down1.conv2 (causal, 256->256, h544w960)'",
+        "log": "'conv_down1_conv2'",
+        "calls": "87",
+        "bytes": "conv3d_bytes(256,256,3,3,3,4,2,544,960,4,544,960)",
+        "flops": "conv3d_flops(256,256,3,3,3,4,544,960)"
+      },
+      {
+        "name": "'gn_c512_h136w240'",
+        "log": "'gn_c512_h136w240'",
+        "calls": "290",
+        "bytes": "groupnorm_bytes(512,1,136,240)",
+        "flops": "groupnorm_flops(512,1,136,240)"
+      }
+    ]
+  },
+  "sweeps": []
+}

@@ -44,7 +44,10 @@ openvino_roofline_profiling/
 │   ├── qwen3_next/
 │   ├── qwen3_omni/
 │   ├── vlsdpa/
-│   └── llama3_1_8b_instruct/
+│   ├── llama3_1_8b_instruct/
+│   ├── seedvr2/                 # video VAE encoder + windowed-attn DiT + VAE decoder, 1920x1088
+│   ├── seedvr2_2560x1536/       # same model, 2560x1536, VAE decoder untiled
+│   └── seedvr2_2560x1536_tiled/ # same model, 2560x1536, VAE decoder tiled (real K=4 grid)
 ├── outputs/
 │   ├── <model>/                 # logs, parsed metrics, tables, summaries
 │   └── ...
@@ -58,6 +61,7 @@ openvino_roofline_profiling/
     ├── build_db.py              # structured JSON → shared SQLite DB
     ├── build_model_report.py    # generic report engine driven by per-model config
     ├── build_kernel_tables.py   # generic kernel-table engine driven by per-model config
+    ├── build_utilization_report.py # time-weighted hardware-utilization (Eff%) summary from kernel_tables.md
     ├── build_postprocess_pipeline.py # one-shot post-parse pipeline driver
     ├── roofline_report.py       # shared aggregation helper(s)
     ├── ov_verbose_weight_analyze.py # weight analysis from GPU verbose logs
@@ -67,7 +71,9 @@ openvino_roofline_profiling/
     ├── vlsdpa_bench/            # Variable-length SDPA (CM kernel, ViT models)
     ├── moe_bench/               # MoE 3GEMM (shared expert u4/f16)
     ├── gdn_bench/               # GDN/linear-attention
-    └── small_ops_bench/         # RMSNorm/RoPE/eltwise/dyn-quant
+    ├── small_ops_bench/         # RMSNorm/RoPE/eltwise/dyn-quant
+    ├── conv_bench/               # 3D Convolution (plain + causal-carry, video/VAE models)
+    └── groupnorm_bench/          # GroupNorm (video/VAE models)
 ```
 
 ## Architecture of the tool
@@ -242,6 +248,8 @@ The micro-benches should follow these rules regardless of GPU or model:
 | `moe_bench` | routed/shared expert MoE | profile fused expert path; supports both INT4-grouped and uncompressed FP16 shared expert weights |
 | `gdn_bench` | GDN / linear-attention/state kernels | template for non-SDPA sequence blocks |
 | `small_ops_bench` | norm/rope/eltwise/dyn-quant | catch the “small but everywhere” family |
+| `conv_bench` | `ov::op::v1::Convolution` ("plain") and `ov::op::internal::CausalConv3DCarry` ("causal") | 3D convs for video VAE encoder/decoder models (e.g. SeedVR2); causal mode models cross-segment temporal carry state; reports `PeakUsmDeviceBytes`/`PeakUsmHostBytes` for memory-roofline analysis |
+| `groupnorm_bench` | `ov::op::internal::GroupNormalizationZSplit` | GroupNorm for video VAE models; also reports peak GPU memory bytes |
 
 If a model introduces a new dominant family, add a new bench under `utils/`
 instead of contorting an existing one beyond recognition.
@@ -398,6 +406,19 @@ requirements for the tool. They demonstrate:
 - how to structure `models/<model>/`
 - how to store outputs and summaries
 - how to connect parsed logs to final reports
+
+The `seedvr2`/`seedvr2_2560x1536`/`seedvr2_2560x1536_tiled` directories are a
+worked example of a **non-LLM, non-prefill/decode** model: a video VAE
+encoder + windowed-attention DiT + VAE decoder pipeline, using `vae_encoder`/
+`dit`/`vae_decoder` as the "mode" axis instead of `prefill`/`decode`, and a
+`generate_bench_config.py` per-model generator to keep a large (56-spec)
+`ops_mapping.json` in sync with its `kernel_table_config.json` and sweep
+script. They also demonstrate a **dependency-aware (liveness-based) whole-
+model peak GPU memory estimator** (`build_dependency_memory_report.py`,
+`build_memory_report.py`) that goes beyond per-op isolated bench peaks by
+tracking concurrently-live weight+activation bytes through a model's real
+architectural sequence — useful any time per-op isolated memory peaks alone
+would understate a real compiled model's true peak.
 
 Use them as examples, not shackles.
 
