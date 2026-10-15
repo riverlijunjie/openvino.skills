@@ -107,10 +107,25 @@ def summarize_log(path: Path):
         total_kernel_ns += per_iter_ns
         per_kernel.append((name, int(per_iter_ns), stat["calls"]))
     per_kernel.sort(key=lambda x: -x[1])
+
+    # Bench-reported GPU memory peaks (conv_bench/groupnorm_bench print these;
+    # other benches simply won't have the lines, fields default to 0).
+    text = path.read_text(errors="ignore")
+    peak_usm_device = 0
+    peak_usm_host = 0
+    m = re.search(r"PeakUsmDeviceBytes:\s*(\d+)", text)
+    if m:
+        peak_usm_device = int(m.group(1))
+    m = re.search(r"PeakUsmHostBytes:\s*(\d+)", text)
+    if m:
+        peak_usm_host = int(m.group(1))
+
     return {
         "total_kernel_ns": int(total_kernel_ns),
         "iters_detected": iters,
         "per_kernel": per_kernel,
+        "peak_usm_device_bytes": peak_usm_device,
+        "peak_usm_host_bytes": peak_usm_host,
     }
 
 

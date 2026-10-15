@@ -1,0 +1,58 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: C:\Users\Local_Admin\Downloads\clintercept-3.0.6-win64\Release\opencl.dll
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(NOT supported)
+    clock(steady_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept registry key: SOFTWARE\INTEL\IGFX\CLINTERCEPT
+Trying to load dispatch from: real_opencl.dll
+Couldn't get exported function pointer to: clGetGLContextInfoKHR
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+Total Enqueues: 0
+
+=== Conv Benchmark (kind=causal) ===
+c_in=512 c_out=512 k=(3,3,3) t_body=2 t_carry=2 h=288 w=488 stride=(1,1,1) out=(2,288,488) has_bias=1 init_mode=0 iters=277 warmup=5 bufs=4
+Input tensors allocated in USM_DEVICE (VRAM) via RemoteContext.
+Median_ms: 131.207
+Min_ms: 108.693
+Avg_ms: 130.342
+GFLOPS: 30326.2
+BW_GBs: 6.6891
+AI: 4533.68
+TotalFLOPs: 3.97902e+12
+TotalBytes: 8.77658e+08
+PeakUsmDeviceBytes: 589824000
+PeakUsmDeviceMB: 562.5
+PeakUsmHostBytes: 1218446336
+Total Enqueues: 1417
+
+
+Device Performance Timing Results for Intel(R) Arc(TM) B390 GPU (96CUs, 2400MHz):
+
+Total Time (ns): 37326681264
+
+                                 Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+         activation_opt_477147924471330069_0_0,    283,     722219460,    1.93%,       2552012,       1238229,       3658333
+causal_conv3d_carry_pack__13767337856072514445,    282,    2450941443,    6.57%,       8691281,       5375625,      10025104
+causal_conv3d_carry_tail__13767337856072514445,    282,    6111289984,   16.37%,      21671241,      17811458,      23191145
+                    clEnqueueMemFillINTEL( D ),      2,       2674583,    0.01%,       1337291,         87708,       2586875
+                    clEnqueueMemFillINTEL( H ),      2,       6644270,    0.02%,       3322135,       1070833,       5573437
+                  clEnqueueMemcpyINTEL( HtoD ),      1,        489479,    0.00%,        489479,        489479,        489479
+                                  conv_reorder,    282,      55410918,    0.15%,        196492,        191770,        353958
+                                      gen_conv,    282,   27977011127,   74.95%,      99209259,      82274062,     106391354
+CLIntercept is shutting down...
+... shutdown complete.

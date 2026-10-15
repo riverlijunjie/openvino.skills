@@ -1,0 +1,490 @@
+{
+  "title": "f'# {model_name} \u2014 Per-submodel Kernel Tables'",
+  "variables": {},
+  "modes": [
+    {
+      "name": "vae_encoder",
+      "heading": "'### VAE_ENCODER'",
+      "axis_name": "stage",
+      "axis_label": "stage",
+      "axis_values": [
+        "vae_encoder"
+      ],
+      "peak_compute": "platform.get('fp16_xmx_tflops', 0) * 1000",
+      "specs": [
+        {
+          "op": "'conv_in'",
+          "log": "'conv_enc_conv_in'",
+          "calls": "29",
+          "bytes": "conv3d_bytes(3,128,3,3,3,6,0,1536,2560,4,1536,2560)",
+          "flops": "conv3d_flops(3,128,3,3,3,4,1536,2560)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'down0.conv1'",
+          "log": "'conv_enc_down0_conv1'",
+          "calls": "116",
+          "bytes": "conv3d_bytes(128,128,3,3,3,6,0,1536,2560,4,1536,2560)",
+          "flops": "conv3d_flops(128,128,3,3,3,4,1536,2560)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'down0.downsampler'",
+          "log": "'conv_enc_down0_downsampler'",
+          "calls": "29",
+          "bytes": "conv3d_bytes(128,128,1,3,3,4,0,1536,2560,4,768,1280)",
+          "flops": "conv3d_flops(128,128,1,3,3,4,768,1280)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'down1.shortcut'",
+          "log": "'conv_enc_down1_shortcut'",
+          "calls": "29",
+          "bytes": "conv3d_bytes(128,256,1,1,1,4,0,768,1280,4,768,1280)",
+          "flops": "conv3d_flops(128,256,1,1,1,4,768,1280)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'down1.conv1'",
+          "log": "'conv_enc_down1_conv1'",
+          "calls": "29",
+          "bytes": "conv3d_bytes(128,256,3,3,3,6,0,768,1280,4,768,1280)",
+          "flops": "conv3d_flops(128,256,3,3,3,4,768,1280)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'down1.conv2'",
+          "log": "'conv_enc_down1_conv2'",
+          "calls": "87",
+          "bytes": "conv3d_bytes(256,256,3,3,3,6,0,768,1280,4,768,1280)",
+          "flops": "conv3d_flops(256,256,3,3,3,4,768,1280)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'down1.downsampler'",
+          "log": "'conv_enc_down1_downsampler'",
+          "calls": "29",
+          "bytes": "conv3d_bytes(256,256,3,3,3,5,0,768,1280,2,384,640)",
+          "flops": "conv3d_flops(256,256,3,3,3,2,384,640)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'down2.shortcut'",
+          "log": "'conv_enc_down2_shortcut'",
+          "calls": "29",
+          "bytes": "conv3d_bytes(256,512,1,1,1,2,0,384,640,2,384,640)",
+          "flops": "conv3d_flops(256,512,1,1,1,2,384,640)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'down2.conv1'",
+          "log": "'conv_enc_down2_conv1'",
+          "calls": "29",
+          "bytes": "conv3d_bytes(256,512,3,3,3,4,0,384,640,2,384,640)",
+          "flops": "conv3d_flops(256,512,3,3,3,2,384,640)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'down2.conv2'",
+          "log": "'conv_enc_down2_conv2'",
+          "calls": "87",
+          "bytes": "conv3d_bytes(512,512,3,3,3,4,0,384,640,2,384,640)",
+          "flops": "conv3d_flops(512,512,3,3,3,2,384,640)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'down2.downsampler'",
+          "log": "'conv_enc_down2_downsampler'",
+          "calls": "29",
+          "bytes": "conv3d_bytes(512,512,3,3,3,3,0,384,640,1,192,320)",
+          "flops": "conv3d_flops(512,512,3,3,3,1,192,320)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'down3_mid.conv1'",
+          "log": "'conv_enc_down3_mid_conv1'",
+          "calls": "116",
+          "bytes": "conv3d_bytes(512,512,3,3,3,3,0,192,320,1,192,320)",
+          "flops": "conv3d_flops(512,512,3,3,3,1,192,320)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'conv_out'",
+          "log": "'conv_enc_conv_out'",
+          "calls": "29",
+          "bytes": "conv3d_bytes(512,32,3,3,3,3,0,192,320,1,192,320)",
+          "flops": "conv3d_flops(512,32,3,3,3,1,192,320)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'gn_c128_h1536w2560'",
+          "log": "'gn_enc_gn_c128_h1536w2560'",
+          "calls": "145",
+          "bytes": "groupnorm_bytes(128,4,1536,2560)",
+          "flops": "groupnorm_flops(128,4,1536,2560)",
+          "bound": "'memory'"
+        },
+        {
+          "op": "'gn_c256_h768w1280'",
+          "log": "'gn_enc_gn_c256_h768w1280'",
+          "calls": "116",
+          "bytes": "groupnorm_bytes(256,4,768,1280)",
+          "flops": "groupnorm_flops(256,4,768,1280)",
+          "bound": "'memory'"
+        },
+        {
+          "op": "'gn_c512_h384w640'",
+          "log": "'gn_enc_gn_c512_h384w640'",
+          "calls": "116",
+          "bytes": "groupnorm_bytes(512,2,384,640)",
+          "flops": "groupnorm_flops(512,2,384,640)",
+          "bound": "'memory'"
+        },
+        {
+          "op": "'gn_c512_h192w320'",
+          "log": "'gn_enc_gn_c512_h192w320'",
+          "calls": "290",
+          "bytes": "groupnorm_bytes(512,1,192,320)",
+          "flops": "groupnorm_flops(512,1,192,320)",
+          "bound": "'memory'"
+        },
+        {
+          "op": "'mid_attn_qkvo'",
+          "log": "'fc_enc_mid_attn_qkvo'",
+          "calls": "116",
+          "bytes": "(61440*512+512*512+61440*512)*2",
+          "flops": "fc_flops(61440,512,512)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'mid_attn_sdpa'",
+          "log": "'attn_enc_mid_attn_sdpa'",
+          "calls": "29",
+          "bytes": "(61440*1*512*2*3 + 61440*1*512*2)",
+          "flops": "(4*61440*61440*512*1 + 25*61440*61440*1)",
+          "bound": "'compute'"
+        }
+      ]
+    },
+    {
+      "name": "dit",
+      "heading": "'### DIT'",
+      "axis_name": "stage",
+      "axis_label": "stage",
+      "axis_values": [
+        "dit"
+      ],
+      "peak_compute": "platform.get('fp16_xmx_tflops', 0) * 1000",
+      "specs": [
+        {
+          "op": "'vid_in'",
+          "log": "'fc_dit_vid_in'",
+          "calls": "1",
+          "bytes": "(476160*132+132*2560+476160*2560)*2",
+          "flops": "fc_flops(476160,132,2560)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'txt_in'",
+          "log": "'fc_dit_txt_in'",
+          "calls": "1",
+          "bytes": "(58*5120+5120*2560+58*2560)*2",
+          "flops": "fc_flops(58,5120,2560)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'vid_qkv'",
+          "log": "'fc_dit_vid_qkv'",
+          "calls": "32",
+          "bytes": "(476160*2560+2560*7680+476160*7680)*2",
+          "flops": "fc_flops(476160,2560,7680)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'txt_qkv'",
+          "log": "'fc_dit_txt_qkv'",
+          "calls": "32",
+          "bytes": "(58*2560+2560*7680+58*7680)*2",
+          "flops": "fc_flops(58,2560,7680)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'vid_attn_out'",
+          "log": "'fc_dit_vid_attn_out'",
+          "calls": "32",
+          "bytes": "(476160*2560+2560*2560+476160*2560)*2",
+          "flops": "fc_flops(476160,2560,2560)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'txt_attn_out'",
+          "log": "'fc_dit_txt_attn_out'",
+          "calls": "31",
+          "bytes": "(58*2560+2560*2560+58*2560)*2",
+          "flops": "fc_flops(58,2560,2560)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'vid_mlp_gate'",
+          "log": "'fc_dit_vid_mlp_gate'",
+          "calls": "32",
+          "bytes": "(476160*2560+2560*6912+476160*6912)*2",
+          "flops": "fc_flops(476160,2560,6912)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'vid_mlp_up'",
+          "log": "'fc_dit_vid_mlp_up'",
+          "calls": "32",
+          "bytes": "(476160*2560+2560*6912+476160*6912)*2",
+          "flops": "fc_flops(476160,2560,6912)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'vid_mlp_out'",
+          "log": "'fc_dit_vid_mlp_out'",
+          "calls": "32",
+          "bytes": "(476160*6912+6912*2560+476160*2560)*2",
+          "flops": "fc_flops(476160,6912,2560)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'txt_mlp_gate'",
+          "log": "'fc_dit_txt_mlp_gate'",
+          "calls": "31",
+          "bytes": "(58*2560+2560*6912+58*6912)*2",
+          "flops": "fc_flops(58,2560,6912)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'txt_mlp_up'",
+          "log": "'fc_dit_txt_mlp_up'",
+          "calls": "31",
+          "bytes": "(58*2560+2560*6912+58*6912)*2",
+          "flops": "fc_flops(58,2560,6912)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'txt_mlp_out'",
+          "log": "'fc_dit_txt_mlp_out'",
+          "calls": "31",
+          "bytes": "(58*6912+6912*2560+58*2560)*2",
+          "flops": "fc_flops(58,6912,2560)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'vid_out'",
+          "log": "'fc_dit_vid_out'",
+          "calls": "1",
+          "bytes": "(476160*2560+2560*64+476160*64)*2",
+          "flops": "fc_flops(476160,2560,64)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'wattn_window_a'",
+          "log": "'attn_dit_wattn_window_a'",
+          "calls": "16",
+          "bytes": "(476160*20*128*2*3 + 476160*20*128*2)",
+          "flops": "(4*2532*2532*128*20*188 + 25*2532*2532*20*188)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'wattn_window_b'",
+          "log": "'attn_dit_wattn_window_b'",
+          "calls": "16",
+          "bytes": "(476160*20*128*2*3 + 476160*20*128*2)",
+          "flops": "(4*1688*1688*128*20*282 + 25*1688*1688*20*282)",
+          "bound": "'compute'"
+        }
+      ]
+    },
+    {
+      "name": "vae_decoder",
+      "heading": "'### VAE_DECODER'",
+      "axis_name": "stage",
+      "axis_label": "stage",
+      "axis_values": [
+        "vae_decoder"
+      ],
+      "peak_compute": "platform.get('fp16_xmx_tflops', 0) * 1000",
+      "specs": [
+        {
+          "op": "'conv_in'",
+          "log": "'conv_dec_conv_in'",
+          "calls": "30",
+          "bytes": "conv3d_bytes(16,512,3,3,3,1,2,192,320,1,192,320)",
+          "flops": "conv3d_flops(16,512,3,3,3,1,192,320)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'mid.conv1'",
+          "log": "'conv_dec_mid_conv1'",
+          "calls": "120",
+          "bytes": "conv3d_bytes(512,512,3,3,3,1,2,192,320,1,192,320)",
+          "flops": "conv3d_flops(512,512,3,3,3,1,192,320)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'up0.conv1'",
+          "log": "'conv_dec_up0_conv1'",
+          "calls": "180",
+          "bytes": "conv3d_bytes(512,512,3,3,3,1,2,192,320,1,192,320)",
+          "flops": "conv3d_flops(512,512,3,3,3,1,192,320)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'up0.upscale_conv'",
+          "log": "'conv_dec_up0_upscale_conv'",
+          "calls": "60",
+          "bytes": "conv3d_bytes(512,4096,1,1,1,1,0,192,320,1,192,320)",
+          "flops": "conv3d_flops(512,4096,1,1,1,1,192,320)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'up0.post_shuffle_conv'",
+          "log": "'conv_dec_up0_post_shuffle_conv'",
+          "calls": "30",
+          "bytes": "conv3d_bytes(512,512,3,3,3,2,2,384,640,2,384,640)",
+          "flops": "conv3d_flops(512,512,3,3,3,2,384,640)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'up1.conv1'",
+          "log": "'conv_dec_up1_conv1'",
+          "calls": "180",
+          "bytes": "conv3d_bytes(512,512,3,3,3,2,2,384,640,2,384,640)",
+          "flops": "conv3d_flops(512,512,3,3,3,2,384,640)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'up1.upscale_conv'",
+          "log": "'conv_dec_up1_upscale_conv'",
+          "calls": "120",
+          "bytes": "conv3d_bytes(512,4096,1,1,1,1,0,384,640,1,384,640)",
+          "flops": "conv3d_flops(512,4096,1,1,1,1,384,640)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'up1.post_shuffle_conv'",
+          "log": "'conv_dec_up1_post_shuffle_conv'",
+          "calls": "60",
+          "bytes": "conv3d_bytes(512,512,3,3,3,2,2,768,1280,2,768,1280)",
+          "flops": "conv3d_flops(512,512,3,3,3,2,768,1280)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'up2.shortcut'",
+          "log": "'conv_dec_up2_shortcut'",
+          "calls": "60",
+          "bytes": "conv3d_bytes(512,256,1,1,1,2,0,768,1280,2,768,1280)",
+          "flops": "conv3d_flops(512,256,1,1,1,2,768,1280)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'up2.conv1'",
+          "log": "'conv_dec_up2_conv1'",
+          "calls": "60",
+          "bytes": "conv3d_bytes(512,256,3,3,3,2,2,768,1280,2,768,1280)",
+          "flops": "conv3d_flops(512,256,3,3,3,2,768,1280)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'up2.conv2'",
+          "log": "'conv_dec_up2_conv2'",
+          "calls": "300",
+          "bytes": "conv3d_bytes(256,256,3,3,3,2,2,768,1280,2,768,1280)",
+          "flops": "conv3d_flops(256,256,3,3,3,2,768,1280)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'up2.post_shuffle_conv'",
+          "log": "'conv_dec_up2_post_shuffle_conv'",
+          "calls": "60",
+          "bytes": "conv3d_bytes(256,256,3,3,3,2,2,1536,2560,2,1536,2560)",
+          "flops": "conv3d_flops(256,256,3,3,3,2,1536,2560)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'up3.shortcut'",
+          "log": "'conv_dec_up3_shortcut'",
+          "calls": "60",
+          "bytes": "conv3d_bytes(256,128,1,1,1,2,0,1536,2560,2,1536,2560)",
+          "flops": "conv3d_flops(256,128,1,1,1,2,1536,2560)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'up3.conv1'",
+          "log": "'conv_dec_up3_conv1'",
+          "calls": "60",
+          "bytes": "conv3d_bytes(256,128,3,3,3,2,2,1536,2560,2,1536,2560)",
+          "flops": "conv3d_flops(256,128,3,3,3,2,1536,2560)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'up3.conv2'",
+          "log": "'conv_dec_up3_conv2'",
+          "calls": "300",
+          "bytes": "conv3d_bytes(128,128,3,3,3,2,2,1536,2560,2,1536,2560)",
+          "flops": "conv3d_flops(128,128,3,3,3,2,1536,2560)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'conv_out'",
+          "log": "'conv_dec_conv_out'",
+          "calls": "60",
+          "bytes": "conv3d_bytes(128,3,3,3,3,2,2,1536,2560,2,1536,2560)",
+          "flops": "conv3d_flops(128,3,3,3,3,2,1536,2560)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'gn_c512_h192w320'",
+          "log": "'gn_dec_gn_c512_h192w320'",
+          "calls": "420",
+          "bytes": "groupnorm_bytes(512,1,192,320)",
+          "flops": "groupnorm_flops(512,1,192,320)",
+          "bound": "'memory'"
+        },
+        {
+          "op": "'gn_c512_h384w640'",
+          "log": "'gn_dec_gn_c512_h384w640'",
+          "calls": "180",
+          "bytes": "groupnorm_bytes(512,2,384,640)",
+          "flops": "groupnorm_flops(512,2,384,640)",
+          "bound": "'memory'"
+        },
+        {
+          "op": "'gn_c256_h768w1280'",
+          "log": "'gn_dec_gn_c256_h768w1280'",
+          "calls": "600",
+          "bytes": "groupnorm_bytes(256,2,768,1280)",
+          "flops": "groupnorm_flops(256,2,768,1280)",
+          "bound": "'memory'"
+        },
+        {
+          "op": "'gn_c128_h1536w2560'",
+          "log": "'gn_dec_gn_c128_h1536w2560'",
+          "calls": "600",
+          "bytes": "groupnorm_bytes(128,2,1536,2560)",
+          "flops": "groupnorm_flops(128,2,1536,2560)",
+          "bound": "'memory'"
+        },
+        {
+          "op": "'mid_attn_qkvo'",
+          "log": "'fc_dec_mid_attn_qkvo'",
+          "calls": "120",
+          "bytes": "(61440*512+512*512+61440*512)*2",
+          "flops": "fc_flops(61440,512,512)",
+          "bound": "'compute'"
+        },
+        {
+          "op": "'mid_attn_sdpa'",
+          "log": "'attn_dec_mid_attn_sdpa'",
+          "calls": "30",
+          "bytes": "(61440*1*512*2*3 + 61440*1*512*2)",
+          "flops": "(4*61440*61440*512*1 + 25*61440*61440*1)",
+          "bound": "'compute'"
+        }
+      ]
+    }
+  ]
+}

@@ -34,6 +34,36 @@ def fc_flops(m: int, k: int, n: int) -> int:
     return 2 * m * k * n
 
 
+def conv3d_out_dim(x: int, k: int, stride: int, pad: int = 0) -> int:
+    return (x + 2 * pad - k) // stride + 1
+
+
+def conv3d_flops(c_in: int, c_out: int, kt: int, kh: int, kw: int,
+                  t_out: int, h_out: int, w_out: int) -> int:
+    """Dense 3D convolution FLOPs (2 * MACs), f16/f32 compute."""
+    return 2 * c_out * c_in * kt * kh * kw * t_out * h_out * w_out
+
+
+def conv3d_bytes(c_in: int, c_out: int, kt: int, kh: int, kw: int,
+                  t_body: int, t_carry: int, h: int, w: int,
+                  t_out: int, h_out: int, w_out: int) -> int:
+    """f16 weight + activation bytes for one conv call (plain or causal; t_carry=0 for plain)."""
+    weight_bytes = c_out * c_in * kt * kh * kw * 2
+    in_bytes = c_in * (t_body + t_carry) * h * w * 2
+    out_bytes = c_out * t_out * h_out * w_out * 2
+    return weight_bytes + in_bytes + out_bytes
+
+
+def groupnorm_flops(c: int, z: int, h: int, w: int) -> int:
+    """Reduction (mean+var) + normalize+affine passes, ~8 flop/element."""
+    return c * z * h * w * 8
+
+
+def groupnorm_bytes(c: int, z: int, h: int, w: int) -> int:
+    """One read + one write of the activation (f16) plus tiny scale/bias."""
+    return c * z * h * w * 2 * 2 + c * 2 * 2
+
+
 def platform_desc(platform_name: str, pdata: dict[str, Any]) -> str:
     name = pdata.get("name", platform_name)
     arch = pdata.get("arch")
@@ -107,6 +137,11 @@ class ReportContext:
             "fc_bytes_int4": fc_bytes_int4,
             "fc_bytes_int8": fc_bytes_int8,
             "fc_flops": fc_flops,
+            "conv3d_out_dim": conv3d_out_dim,
+            "conv3d_flops": conv3d_flops,
+            "conv3d_bytes": conv3d_bytes,
+            "groupnorm_flops": groupnorm_flops,
+            "groupnorm_bytes": groupnorm_bytes,
         }
 
 

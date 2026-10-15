@@ -5,7 +5,19 @@ description: This skill is used to profiling roofline of specific platformand wi
 
 When profile roofline, first require to understand below prequistites:
 
-  - Target Remote Linux machine: 
+  - Machine 1: Target Remote Windows machine with PTL 12Xe GPU for ovmx: 
+      - Target hardware: PTL
+      - GPU frequency: 2400 MHz
+      - Local_Admin@10.239.132.229
+      - password:openvino
+      - openvino directory: D:\river\ovmx_dev\openvino.pipeline.mx\thirdparty\openvino
+      - cliloader is loacted in: C:\Users\Local_Admin\Downloads\clintercept-3.0.6-win64\Release\cliloader.exe
+      - test utils directory: D:\river\ovmx_dev\roofline
+      - TBB DLLs (needed for SSH sessions): D:\river\moe\openvino\temp\Windows_AMD64\tbb\bin
+      - OV Runtime DLLs: D:\river\ovmx_dev\openvino.pipeline.mx\bin\intel64\Release
+      - Results directory: D:\river\ovmx_dev\roofline\results
+
+  - Machine 2: Target Remote Linux machine: 
       - Target hardware: BMG
       - GPU frequency: 2850 MHz
       - openvino-ci-74@10.239.140.155
@@ -15,7 +27,7 @@ When profile roofline, first require to understand below prequistites:
       - cliloader is loacted in: /mnt/river/model_loading/clintercept-3.0.6-Linux/bin
       - test utils directory: /mnt/river/model_loading/roofline_test_utils
 
-  - Target Remote Windows machine with PTL 12Xe GPU: 
+  - Machine 3: Target Remote Windows machine with PTL 12Xe GPU for openvino: 
       - Target hardware: PTL
       - GPU frequency: 2400 MHz
       - Local_Admin@10.239.132.229
@@ -28,7 +40,7 @@ When profile roofline, first require to understand below prequistites:
       - OV Runtime DLLs: D:\river\moe\openvino\release_install\runtime\bin\intel64\Release
       - Results directory: D:\river\moe\roofline_results
 
-  - Target Remote Linux machine with PTL 4Xe GPU: 
+  - Machine 4: Target Remote Linux machine with PTL 4Xe GPU: 
       - Target hardware: PTL
       - GPU frequency: 2400 MHz
       - intel@10.239.152.140
@@ -61,6 +73,12 @@ When profile roofline, first require to understand below prequistites:
   - gdn test should use cache_interval = 0
   - For Speculative decoding or MTP, we should assign the token number of each token generation.
   - If didn't find cliloder, you need download it from https://github.com/intel/opencl-intercept-layer/releases/tag/v3.0.6
+  - For mutiple model pipeline, we should profiline each model separately and then analyze the combined performance
+    For example SeedVR2, it contains 3 models:
+        - VAE encoder: for example input video 864*496
+        - DiT: vlsdpa attention + MLP, the input token size can be calculated from output video size: video=252960, txt=5800
+        - VAE decoder: for exampleoutput video 1920*1088
+    We should profile each model individually and then analyze the combined performance. Some times we will apply latent slice (H/W dimension split) optimization to improve memory efficiency.
 
 Then do proofline analysis with below steps:
 1. **First top priority needed**:
@@ -164,7 +182,11 @@ Then do proofline analysis with below steps:
         - MoE shared expert will be fused to MoE primitive, reference moe_3gemm_compressed_gpu_shared_random of /home/ov2022/workspace/remote_debug/openvino/src/plugins/intel_gpu/tests/unit/test_cases/moe_3gemm_gpu_test.cpp for shared expert test case, and we can also design our own test case based on that to make it more close to the actual shared expert in the model, such as using the same input and output tensor shape as actual shared expert in the model, and also using the same weights compression and data type as actual shared expert in the model, which can provide more accurate performance metrics for shared expert and also can help us to optimize shared expert based on the actual performance characteristics on the target GPU architecture.
         - For other ops performance testing, we can reference to src/plugins/intel_gpu/tests/unit/test_cases/ to find the relevant test cases for other ops, and write the test utils based on those test cases.
         - Test utils will be put into utils folder and each ops should have its own subdirectory and test app, so that we can use cliloader to profiling each ops performance metrics independently, and also can avoid the impact of other ops on performance metrics collection.
-        - swish and multiply should be fused into corresponding kernels, and don't profile it separately    
+        - swish and multiply should be fused into corresponding kernels, and don't profile it separately
+        - For VEA encoder/decoder models,the main op is convolution/groupnorm/reoder, we should write new test cases for these ops if don't have:
+             convolution: input should be fsv16 layout, reference src/plugins/intel_gpu/tests/unit/test_cases/convolution_gpu_test.cpp
+             reorder: memory bound
+             groupnorm: choose kernel depends on IR, tests reference to src/plugins/intel_gpu/tests/unit/test_cases/group_normalization_gpu_test.cpp     
         - It is better to use cliloader to run the test utils for each ops, we should run test app for each input token and use cliloader to get each kernels average performance data and use a python tool to parse the cliloader log and get the performance metrics, such as latency. Don't put all input token size performance metrics collection in one test app, because it will cause the performance metrics of different input token size get mixed together and hard to analyze. Instead, we can run the test app for each input token size independently, and use cliloader to get the performance metrics for each input token size separately, which can provide more accurate performance metrics for each input token size and also can make it easier to analyze the impact of input token size on performance.
         - lm_head should be tested separately from matmul, because it has different weights compression and data type, and it will have different performance characteristics on the target GPU architecture, and also it will be easier to analyze the performance metrics of lm_head separately without being skewed by the performance metrics of matmul. lm_head only is used for single token, so just test lm_head for single token and used for prefill and decode.
         - Each ops test case should be designed to avoid L3 cache reuse as much as possible, to get more accurate performance metrics that reflect the true computational and memory access patterns of the operation without being skewed by cache effects. A simple way is to create multiple input and output tensors, and make sure each test iteration uses different input and output tensors to avoid reuse L3 cache. 

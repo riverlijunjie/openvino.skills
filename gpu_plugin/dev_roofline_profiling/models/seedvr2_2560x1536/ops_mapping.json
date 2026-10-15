@@ -1,0 +1,146 @@
+{
+  "model": "SeedVR2 (VAE encoder + windowed-attention DiT + VAE decoder, video SR/restoration) -- 2560x1536 variant",
+  "config": {
+    "input_video": "864x496, 121 frames (SeedVR2/input/480p-sc-121f-864x496.rgb24)",
+    "output_video": "2560x1536, 121 frames (target resolution)",
+    "txt_len": 58,
+    "decoder_tiled": false,
+    "notes": [
+      "NEW RESOLUTION VARIANT (2026-10-15), derived from the already-validated 1920x1088 config in",
+      "models/seedvr2/ops_mapping.json via pure resolution re-scaling of the SAME architecture (channel",
+      "counts, kernel sizes, strides, t_body/t_carry temporal structure, and segment-call-counts are all",
+      "resolution-INDEPENDENT architectural constants -- only h/w per tier and DiT's video_tokens change).",
+      "preprocess.xml upsamples the 864x496 source to the TARGET 2560x1536 canvas before VAE encode (same",
+      "architectural fact as the 1920x1088 config, re-confirmed by spatial-resolution-independence of the",
+      "model architecture) -- so all three submodels run at the 2560x1536-derived latent grid (320x192 ==",
+      "2560/8 x 1536/8), not at the 864x496 input's native resolution.",
+      "PER EXPLICIT REQUEST: the VAE decoder here is modeled UNTILED (full-frame, exactly like the VAE",
+      "encoder's own convention) -- NO 2x2 spatial tile grid is applied, unlike the 1920x1088 config's",
+      "real-pipeline K=4-tile behavior. Decoder conv/groupnorm/fc/attention h/w below are the FULL per-tier",
+      "frame dimensions (same tier-derivation pattern as the encoder: full/2/4/8), and calls use the BASE",
+      "(1 INIT + 29 ACTIVE = 30 temporal segments only) counts with NO x4 tile multiplier -- i.e. exactly",
+      "the same calls values the 1920x1088 config used BEFORE its 2x2-tile correction was discovered.",
+      "Resolution tiers (full -> /2 -> /4 -> /8-latent), matching the 1920x1088 config's tier-derivation",
+      "pattern exactly: full=1536x2560, tier/2=768x1280, tier/4=384x640, tier/8(latent)=192x320.",
+      "DiT video_tokens recomputed for the new latent grid: video_tokens = T_latent * H_latent * W_latent / 4",
+      "(same /4 patchify factor empirically confirmed for the 1920x1088 config via SEEDVR2_DIT_BOUNDARY",
+      "shape=[252960,2560] matching 31*136*240/4 exactly) = 31 * 192 * 320 / 4 = 476160 (vs 252960 before).",
+      "hidden_size/qkv_size/intermediate_size/num_heads/head_dim/num_layers/txt_tokens are architectural",
+      "constants, UNCHANGED by resolution.",
+      "DiT windowed-attention num_windows: NOT independently re-derived from a real log at this resolution",
+      "(no such log exists yet) -- APPROXIMATED by scaling the 1920x1088 config's num_windows proportionally",
+      "with the video_tokens ratio (476160/252960 = 1.8822), assuming a roughly fixed per-window token count",
+      "(the standard windowed-attention design point): wattn_window_a 100->188, wattn_window_b 150->282.",
+      "Flagged as an approximation, not a measured/derived fact like the rest of this file.",
+      "GroupNorm is ov::op::internal::GroupNormalizationZSplit (SeedVR2-specific), same as the 1920x1088",
+      "config. VAE ENCODER convs are kind=plain (no CausalConv3DCarry in its exported IR, same architectural",
+      "fact, resolution-independent); VAE DECODER convs are kind=causal (33 CausalConv3DCarry nodes in its",
+      "exported IR, same architectural fact) with the op's own carry_in port supplying temporal history --",
+      "t_body/kind/kernel/stride values copied VERBATIM from the 1920x1088 config (temporal structure is",
+      "resolution-independent), only h/w (and DiT's token-derived m/s) were recomputed for this resolution.",
+      "1x1x1 shortcut/upscale convs and kernel_t==1 spatial-only downsamplers are always plain Convolution",
+      "in both submodels (no temporal context needed) -- same as before.",
+      "All shapes here are UNVALIDATED against any real OV_VERBOSE log at this resolution (none exists) --",
+      "this is a first-principles resolution re-derivation from the ALREADY-VALIDATED 1920x1088 config,",
+      "not an independent re-grounding. Needs fresh conv_bench/groupnorm_bench/fc_bench/vlsdpa_bench/",
+      "sdpa_bench runs on remote PTL at these new shapes (all 56 specs are new shapes end-to-end, even",
+      "where channel/kernel dims match the 1920x1088 config, since conv/attention kernel time and",
+      "efficiency are shape-dependent)."
+    ]
+  },
+  "vae_encoder": {
+    "conv": [
+      {"name": "conv_in",              "kind": "plain", "c_in": 3,   "c_out": 128, "k": [3,3,3], "stride": [1,1,1], "t_body": 6, "h": 1536, "w": 2560, "calls": 29},
+      {"name": "down0.conv1",          "kind": "plain", "c_in": 128, "c_out": 128, "k": [3,3,3], "stride": [1,1,1], "t_body": 6, "h": 1536, "w": 2560, "calls": 116},
+      {"name": "down0.downsampler",    "kind": "plain", "c_in": 128, "c_out": 128, "k": [1,3,3], "stride": [1,2,2], "t_body": 4, "h": 1536, "w": 2560, "calls": 29},
+      {"name": "down1.shortcut",       "kind": "plain", "c_in": 128, "c_out": 256, "k": [1,1,1], "stride": [1,1,1], "t_body": 4, "h": 768,  "w": 1280, "calls": 29},
+      {"name": "down1.conv1",          "kind": "plain", "c_in": 128, "c_out": 256, "k": [3,3,3], "stride": [1,1,1], "t_body": 6, "h": 768,  "w": 1280, "calls": 29},
+      {"name": "down1.conv2",          "kind": "plain", "c_in": 256, "c_out": 256, "k": [3,3,3], "stride": [1,1,1], "t_body": 6, "h": 768,  "w": 1280, "calls": 87},
+      {"name": "down1.downsampler",    "kind": "plain", "c_in": 256, "c_out": 256, "k": [3,3,3], "stride": [2,2,2], "t_body": 5, "h": 768,  "w": 1280, "calls": 29},
+      {"name": "down2.shortcut",       "kind": "plain", "c_in": 256, "c_out": 512, "k": [1,1,1], "stride": [1,1,1], "t_body": 2, "h": 384,  "w": 640,  "calls": 29},
+      {"name": "down2.conv1",          "kind": "plain", "c_in": 256, "c_out": 512, "k": [3,3,3], "stride": [1,1,1], "t_body": 4, "h": 384,  "w": 640,  "calls": 29},
+      {"name": "down2.conv2",          "kind": "plain", "c_in": 512, "c_out": 512, "k": [3,3,3], "stride": [1,1,1], "t_body": 4, "h": 384,  "w": 640,  "calls": 87},
+      {"name": "down2.downsampler",    "kind": "plain", "c_in": 512, "c_out": 512, "k": [3,3,3], "stride": [2,2,2], "t_body": 3, "h": 384,  "w": 640,  "calls": 29},
+      {"name": "down3_mid.conv1",      "kind": "plain", "c_in": 512, "c_out": 512, "k": [3,3,3], "stride": [1,1,1], "t_body": 3, "h": 192,  "w": 320,  "calls": 116},
+      {"name": "conv_out",             "kind": "plain", "c_in": 512, "c_out": 32,  "k": [3,3,3], "stride": [1,1,1], "t_body": 3, "h": 192,  "w": 320,  "calls": 29}
+    ],
+    "groupnorm": [
+      {"name": "gn_c128_h1536w2560", "c": 128, "z": 4, "h": 1536, "w": 2560, "num_groups": 32, "calls": 145},
+      {"name": "gn_c256_h768w1280",  "c": 256, "z": 4, "h": 768,  "w": 1280, "num_groups": 32, "calls": 116},
+      {"name": "gn_c512_h384w640",   "c": 512, "z": 2, "h": 384,  "w": 640,  "num_groups": 32, "calls": 116},
+      {"name": "gn_c512_h192w320",   "c": 512, "z": 1, "h": 192,  "w": 320,  "num_groups": 32, "calls": 290}
+    ],
+    "fc": [
+      {"name": "mid_attn_qkvo", "m": 61440, "k": 512, "n": 512, "precision": "f16", "calls": 116}
+    ],
+    "attention": [
+      {"name": "mid_attn_sdpa", "family": "sdpa", "nh": 1, "nkv": 1, "hd": 512, "s": 61440, "causal": false, "calls": 29}
+    ]
+  },
+  "dit": {
+    "config": {"hidden_size": 2560, "qkv_size": 7680, "intermediate_size": 6912, "num_heads": 20, "head_dim": 128,
+               "num_layers": 32, "video_tokens": 476160, "txt_tokens": 58},
+    "fc": [
+      {"name": "vid_in",       "m": 476160, "k": 132,  "n": 2560, "precision": "f16", "calls": 1},
+      {"name": "txt_in",       "m": 58,     "k": 5120, "n": 2560, "precision": "f16", "calls": 1},
+      {"name": "vid_qkv",      "m": 476160, "k": 2560, "n": 7680, "precision": "f16", "calls": 32},
+      {"name": "txt_qkv",      "m": 58,     "k": 2560, "n": 7680, "precision": "f16", "calls": 32},
+      {"name": "vid_attn_out", "m": 476160, "k": 2560, "n": 2560, "precision": "f16", "calls": 32},
+      {"name": "txt_attn_out", "m": 58,     "k": 2560, "n": 2560, "precision": "f16", "calls": 31},
+      {"name": "vid_mlp_gate", "m": 476160, "k": 2560, "n": 6912, "precision": "f16", "calls": 32},
+      {"name": "vid_mlp_up",   "m": 476160, "k": 2560, "n": 6912, "precision": "f16", "calls": 32},
+      {"name": "vid_mlp_out",  "m": 476160, "k": 6912, "n": 2560, "precision": "f16", "calls": 32},
+      {"name": "txt_mlp_gate", "m": 58,     "k": 2560, "n": 6912, "precision": "f16", "calls": 31},
+      {"name": "txt_mlp_up",   "m": 58,     "k": 2560, "n": 6912, "precision": "f16", "calls": 31},
+      {"name": "txt_mlp_out",  "m": 58,     "k": 6912, "n": 2560, "precision": "f16", "calls": 31},
+      {"name": "vid_out",      "m": 476160, "k": 2560, "n": 64,   "precision": "f16", "calls": 1}
+    ],
+    "attention": [
+      {"name": "wattn_window_a", "family": "vlsdpa", "head_size": 128, "num_heads": 20, "num_windows": 188, "total_tokens": 476160, "calls": 16},
+      {"name": "wattn_window_b", "family": "vlsdpa", "head_size": 128, "num_heads": 20, "num_windows": 282, "total_tokens": 476160, "calls": 16}
+    ],
+    "small_ops_estimated_only": [
+      "WindowQkvPrep/GatherRows (window gather+RoPE repack): memory-bound, no dedicated bench, estimate via I/O bytes",
+      "SwiGLU (Swish(gate)*up, [476160,6912]): fuses into eltwise per SKILL.md 'don't profile swish/multiply separately'",
+      "AdaLNModulation/ScaleShiftModulation/GatedResidual(AdaLN) ([476160,2560] or [58,2560]): small broadcast-affine, memory-bound",
+      "RmsNorm (final vid_out_norm, [476160,2560]): memory-bound"
+    ]
+  },
+  "vae_decoder": {
+    "conv": [
+      {"name": "conv_in",              "kind": "causal", "c_in": 16,  "c_out": 512, "k": [3,3,3], "stride": [1,1,1], "t_body": 1, "h": 192,  "w": 320,  "calls": 30},
+      {"name": "mid.conv1",            "kind": "causal", "c_in": 512, "c_out": 512, "k": [3,3,3], "stride": [1,1,1], "t_body": 1, "h": 192,  "w": 320,  "calls": 120},
+      {"name": "up0.conv1",            "kind": "causal", "c_in": 512, "c_out": 512, "k": [3,3,3], "stride": [1,1,1], "t_body": 1, "h": 192,  "w": 320,  "calls": 180},
+      {"name": "up0.upscale_conv",     "kind": "plain",  "c_in": 512, "c_out": 4096,"k": [1,1,1], "stride": [1,1,1], "t_body": 1, "h": 192,  "w": 320,  "calls": 60},
+      {"name": "up0.post_shuffle_conv","kind": "causal", "c_in": 512, "c_out": 512, "k": [3,3,3], "stride": [1,1,1], "t_body": 2, "h": 384,  "w": 640,  "calls": 30},
+      {"name": "up1.conv1",            "kind": "causal", "c_in": 512, "c_out": 512, "k": [3,3,3], "stride": [1,1,1], "t_body": 2, "h": 384,  "w": 640,  "calls": 180},
+      {"name": "up1.upscale_conv",     "kind": "plain",  "c_in": 512, "c_out": 4096,"k": [1,1,1], "stride": [1,1,1], "t_body": 1, "h": 384,  "w": 640,  "calls": 120},
+      {"name": "up1.post_shuffle_conv","kind": "causal", "c_in": 512, "c_out": 512, "k": [3,3,3], "stride": [1,1,1], "t_body": 2, "h": 768,  "w": 1280, "calls": 60},
+      {"name": "up2.shortcut",         "kind": "plain",  "c_in": 512, "c_out": 256, "k": [1,1,1], "stride": [1,1,1], "t_body": 2, "h": 768,  "w": 1280, "calls": 60},
+      {"name": "up2.conv1",            "kind": "causal", "c_in": 512, "c_out": 256, "k": [3,3,3], "stride": [1,1,1], "t_body": 2, "h": 768,  "w": 1280, "calls": 60},
+      {"name": "up2.conv2",            "kind": "causal", "c_in": 256, "c_out": 256, "k": [3,3,3], "stride": [1,1,1], "t_body": 2, "h": 768,  "w": 1280, "calls": 300},
+      {"name": "up2.post_shuffle_conv","kind": "causal", "c_in": 256, "c_out": 256, "k": [3,3,3], "stride": [1,1,1], "t_body": 2, "h": 1536, "w": 2560, "calls": 60},
+      {"name": "up3.shortcut",         "kind": "plain",  "c_in": 256, "c_out": 128, "k": [1,1,1], "stride": [1,1,1], "t_body": 2, "h": 1536, "w": 2560, "calls": 60},
+      {"name": "up3.conv1",            "kind": "causal", "c_in": 256, "c_out": 128, "k": [3,3,3], "stride": [1,1,1], "t_body": 2, "h": 1536, "w": 2560, "calls": 60},
+      {"name": "up3.conv2",            "kind": "causal", "c_in": 128, "c_out": 128, "k": [3,3,3], "stride": [1,1,1], "t_body": 2, "h": 1536, "w": 2560, "calls": 300},
+      {"name": "conv_out",             "kind": "causal", "c_in": 128, "c_out": 3,   "k": [3,3,3], "stride": [1,1,1], "t_body": 2, "h": 1536, "w": 2560, "calls": 60}
+    ],
+    "groupnorm": [
+      {"name": "gn_c512_h192w320",  "c": 512, "z": 1, "h": 192,  "w": 320,  "num_groups": 32, "calls": 420},
+      {"name": "gn_c512_h384w640",  "c": 512, "z": 2, "h": 384,  "w": 640,  "num_groups": 32, "calls": 180},
+      {"name": "gn_c256_h768w1280", "c": 256, "z": 2, "h": 768,  "w": 1280, "num_groups": 32, "calls": 600},
+      {"name": "gn_c128_h1536w2560","c": 128, "z": 2, "h": 1536, "w": 2560, "num_groups": 32, "calls": 600}
+    ],
+    "pixel_shuffle_estimated_only": [
+      {"name": "up0_shuffle", "in": [1,4096,1,192,320], "out": [1,512,2,384,640], "calls": 60},
+      {"name": "up1_shuffle", "in": [1,4096,1,384,640], "out": [1,512,2,768,1280], "calls": 60},
+      {"name": "up2_shuffle", "in": [1,1024,1,768,1280], "out": [1,256,1,1536,2560], "calls": 60}
+    ],
+    "fc": [
+      {"name": "mid_attn_qkvo", "m": 61440, "k": 512, "n": 512, "precision": "f16", "calls": 120}
+    ],
+    "attention": [
+      {"name": "mid_attn_sdpa", "family": "sdpa", "nh": 1, "nkv": 1, "hd": 512, "s": 61440, "causal": false, "calls": 30}
+    ]
+  }
+}

@@ -1,0 +1,54 @@
+-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+CLIntercept (64-bit) is loading...
+CLIntercept file location: C:\Users\Local_Admin\Downloads\clintercept-3.0.6-win64\Release\opencl.dll
+CLIntercept URL: https://github.com/intel/opencl-intercept-layer
+CLIntercept git description: v3.0.6
+CLIntercept git refspec: 
+CLIntercept git hash: 1c86da258a3de21c88abb8d81953febcef50991f
+CLIntercept optional features:
+    cliloader(supported)
+    cliprof(supported)
+    kernel overrides(supported)
+    ITT tracing(NOT supported)
+    MDAPI(supported)
+    Demangling(NOT supported)
+    clock(steady_clock)
+CLIntercept environment variable prefix: CLI_
+CLIntercept registry key: SOFTWARE\INTEL\IGFX\CLINTERCEPT
+Trying to load dispatch from: real_opencl.dll
+Couldn't get exported function pointer to: clGetGLContextInfoKHR
+... success!
+Control ReportToStderr is set to non-default value: true
+Control DevicePerformanceTiming is set to non-default value: true
+Timer Started!
+... loading complete.
+Total Enqueues: 0
+
+=== GroupNorm Benchmark (GroupNormalizationZSplit) ===
+c=512 z=2 h=200 w=324 num_groups=32 iters=45 warmup=10 bufs=4
+Input tensors allocated in USM_DEVICE (VRAM) via RemoteContext.
+Median_ms: 4.0105
+Min_ms: 3.9753
+Avg_ms: 4.01543
+GFLOPS: 132.363
+BW_GBs: 66.182
+AI: 1.99998
+TotalFLOPs: 5.30842e+08
+TotalBytes: 2.65423e+08
+PeakUsmDeviceBytes: 0
+PeakUsmDeviceMB: 0
+PeakUsmHostBytes: 530851840
+Total Enqueues: 168
+
+
+Device Performance Timing Results for Intel(R) Arc(TM) B390 GPU (96CUs, 2400MHz):
+
+Total Time (ns): 225480651
+
+                                                            Function Name,  Calls,     Time (ns), Time (%),  Average (ns),      Min (ns),      Max (ns)
+                                               clEnqueueMemFillINTEL( H ),      3,       2399270,    1.06%,        799756,          1250,       2393020
+ group_normalization_zsplit_calc_mean_variance_zsplit_1534096759154667745,     55,         96637,    0.04%,          1757,          1458,          5312
+group_normalization_zsplit_calc_sqr_mean_zsplit_plain_1534096759154667745,     55,      80890391,   35.87%,       1470734,       1326354,       3118229
+        group_normalization_zsplit_final_zsplit_plain_1534096759154667745,     55,     142094353,   63.02%,       2583533,       2519687,       3151250
+CLIntercept is shutting down...
+... shutdown complete.
